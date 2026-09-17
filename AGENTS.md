@@ -1,0 +1,38 @@
+# AGENTS.md — Ankyra
+
+Ankyra is a domain-general hybrid neuro-symbolic reasoning engine: given a
+self-contained natural-language problem (conditions plus a question), it produces
+a step-by-step, mechanically verifiable reasoning trace and an answer with its
+logical status. Design commitment: **the LLM proposes, the symbolic engine
+decides.** Nothing enters the theory without a valid quote (`cited`) or an
+explicit hypothesis tag (`hypothesis`).
+
+## Commands
+
+- Package manager — **uv**, not `pip`. Requires Python ≥ 3.11.
+- Sync dependencies: `uv sync`.
+- Tests (offline; live ones are skipped): `uv run pytest`.
+- Live tests (real LLM calls): `ANKYRA_LIVE=1 uv run pytest -m live`.
+- Eval harness: `uv run python -m evals.run [--ids rain,vehicle]`, then read the
+  reasoning with `uv run python -m evals.narrate --lang ru`.
+- There are **no** linters / formatters / type checkers or CI in the repository —
+  do not look for a command for them or invent one.
+
+## Configuration
+
+Dynaconf with env prefix `ANKYRA`, loaded from `.env` (see `.env.example`).
+Notable flags: `ANKYRA_ALLOW_HYPOTHESES` (default `true`), `ANKYRA_BUILTINS`
+(default `false`), `ANKYRA_MAX_WAVES` (default 8), `ANKYRA_LANG` (narration
+language, default `en`).
+
+## Documentation
+
+- `README.md` — what it is, install, quick start.
+- `ARCHITECTURE.md` — layers, flows, data model, module map.
+- `docs/task.md` — technical specification.
+- `docs/implementation_plan.md` — roadmap and backlog.
+- `docs/quality_findings.md` — eval-harness findings.
+- `docs/defeasible_reasoning.md` — non-monotonic exceptions design note.
+- English is canonical; Russian mirrors are `<name>_ru.md`.
+- Glossary (Russian): `provenance` → «история вывода» (graph/edge → «граф/ребро
+  вывода»); `justification` → «обоснование». Keep code identifiers in English.

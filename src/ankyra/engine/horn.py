@@ -1,0 +1,389 @@
+"""Deterministic Horn engine: unification, forward chaining, subsumption.
+
+The engine is the spine of Ankyra: it derives and verifies but never adds
+knowledge. Every derived atom carries provenance (``used`` / ``witness`` /
+``rule_index``) so the explanation can later be built mechanically.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+from ankyra.build.normalize import is_var, predicate_polarity
+from ankyra.core.models import Fact, FactKey, Morphism, Theory
+from ankyra.engine.builtins import evaluate, is_builtin
+
+Subst = dict[str, str]
+
+
+def _bare(value: str) -> str:
+    return value[1:] if value.startswith("?") else value
+
+
+@dataclass
+class TheoryContext:
+    """Resolved vocabulary of a theory plus the query bindings."""
+
+    theory: Theory
+    obj_pool: set[str]
+    pred_pool: set[str]
+    bindings: Subst
+
+
+@dataclass
+class GoalHit:
+    """A fact that matches a goal, with the substitution that matched it."""
+
+    fact: Fact
+    subst: Subst
+
+
+def _all_slots(theory: Theory):
+    """Axioms and every rule slot — the theory's full relational vocabulary."""
+    yield from theory.morphisms
+    for rule in theory.rules:
+        yield from rule.conditions
+        yield rule.consequence
+
+
+def _object_pool(theory: Theory) -> set[str]:
+    pool = {o.id for o in theory.objects if o.id}
+    for m in _all_slots(theory):
+        if m.subject:
+            pool.add(m.subject)
+        if m.object:
+            pool.add(m.object)
+    return {p for p in pool if p}
+
+
+def _predicate_pool(theory: Theory) -> set[str]:
+    return {m.predicate for m in _all_slots(theory) if m.predicate}
+
+
+def build_context(theory: Theory, *, bindings: Subst | None = None) -> TheoryContext:
+    raw = dict(bindings or {})
+    env: Subst = {}
+    for key, val in raw.items():
+        env[key] = val
+        env[_bare(key)] = val
+        if not key.startswith("?"):
+            env[f"?{key}"] = val
+    return TheoryContext(
+        theory=theory,
+        obj_pool=_object_pool(theory),
+        pred_pool=_predicate_pool(theory),
+        bindings=env,
+    )
+
+
+def _pool_lookup(value: str, pool: set[str]) -> str | None:
+    needle = value.casefold()
+    for item in pool:
+        if item.casefold() == needle:
+            return item.casefold()
+    return None
+
+
+def resolve_term(
+    value: str | None,
+    ctx: TheoryContext,
+    *,
+    field: str,
+    subst: Subst | None = None,
+) -> str:
+    if not value:
+        return ""
+    env = subst or {}
+    cur = value
+    seen: set[str] = set()
+    while cur not in seen:
+        seen.add(cur)
+        nxt = (
+            env.get(cur)
+            or env.get(_bare(cur))
+            or ctx.bindings.get(cur)
+            or ctx.bindings.get(_bare(cur))
+        )
+        if not nxt or nxt == cur:
+            break
+        cur = nxt
+    if is_var(cur):
+        hit = _pool_lookup(_bare(cur), ctx.obj_pool if field != "predicate" else ctx.pred_pool)
+        if hit:
+            return hit
+        return cur
+    if field == "predicate":
+        pred, _ = predicate_polarity(cur, False)
+        return _pool_lookup(pred, ctx.pred_pool) or pred.casefold()
+    return _pool_lookup(cur, ctx.obj_pool) or cur.casefold()
+
+
+def unify_terms(left: str, right: str, subst: Subst) -> Subst | None:
+    """Unify two already-resolved terms. Empty left is a pattern wildcard."""
+    env = dict(subst)
+    a = env.get(left, left)
+    b = env.get(right, right)
+    if not a:
+        return env
+    if a == b:
+        return env
+    if is_var(a):
+        env[a] = b
+        env[_bare(a)] = b
+        return env
+    if is_var(b):
+        env[b] = a
+        env[_bare(b)] = a
+        return env
+    return None
+
+
+def unify_pattern(pattern: Morphism, fact: Fact, ctx: TheoryContext, subst: Subst) -> Subst | None:
+    """Match a morphism pattern against a ground fact.
+
+    Polarity, modality and negation must agree; modality is part of atom identity
+    so a neutral pattern never matches an obligation fact.
+
+    The builtin extension point: builtins are evaluated as filters in
+    ``_match_conditions``, never matched against facts, so they match nothing here.
+    """
+    if is_builtin(pattern.predicate):
+        return None
+    _, pat_neg = predicate_polarity(pattern.predicate, pattern.negated)
+    if pat_neg != fact.negated:
+        return None
+    if pattern.modality != fact.modality:
+        return None
+    env = dict(subst)
+    pred = resolve_term(pattern.predicate, ctx, field="predicate", subst=env)
+    merged = unify_terms(pred, fact.predicate, env)
+    if merged is None:
+        return None
+    env = merged
+    subj = resolve_term(pattern.subject, ctx, field="object", subst=env)
+    merged = unify_terms(subj, fact.subject, env)
+    if merged is None:
+        return None
+    env = merged
+    obj = resolve_term(pattern.object, ctx, field="object", subst=env)
+    return unify_terms(obj, fact.object, env)
+
+
+def instantiate(pattern: Morphism, ctx: TheoryContext, subst: Subst) -> Fact | None:
+    """Ground a pattern under a substitution; ``None`` if a term is still free."""
+    pred = resolve_term(pattern.predicate, ctx, field="predicate", subst=subst)
+    subj = resolve_term(pattern.subject, ctx, field="object", subst=subst)
+    obj = resolve_term(pattern.object, ctx, field="object", subst=subst)
+    if not pred or is_var(pred) or is_var(subj) or is_var(obj):
+        return None
+    _, negated = predicate_polarity(pattern.predicate, pattern.negated)
+    return Fact(
+        predicate=pred,
+        subject=subj,
+        object=obj,
+        negated=negated,
+        modality=pattern.modality,
+    )
+
+
+class AtomStore:
+    """Deduplicated ground atoms keyed by ``FactKey``."""
+
+    def __init__(self) -> None:
+        self.by_key: dict[FactKey, Fact] = {}
+        self.facts: list[Fact] = []
+
+    def add(self, fact: Fact) -> bool:
+        old = self.by_key.get(fact.key)
+        if old is None:
+            self.by_key[fact.key] = fact
+            self.facts.append(fact)
+            return True
+        if fact.axiom and not old.axiom:
+            self._replace(old, fact)
+            return True
+        if (not old.axiom) and len(fact.used) < len(old.used):
+            self._replace(old, fact)
+            return True
+        return False
+
+    def _replace(self, old: Fact, new: Fact) -> None:
+        self.by_key[new.key] = new
+        self.facts[self.facts.index(old)] = new
+
+    def get(self, key: FactKey) -> Fact | None:
+        return self.by_key.get(key)
+
+
+def _seed_fact(morphism: Morphism, ctx: TheoryContext, *, axiom: bool) -> Fact | None:
+    fact = instantiate(morphism, ctx, {})
+    if fact is None:
+        return None
+    fact.axiom = axiom
+    fact.witness = fact.label()
+    if not axiom:
+        fact.used = frozenset({fact.key})
+    return fact
+
+
+def _match_conditions(
+    conditions: list[Morphism],
+    facts: list[Fact],
+    ctx: TheoryContext,
+    subst: Subst,
+) -> list[tuple[Subst, list[Fact]]]:
+    if not conditions:
+        return [(dict(subst), [])]
+
+    def rec(index: int, env: Subst, used_facts: list[Fact]) -> list[tuple[Subst, list[Fact]]]:
+        if index >= len(conditions):
+            return [(dict(env), list(used_facts))]
+        condition = conditions[index]
+        if is_builtin(condition.predicate):
+            merged = evaluate(condition, env)
+            if merged is None:
+                return []
+            return rec(index + 1, merged, used_facts)
+        out: list[tuple[Subst, list[Fact]]] = []
+        for fact in facts:
+            merged = unify_pattern(condition, fact, ctx, env)
+            if merged is None:
+                continue
+            out.extend(rec(index + 1, merged, used_facts + [fact]))
+        return out
+
+    return rec(0, subst, [])
+
+
+def saturate(
+    theory: Theory,
+    assumptions: list[Morphism] | None = None,
+    *,
+    ctx: TheoryContext | None = None,
+    max_iterations: int = 64,
+) -> AtomStore:
+    """Forward-chain until a fixed point. Axioms, then assumptions, then rules."""
+    ctx = ctx or build_context(theory)
+    store = AtomStore()
+    for morphism in theory.morphisms:
+        fact = _seed_fact(morphism, ctx, axiom=True)
+        if fact is not None:
+            store.add(fact)
+    for morphism in assumptions or ():
+        fact = _seed_fact(morphism, ctx, axiom=False)
+        if fact is None:
+            continue
+        if fact.key in store.by_key and store.by_key[fact.key].axiom:
+            continue
+        store.add(fact)
+
+    for _ in range(max_iterations):
+        progressed = False
+        snapshot = list(store.facts)
+        for i, rule in enumerate(theory.rules, 1):
+            if not rule.conditions:
+                continue
+            for subst, used_facts in _match_conditions(rule.conditions, snapshot, ctx, {}):
+                derived = instantiate(rule.consequence, ctx, subst)
+                if derived is None:
+                    continue
+                # Direct premises for the explanation; `used` is the transitive
+                # closure for hypothesis accounting.
+                derived.premises = frozenset(used_fact.key for used_fact in used_facts)
+                used: set[FactKey] = set()
+                for used_fact in used_facts:
+                    used.add(used_fact.key)
+                    used.update(used_fact.used)
+                derived.used = frozenset(used)
+                derived.rule_index = i
+                derived.witness = f"rule:{i}:=>{derived.label()}"
+                if store.add(derived):
+                    progressed = True
+        if _close_is_a(store):
+            progressed = True
+        if not progressed:
+            break
+    return store
+
+
+def _close_is_a(store: AtomStore) -> bool:
+    """Transitive closure of neutral, positive ``is_a`` facts (subsumption chain).
+
+    ``is_a(a, b)`` and ``is_a(b, c)`` yield ``is_a(a, c)`` so direct subsumption
+    questions match. Bounded: fixpoint over the finite fact set, no reflexivity.
+    """
+    progressed = False
+    edges: dict[tuple[str, str], Fact] = {}
+    for fact in store.facts:
+        if fact.predicate == "is_a" and not fact.negated and fact.modality == "neutral":
+            if fact.subject and fact.object:
+                edges[(fact.subject, fact.object)] = fact
+    changed = True
+    while changed:
+        changed = False
+        keys = list(edges)
+        for x, y in keys:
+            fxy = edges[(x, y)]
+            for y2, z in keys:
+                if y != y2 or x == z:
+                    continue
+                if (x, z) in edges:
+                    continue
+                fyz = edges[(y2, z)]
+                used = set(fxy.used) | {fxy.key} | set(fyz.used) | {fyz.key}
+                derived = Fact(
+                    predicate="is_a",
+                    subject=x,
+                    object=z,
+                    negated=False,
+                    modality="neutral",
+                    used=frozenset(used),
+                    premises=frozenset({fxy.key, fyz.key}),
+                    witness=f"is_a:({x}->{y}->{z})",
+                )
+                if store.add(derived):
+                    edges[(x, z)] = derived
+                    changed = True
+                    progressed = True
+    return progressed
+
+
+def frontier(theory: Theory) -> list[str]:
+    """Labels of the derived (non-axiom) facts of a theory's closure."""
+    return [fact.label() for fact in saturate(theory).facts if not fact.axiom]
+
+
+def match_goal(goal: Morphism, store: AtomStore, ctx: TheoryContext) -> list[GoalHit]:
+    """All facts matching ``goal``, best (axiom, shortest provenance) first."""
+    hits: list[GoalHit] = []
+    for fact in store.facts:
+        subst = unify_pattern(goal, fact, ctx, {})
+        if subst is not None:
+            hits.append(GoalHit(fact=fact, subst=subst))
+    hits.sort(key=lambda h: (not h.fact.axiom, len(h.fact.used), h.fact.rule_index or 0))
+    return hits
+
+
+def complementary(store: AtomStore, fact: Fact) -> Fact | None:
+    """The fact ``P`` opposite to ``¬P`` (same triple and modality)."""
+    key = (fact.predicate, fact.subject, fact.object, not fact.negated, fact.modality)
+    return store.get(key)
+
+
+def assumption_explained(
+    assumption: Morphism,
+    store: AtomStore,
+    ctx: TheoryContext,
+    *,
+    used: frozenset[FactKey],
+) -> bool:
+    """True if the assumption is an axiom, was used, or is a lemma of that proof."""
+    grounded = instantiate(assumption, ctx, {})
+    if grounded is not None and grounded.key in used:
+        return True
+    for fact in store.facts:
+        if not fact.used.issubset(used):
+            continue
+        if unify_pattern(assumption, fact, ctx, {}) is not None:
+            return True
+    return False

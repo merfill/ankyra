@@ -1,0 +1,145 @@
+"""Symbolic verification: does ``Theory ∪ Gamma`` entail the target ``phi``?"""
+
+from __future__ import annotations
+
+from ankyra.core.models import FactKey, Query, Theory, Verdict
+from ankyra.engine.horn import (
+    AtomStore,
+    GoalHit,
+    assumption_explained,
+    build_context,
+    complementary,
+    match_goal,
+    saturate,
+)
+
+
+def _winning_hit(query: Query, store: AtomStore, ctx, goal=None) -> GoalHit | None:
+    """The goal hit (default: the target) whose proof uses every query condition."""
+    goal = goal if goal is not None else query.target
+    if goal is None:
+        return None
+    for hit in match_goal(goal, store, ctx):
+        if all(
+            assumption_explained(cond, store, ctx, used=hit.fact.used)
+            for cond in query.conditions
+        ):
+            return hit
+    return None
+
+
+def winning_store_hit(
+    theory: Theory, query: Query, *, goal=None
+) -> tuple[AtomStore, GoalHit] | None:
+    """Store and winning goal hit (default: the target), else ``None``."""
+    ctx = build_context(theory, bindings=query.variables)
+    store = saturate(theory, query.conditions, ctx=ctx)
+    hit = _winning_hit(query, store, ctx, goal=goal)
+    if hit is None:
+        return None
+    return store, hit
+
+
+def winning_proof(
+    theory: Theory, query: Query, *, goal=None
+) -> tuple[AtomStore, frozenset[FactKey]] | None:
+    """Store and transitive proof keys for the goal, else ``None``."""
+    result = winning_store_hit(theory, query, goal=goal)
+    if result is None:
+        return None
+    store, hit = result
+    return store, frozenset(hit.fact.used) | {hit.fact.key}
+
+
+def verify(theory: Theory, query: Query) -> Verdict:
+    """Verify the query sequent. Unused premises block support; ``P ∧ ¬P`` refutes.
+
+    Status: ``refuted`` on a complementary pair, ``supported`` when the target
+    matches and every condition is used, ``insufficient`` when the target matches
+    but a premise is unused, ``unsupported`` when nothing matches.
+    """
+    ctx = build_context(theory, bindings=query.variables)
+    axiom_store = saturate(theory, [], ctx=ctx)
+    store = saturate(theory, query.conditions, ctx=ctx)
+    bindings = dict(ctx.bindings)
+
+    for fact in store.facts:
+        opp = complementary(store, fact)
+        if opp is not None:
+            return Verdict(
+                status="refuted",
+                bindings=bindings,
+                gaps=[f"contradiction:{fact.label()}"],
+                matched=[fact.witness, opp.witness],
+                shelf="refused",
+            )
+
+    if query.target is not None:
+        hit = _winning_hit(query, store, ctx)
+        if hit is not None:
+            bindings.update(hit.subst)
+            return Verdict(
+                status="supported",
+                bindings=bindings,
+                gaps=[],
+                matched=[hit.fact.witness or hit.fact.label()],
+                shelf="proven",
+            )
+        hits = match_goal(query.target, store, ctx)
+        if hits:
+            leftover_idx = [
+                i
+                for i, cond in enumerate(query.conditions)
+                if not assumption_explained(cond, store, ctx, used=hits[0].fact.used)
+            ]
+            bindings.update(hits[0].subst)
+            return Verdict(
+                status="insufficient",
+                bindings=bindings,
+                gaps=[f"unused_premise:{query.conditions[i].predicate}" for i in leftover_idx],
+                matched=[hits[0].fact.witness or hits[0].fact.label()],
+                shelf="attested",
+                unused_premises=leftover_idx,
+            )
+        negated_goal = query.target.model_copy(update={"negated": not query.target.negated})
+        negative_hit = _winning_hit(query, store, ctx, goal=negated_goal)
+        if negative_hit is not None:
+            bindings.update(negative_hit.subst)
+            return Verdict(
+                status="refuted",
+                bindings=bindings,
+                gaps=[f"target_refuted:{query.target.predicate}"],
+                matched=[negative_hit.fact.witness or negative_hit.fact.label()],
+                shelf="refused",
+            )
+        gaps = [f"target_unmatched:{query.target.predicate}"]
+    else:
+        gaps = []
+
+    matched: list[str] = []
+    cond_results: list[bool] = []
+    for cond in query.conditions:
+        hits = match_goal(cond, axiom_store, ctx)
+        ok = bool(hits)
+        cond_results.append(ok)
+        if ok:
+            matched.append(hits[0].fact.witness or hits[0].fact.label())
+        else:
+            gaps.append(f"condition_unmatched:{cond.predicate}")
+
+    all_conds = bool(cond_results) and all(cond_results)
+    any_cond = any(cond_results) if cond_results else False
+
+    if query.target is None:
+        if all_conds:
+            status, shelf = "supported", "proven"
+        elif any_cond:
+            status, shelf = "insufficient", "attested"
+        else:
+            status, shelf = "unsupported", "refused"
+    elif any_cond:
+        status, shelf = "insufficient", "attested"
+    else:
+        status, shelf = "unsupported", "refused"
+
+    return Verdict(status=status, bindings=bindings, gaps=gaps, matched=matched, shelf=shelf)
