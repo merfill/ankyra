@@ -61,10 +61,10 @@ def _vehicle_structure():
             "source_text": "X has an engine, four wheels, 150 horsepower and four doors.",
             "objects": ["x"],
             "facts": [
-                {"predicate": "has_engine", "subject": "x"},
-                {"predicate": "wheel_count", "subject": "x", "object": "4"},
-                {"predicate": "power", "subject": "x", "object": "150"},
-                {"predicate": "door_count", "subject": "x", "object": "4"},
+                {"predicate": "has_engine", "subject": "x", "quote": "has an engine"},
+                {"predicate": "wheel_count", "subject": "x", "object": "4", "quote": "four wheels"},
+                {"predicate": "power", "subject": "x", "object": "150", "quote": "150 horsepower"},
+                {"predicate": "door_count", "subject": "x", "object": "4", "quote": "four doors"},
             ],
         }
     )

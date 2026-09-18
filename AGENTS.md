@@ -7,6 +7,14 @@ logical status. Design commitment: **the LLM proposes, the symbolic engine
 decides.** Nothing enters the theory without a valid quote (`cited`) or an
 explicit hypothesis tag (`hypothesis`).
 
+Phase 0 formalization (deterministic builder; see `docs/task.md` §0.3): a
+predicative "is/are" (`predication: copula`) becomes `is_a(subject, complement)`,
+while other one-place predications (`verb`, e.g. "has an engine") stay unary — this
+keeps properties out of the `is_a` type hierarchy. A `ProblemStructure.domain`
+names the universe sort(s) every individual belongs to; a rule premise that only
+restricts a variable to a domain sort is the quantifier's domain, not a premise,
+and is dropped.
+
 ## Commands
 
 - Package manager — **uv**, not `pip`. Requires Python ≥ 3.11.

@@ -229,10 +229,18 @@ This bites Example B (`power > 50`, `wheelCount >= 4`).
    (45 open-world synthetic-core problems, depth 0/1/2/3/5) built deterministically
    by `evals.build_proofwriter_sample`; `evals.proofwriter` maps
    True/False/Unknown to `Answer.kind` with explicit polarity handling and reports
-   strict vs abductive modes. Baseline: strict **40/45** (determinate 25/30 all
+   strict vs abductive modes. Current (N=3): strict **45/45** (determinate 30/30 all
    `proven`, Unknown 15/15, no false positives); abduction 30/30 determinate but
-   Unknown 5/15. Added the quote re-formalization guard (`classify`, B8) and the
-   last-waves hint feedback (B9). See `quality_findings` section E.
+   Unknown 7/15 (8 false positives). Added the quote re-formalization guard
+   (`classify`, B8), the last-waves hint feedback (B9), and the Phase 0 copula /
+   domain formalization (`StructAtom.predication`, `ProblemStructure.domain`) that
+   closed the strict gaps. See `quality_findings` section E.
+8. ~~**Copula / domain formalization (Phase 0).**~~ **DONE.** A one-place copula
+   becomes `is_a(subject, complement)` (never a bare unary predicate), and a rule
+   premise restricting a variable to a declared `domain` sort is dropped as the
+   quantifier's domain. Closed the ProofWriter `Att*` generalization gaps without
+   prompt special-cases. `domain` is an auditable formalization assumption; an
+   over-declaration invariant is still pending.
 
 ## 8. Backlog (from the eval harness)
 
@@ -250,8 +258,10 @@ Source: `docs/quality_findings.md`. Ordered by priority.
 3. **Presupposition capture.** Get "given that / assuming" clauses into question
    conditions reliably (stricter question prompt + broader examples, or a dedicated
    question pass).
-4. **Variance mitigations.** `ANKYRA_EXTRACT_SAMPLES` multi-sample extraction with a
-   deterministic pick; steadier prompts; provider seed if available.
+4. **Variance mitigations.** `ANKYRA_EXTRACT_SAMPLES` best-of-N extraction with a
+   deterministic pick (`symbolic.quality_key`: grounding gaps → source coverage →
+   compactness) and `ANKYRA_EXTRACT_REPAIRS` bounded repair over repairable gaps.
+   Done. Prompt stability and a provider seed remain.
 5. ~~**Non-monotonic exceptions.**~~ **DONE** behind `ANKYRA_DEFEASIBLE` (default
    off): every rule is a default and only asserted facts are strict (neither
    extraction nor a predicate heuristic authors strength), the layer in
@@ -271,3 +281,9 @@ Source: `docs/quality_findings.md`. Ordered by priority.
     LLM narration starts from it. Benchmark scoring maps the
     `(kind, strength, defeasible)` tuple plus reason buckets per benchmark — the
     engine keeps no benchmark semantics.
+11. **Negation / polarity robustness in extraction.** The one strict N=1 ProofWriter
+    miss was an extractor polarity error: "does not see" became a positive `see` and
+    a rule consequent "are not big" lost `negated`. Strict N=3 scored 45/45, so this
+    is variance-sensitive, but a deterministic polarity check (complementary axioms
+    from one extraction, negated consequent vs positive rule head) or a targeted
+    sampling guard would make it robust.

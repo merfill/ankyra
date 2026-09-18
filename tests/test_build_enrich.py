@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from ankyra.build.enrich import enrich_theory, heal_structural
+from ankyra.build.enrich import enrich_theory, heal_structural, strip_domain_conditions
 from ankyra.core.models import Morphism, Rule, Theory
 
 
@@ -77,3 +77,67 @@ def test_enrich_drops_malformed_atoms_and_rules():
     enriched = enrich_theory(theory)
     assert [m.predicate for m in enriched.morphisms] == ["raining"]
     assert enriched.rules == []
+
+
+def test_strip_domain_conditions_removes_a_universe_sort_premise():
+    rule = Rule(
+        conditions=[
+            Morphism(predicate="is_a", subject="?x", object="person"),
+            Morphism(predicate="young", subject="?x"),
+        ],
+        consequence=Morphism(predicate="white", subject="?x"),
+    )
+    stripped = strip_domain_conditions([rule], ["person"])
+    assert [cond.predicate for cond in stripped[0].conditions] == ["young"]
+
+
+def test_strip_domain_conditions_keeps_a_proper_class_premise():
+    rule = Rule(
+        conditions=[Morphism(predicate="is_a", subject="?x", object="dog")],
+        consequence=Morphism(predicate="mammal", subject="?x"),
+    )
+    stripped = strip_domain_conditions([rule], ["person"])
+    assert stripped[0].conditions[0].object == "dog"
+
+
+def test_enrich_drops_domain_conditions_from_a_theory():
+    theory = Theory(
+        domain=["person"],
+        rules=[
+            Rule(
+                conditions=[
+                    Morphism(predicate="is_a", subject="?x", object="person"),
+                    Morphism(predicate="nice", subject="?x"),
+                ],
+                consequence=Morphism(predicate="young", subject="?x"),
+            )
+        ],
+    )
+    enriched = enrich_theory(theory)
+    assert [cond.predicate for cond in enriched.rules[0].conditions] == ["nice"]
+
+
+def test_build_theory_drops_domain_conditions_end_to_end():
+    from ankyra.build.pipeline import build_theory
+    from ankyra.core.schemas import ProblemStructure
+
+    structure = ProblemStructure.model_validate(
+        {
+            "source_text": "Fiona is nice. All nice people are young.",
+            "domain": ["person"],
+            "facts": [{"predicate": "nice", "subject": "fiona"}],
+            "rules": [
+                {
+                    "antecedent": [
+                        {"predicate": "is_a", "subject": "?x", "object": "person"},
+                        {"predicate": "nice", "subject": "?x"},
+                    ],
+                    "consequent": {"predicate": "young", "subject": "?x"},
+                    "quote": "All nice people are young",
+                }
+            ],
+        }
+    )
+    theory = build_theory(structure)
+    assert [cond.predicate for cond in theory.rules[0].conditions] == ["nice"]
+    assert theory.domain == ["person"]

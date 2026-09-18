@@ -16,7 +16,7 @@ from ankyra.core.models import Hypothesis, Morphism, ProposalCategory, Query, Ru
 from ankyra.engine.builtins import builtin_unsafe
 from ankyra.engine.horn import build_context, derive_store, instantiate
 from ankyra.engine.ledger import HypothesisLedger, morphism_key
-from ankyra.engine.proposal import ProposalDraft
+from ankyra.engine.proposal import ProposalDraft, effective_action, payload_actions
 
 
 @dataclass
@@ -58,21 +58,12 @@ def _quote_in_use(theory: Theory, quote: str | None) -> bool:
     """True when this quote already grounds a theory element.
 
     A quote is a lexical witness for ONE formalization; reusing it to state a
-    different rule silently changes the formalization (drops a restriction or
-    flips it), so the new rule is an assumption, not ground.
+    different atom or rule silently changes the formalization (drops a restriction
+    or flips it), so the new element is an assumption, not ground.
     """
     if any(_same_quote(quote, m.quote) for m in theory.morphisms):
         return True
     return any(_same_quote(quote, r.quote) for r in theory.rules)
-
-
-def _quote_grounds_a_rule(theory: Theory, quote: str | None) -> bool:
-    """True when this quote is a conditional already formalized as a rule.
-
-    A conditional does not assert its antecedent, so a bare fact may not be
-    grounded on it.
-    """
-    return any(_same_quote(quote, rule.quote) for rule in theory.rules)
 
 
 def _with_morphism(theory: Theory, morphism: Morphism) -> Theory:
@@ -115,11 +106,11 @@ def _apply_atom(
     if not _adds_new_facts(theory, candidate):
         return Classification("derivable", "already_derivable", theory, query)
     quoted = quote_in_source(morphism.quote, source_text)
-    if quoted and not _quote_grounds_a_rule(theory, morphism.quote):
+    if quoted and not _quote_in_use(theory, morphism.quote):
         return Classification("cited", "cited", candidate, query)
     if not allow_hypotheses:
         return Classification(
-            "rejected", "quote_from_rule" if quoted else "hypotheses_forbidden", theory, query
+            "rejected", "quote_reused" if quoted else "hypotheses_forbidden", theory, query
         )
     hypothesis_id = ledger.next_id()
     hypothesis = ledger.add_fact(
@@ -224,11 +215,15 @@ def classify(
     wave: int,
 ) -> Classification:
     """Classify and, when accepted, apply one proposal to the theory/query."""
-    if draft.action == "reformalize_query":
+    action = effective_action(draft)
+    if action is None:
+        reason = "ambiguous_payload" if len(payload_actions(draft)) > 1 else "missing_payload"
+        return Classification("rejected", reason, theory, query)
+    if action == "reformalize_query":
         return _reformalize(draft, theory, query)
-    if draft.action == "select_subgoal":
+    if action == "select_subgoal":
         return Classification("derivable", "subgoal_selected", theory, query)
-    if draft.action == "propose_rule":
+    if action == "propose_rule":
         if draft.rule is None:
             return Classification("rejected", "missing_payload", theory, query)
         return _apply_rule(

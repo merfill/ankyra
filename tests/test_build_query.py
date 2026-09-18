@@ -109,3 +109,18 @@ def test_phase0_rain_end_to_end_is_proven():
     verdict = verify(theory, query)
     assert verdict.status == "supported"
     assert verdict.shelf == "proven"
+
+
+def test_build_query_strips_domain_conditions():
+    question = QuestionStructure.model_validate(
+        {
+            "source_text": "given that Fiona is a person, is Fiona young?",
+            "facts": [
+                {"predicate": "is_a", "subject": "fiona", "object": "person"},
+                {"predicate": "nice", "subject": "fiona"},
+            ],
+            "ask": {"predicate": "young", "subject": "fiona"},
+        }
+    )
+    query = build_query(question, domain=["person"])
+    assert [cond.predicate for cond in query.conditions] == ["nice"]

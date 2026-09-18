@@ -3,7 +3,13 @@
 from __future__ import annotations
 
 from ankyra.core.models import Morphism, Rule, Theory
-from ankyra.engine.horn import build_context, complementary, match_goal, saturate
+from ankyra.engine.horn import (
+    build_context,
+    complementary,
+    match_goal,
+    near_miss,
+    saturate,
+)
 
 
 def test_unary_fact_derives_another_fact_with_provenance():
@@ -80,3 +86,41 @@ def test_predicate_is_kept_as_authored_without_semantic_folding():
     theory = Theory(morphisms=[Morphism(predicate="isNot", subject="x", object="car")])
     store = saturate(theory)
     assert store.get(("isnot", "x", "car", False, "neutral")) is not None
+
+
+def _near_miss_theory() -> Theory:
+    return Theory(
+        morphisms=[Morphism(predicate="nice", subject="fiona")],
+        rules=[
+            Rule(
+                conditions=[
+                    Morphism(predicate="is_a", subject="?x", object="person"),
+                    Morphism(predicate="nice", subject="?x"),
+                ],
+                consequence=Morphism(predicate="young", subject="?x"),
+            )
+        ],
+    )
+
+
+def test_near_miss_names_the_unmet_body_literal():
+    hints = near_miss(_near_miss_theory(), Morphism(predicate="young", subject="fiona"))
+    assert hints == ["R1 young(fiona): unmet is_a(fiona,person)"]
+
+
+def test_near_miss_matches_a_negated_target_via_its_complement():
+    hints = near_miss(
+        _near_miss_theory(),
+        Morphism(predicate="young", subject="fiona", negated=True),
+    )
+    assert hints == ["R1 young(fiona): unmet is_a(fiona,person)"]
+
+
+def test_near_miss_ignores_a_fully_satisfied_rule():
+    theory = _near_miss_theory()
+    theory.morphisms.append(Morphism(predicate="is_a", subject="fiona", object="person"))
+    assert near_miss(theory, Morphism(predicate="young", subject="fiona")) == []
+
+
+def test_near_miss_without_a_target_is_empty():
+    assert near_miss(Theory(), None) == []

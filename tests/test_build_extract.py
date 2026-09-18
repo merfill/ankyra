@@ -6,12 +6,14 @@ import os
 
 import pytest
 
+from ankyra.build import extract as extract_mod
 from ankyra.build.extract import (
     extract_problem_structure,
     extract_question_structure,
     format_theory_for_llm,
 )
 from ankyra.core.models import Morphism, Object, Rule, Theory
+from ankyra.core.schemas import ProblemStructure, QuestionStructure
 
 live = pytest.mark.skipif(
     not os.getenv("ANKYRA_LIVE"),
@@ -55,3 +57,112 @@ def test_live_problem_and_question_extraction():
     query = build_query(question)
     verdict = verify(theory, query)
     assert verdict.status in {"supported", "insufficient", "unsupported", "refuted"}
+
+
+def _problem_structure(text: str, **extra) -> ProblemStructure:
+    return ProblemStructure.model_validate({"source_text": text, **extra})
+
+
+def test_problem_extraction_picks_the_better_sample(monkeypatch):
+    text = "It is raining. If it is raining, the ground is wet."
+    partial = _problem_structure(
+        text, facts=[{"predicate": "raining", "quote": "it is raining"}]
+    )
+    full = _problem_structure(
+        text,
+        facts=[{"predicate": "raining", "quote": "it is raining"}],
+        rules=[
+            {
+                "antecedent": [{"predicate": "raining", "quote": "if it is raining"}],
+                "consequent": {
+                    "predicate": "is_wet",
+                    "object": "ground",
+                    "quote": "the ground is wet",
+                },
+                "quote": "if it is raining, the ground is wet",
+            }
+        ],
+    )
+    samples = iter([partial, full])
+    monkeypatch.setattr(extract_mod, "_extract_problem_once", lambda _llm, _text: next(samples))
+    chosen = extract_problem_structure(object(), text=text, samples=2, repairs=0)
+    assert chosen is full
+
+
+def test_problem_extraction_tolerates_a_failed_sample(monkeypatch):
+    text = "It is raining."
+    good = _problem_structure(text, facts=[{"predicate": "raining", "quote": "it is raining"}])
+    calls = {"n": 0}
+
+    def flaky(_llm, _text):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise RuntimeError("boom")
+        return good
+
+    monkeypatch.setattr(extract_mod, "_extract_problem_once", flaky)
+    assert extract_problem_structure(object(), text=text, samples=2, repairs=0) is good
+
+
+def test_problem_extraction_raises_when_every_sample_fails(monkeypatch):
+    def boom(_llm, _text):
+        raise RuntimeError("nope")
+
+    monkeypatch.setattr(extract_mod, "_extract_problem_once", boom)
+    with pytest.raises(RuntimeError):
+        extract_problem_structure(object(), text="x", samples=2, repairs=0)
+
+
+def test_problem_extraction_repairs_repairable_gaps(monkeypatch):
+    text = "It is raining."
+    bad = _problem_structure(
+        text, facts=[{"predicate": "raining", "quote": "it snowed"}]
+    )
+    good = _problem_structure(
+        text, facts=[{"predicate": "raining", "quote": "it is raining"}]
+    )
+    monkeypatch.setattr(extract_mod, "_extract_problem_once", lambda _llm, _text: bad)
+    seen: dict = {}
+
+    def fake_repair(_llm, _text, structure, gaps):
+        seen["gaps"] = gaps
+        return good
+
+    monkeypatch.setattr(extract_mod, "_repair_problem_once", fake_repair)
+    chosen = extract_problem_structure(object(), text=text, samples=1, repairs=1)
+    assert chosen is good
+    assert any(gap.startswith("missing_quote") for gap in seen["gaps"])
+
+
+def test_problem_extraction_skips_repair_without_repairable_gaps(monkeypatch):
+    text = "It is raining."
+    good = _problem_structure(text, facts=[{"predicate": "raining", "quote": "it is raining"}])
+    monkeypatch.setattr(extract_mod, "_extract_problem_once", lambda _llm, _text: good)
+
+    def boom(*_args, **_kwargs):
+        raise AssertionError("repair must not run when there is nothing to repair")
+
+    monkeypatch.setattr(extract_mod, "_repair_problem_once", boom)
+    assert extract_problem_structure(object(), text=text, samples=1, repairs=1) is good
+
+
+def test_question_extraction_picks_the_more_grounded_sample(monkeypatch):
+    question = "Is the ground wet?"
+    bad = QuestionStructure.model_validate(
+        {
+            "source_text": question,
+            "ask": {"predicate": "is_wet", "object": "ground", "quote": "not in the question"},
+        }
+    )
+    good = QuestionStructure.model_validate(
+        {
+            "source_text": question,
+            "ask": {"predicate": "is_wet", "object": "ground", "quote": "ground wet"},
+        }
+    )
+    samples = iter([bad, good])
+    monkeypatch.setattr(extract_mod, "_extract_question_once", lambda *args: next(samples))
+    chosen = extract_question_structure(
+        object(), question=question, theory=Theory(), source_text=question, samples=2, repairs=0
+    )
+    assert chosen is good

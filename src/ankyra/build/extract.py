@@ -13,6 +13,9 @@ from typing import Any
 
 from langchain_core.messages import HumanMessage, SystemMessage
 
+from ankyra.build.pipeline import build_theory
+from ankyra.build.symbolic import GapClass, classify_gap, quality_key, symbolic_check
+from ankyra.build.unroll import unroll_query_structure
 from ankyra.config.settings import settings
 from ankyra.core.models import Theory
 from ankyra.core.schemas import ProblemStructure, QuestionStructure
@@ -28,6 +31,7 @@ variants, references, question.
 
 ATOM GRAMMAR — every fact, rule condition, rule consequent and ask is one atom:
   {"predicate": "<snake_case>", "subject": <slot>, "object": <slot>,
+   "predication": "copula|verb",
    "modality": "neutral|permit|obligation|forbidden", "negated": false, "quote": "..."}
 The relation name ALWAYS goes in "predicate" — never in "id" or "name". A slot is a
 bare id string, {"set": [...]} (AND), {"variants": [...]} (OR), or
@@ -40,7 +44,19 @@ RESERVED CONVENTIONS:
 - A universal statement ("all / every / any X ...") is a rule quantified over an
   individual VARIABLE "?x", never over the class noun: "All people need sleep" →
   is_a(?x, person) => need(?x, sleep). The class noun appears only as the object of is_a.
+- "domain" lists the universe sort(s) that EVERY named individual in the problem
+  belongs to, when the text uses them only as the generic subject of quantified rules
+  and never as a proper subset. A rule condition that restricts the variable to a
+  domain sort is the quantifier's domain, not a premise; the builder drops it. Put a
+  sort in "domain" only if it covers ALL named individuals; a proper subset is an
+  ordinary class condition, not a domain.
 - Denial is the SAME predicate with "negated": true; never a twin predicate.
+- "predication" records the surface construction of a one-place atom: "copula" for a
+  predicative "is / are / am / was / were". For a copula put the COMPLEMENT in
+  "predicate", the subject in "subject", and omit "object" ("Gary is cold" ->
+  {"predicate":"cold","subject":"gary","predication":"copula"}); the builder converts
+  it to is_a(subject, complement). "verb" for every other one-place predication
+  ("X has an engine"). A relational atom with an object may leave it "verb".
 - Modality is the "modality" field, never a prefix in the predicate name.
 - Predicate ids: lowercase snake_case, no function words (a, the, and, or, of, by, to,
   for, with, from, in, on, as, when). Object ids: lowercase English head nouns; reuse
@@ -83,9 +99,13 @@ A deterministic expander turns your structure into conditions and a target. Retu
 valid JSON matching the QuestionStructure schema: facts, rules, ask, variables.
 
 ATOM GRAMMAR — same shape as the theory: {"predicate": "...", "subject": <slot>,
-"object": <slot>, "modality": "neutral|permit|obligation|forbidden", "negated": false,
+"object": <slot>, "predication": "copula|verb",
+"modality": "neutral|permit|obligation|forbidden", "negated": false,
 "quote": "..."}. The relation name ALWAYS goes in "predicate". Class membership uses
-predicate "is_a". A relation with no stated argument omits that slot.
+predicate "is_a". A relation with no stated argument omits that slot. "predication" is
+"copula" for a predicative "is/are" (put the COMPLEMENT in "predicate", the subject in
+"subject", omit "object"; the builder makes is_a(subject, complement)), "verb"
+otherwise.
 
 The theory below (Objects, Predicates, Morphisms, Rules) is the vocabulary for the
 FACTS and RULES of the question: reuse its predicates and object ids exactly when the
@@ -139,6 +159,71 @@ def builtins_block() -> str:
     return BUILTINS_BLOCK if settings.get("BUILTINS", False) else ""
 
 
+REPAIR_BLOCK = """The previous decomposition below was rejected by a deterministic
+checker. Fix ONLY the listed problems and return the FULL corrected structure.
+Every atom MUST carry one verbatim quote that really occurs in the source; if an
+atom cannot be grounded in the source, delete it. Add nothing unrelated.
+
+Previous decomposition:
+{previous}
+
+Problems to fix:
+{problems}
+"""
+
+QUESTION_REPAIR_BLOCK = """The previous decomposition below was rejected by a
+deterministic checker. Fix ONLY the listed problems and return the FULL corrected
+structure. Keep presuppositions ("given that ...", "assuming ...") as question
+facts. Every atom MUST carry one verbatim quote from the source; if an atom cannot
+be grounded, delete it. Do not invent conditions the question does not assert.
+
+Previous decomposition:
+{previous}
+
+Problems to fix:
+{problems}
+"""
+
+
+def _problems_block(gaps: list[str]) -> str:
+    return "\n".join(f"- {gap}" for gap in gaps)
+
+
+def _sample_count(samples: int | None) -> int:
+    value = settings.get("EXTRACT_SAMPLES", 1) if samples is None else samples
+    return max(1, int(value))
+
+
+def _repair_count(repairs: int | None) -> int:
+    value = settings.get("EXTRACT_REPAIRS", 0) if repairs is None else repairs
+    return max(0, int(value))
+
+
+def _pick_best(make_candidate, score, samples: int):
+    """Sample ``samples`` candidates and keep the best by ``score``.
+
+    A failing sample is skipped when another succeeds; if every sample fails, the
+    first error propagates, so N=1 keeps the previous behaviour exactly. Ties keep
+    the earliest candidate, so selection is deterministic for a fixed sample set.
+    """
+    best = None
+    best_key = None
+    first_error: Exception | None = None
+    for _ in range(samples):
+        try:
+            candidate = make_candidate()
+        except Exception as exc:  # noqa: BLE001 - re-raised below
+            if first_error is None:
+                first_error = exc
+            continue
+        key = score(candidate)
+        if best_key is None or key < best_key:
+            best, best_key = candidate, key
+    if best is None:
+        raise first_error if first_error is not None else RuntimeError("no extraction candidate")
+    return best
+
+
 QUESTION_HUMAN = """Question:
 {question}
 {theory}
@@ -190,8 +275,7 @@ def _fmt_morphism(morphism, *, with_quote: bool = True) -> str:
     return f"{neg}{modality}{morphism.predicate}({subject}, {obj}){quote}"
 
 
-def extract_problem_structure(llm: Any, *, text: str) -> ProblemStructure:
-    """One call: split the text and decompose the descriptive part."""
+def _extract_problem_once(llm: Any, text: str) -> ProblemStructure:
     messages = [
         SystemMessage(content=PROBLEM_SYSTEM + builtins_block()),
         HumanMessage(content=PROBLEM_HUMAN.format(text=text.strip())),
@@ -203,15 +287,62 @@ def extract_problem_structure(llm: Any, *, text: str) -> ProblemStructure:
     return ProblemStructure.model_validate(data)
 
 
-def extract_question_structure(
+def _repair_problem_once(
+    llm: Any, text: str, structure: ProblemStructure, gaps: list[str]
+) -> ProblemStructure:
+    messages = [
+        SystemMessage(content=PROBLEM_SYSTEM + builtins_block()),
+        HumanMessage(
+            content=PROBLEM_HUMAN.format(text=text.strip())
+            + "\n\n"
+            + REPAIR_BLOCK.format(
+                previous=structure.model_dump_json(indent=2),
+                problems=_problems_block(gaps),
+            )
+        ),
+    ]
+    llm = with_max_tokens(llm, extract_max_tokens(text))
+    data = invoke_as_dict(llm, messages, schema=ProblemStructure, label="repair_problem")
+    data.pop("source_text", None)
+    data["source_text"] = text
+    return ProblemStructure.model_validate(data)
+
+
+def _problem_quality(structure: ProblemStructure) -> tuple[int, int, int]:
+    return quality_key(build_theory(structure, enforce_grounding=False))
+
+
+def extract_problem_structure(
     llm: Any,
     *,
-    question: str,
-    theory: Theory,
-    source_text: str = "",
+    text: str,
+    samples: int | None = None,
+    repairs: int | None = None,
+) -> ProblemStructure:
+    """One structural decomposition of the descriptive part, sampled best-of-N.
+
+    With ``ANKYRA_EXTRACT_SAMPLES`` > 1 the model is called N times and the best
+    structure is picked by ``symbolic.quality_key`` (fewer grounding gaps, more
+    source coverage, more compact) — deterministic for any fixed set of samples.
+    ``ANKYRA_EXTRACT_REPAIRS`` adds bounded repair passes driven by repairable gaps.
+    """
+    best = _pick_best(
+        lambda: _extract_problem_once(llm, text),
+        _problem_quality,
+        _sample_count(samples),
+    )
+    for _ in range(_repair_count(repairs)):
+        report = symbolic_check(build_theory(best, enforce_grounding=False))
+        repairable = [gap for gap in report.gaps if classify_gap(gap) is GapClass.REPAIRABLE]
+        if not repairable:
+            break
+        best = _repair_problem_once(llm, text, best, repairable)
+    return best
+
+
+def _extract_question_once(
+    llm: Any, question: str, theory: Theory, source_text: str
 ) -> QuestionStructure:
-    """One call: express the question over the theory's canonical vocabulary."""
-    text = (source_text or question).strip()
     messages = [
         SystemMessage(content=QUESTION_SYSTEM),
         HumanMessage(
@@ -221,8 +352,76 @@ def extract_question_structure(
             )
         ),
     ]
-    llm = with_max_tokens(llm, extract_max_tokens(text))
+    llm = with_max_tokens(llm, extract_max_tokens(source_text))
     data = invoke_as_dict(llm, messages, schema=QuestionStructure, label="extract_question")
     data.pop("source_text", None)
-    data["source_text"] = text
+    data["source_text"] = source_text
     return QuestionStructure.model_validate(data)
+
+
+def _repair_question_once(
+    llm: Any,
+    question: str,
+    theory: Theory,
+    source_text: str,
+    structure: QuestionStructure,
+    gaps: list[str],
+) -> QuestionStructure:
+    messages = [
+        SystemMessage(content=QUESTION_SYSTEM),
+        HumanMessage(
+            content=QUESTION_HUMAN.format(
+                question=question.strip(),
+                theory=format_theory_for_llm(theory),
+            )
+            + "\n\n"
+            + QUESTION_REPAIR_BLOCK.format(
+                previous=structure.model_dump_json(indent=2),
+                problems=_problems_block(gaps),
+            )
+        ),
+    ]
+    llm = with_max_tokens(llm, extract_max_tokens(source_text))
+    data = invoke_as_dict(llm, messages, schema=QuestionStructure, label="repair_question")
+    data.pop("source_text", None)
+    data["source_text"] = source_text
+    return QuestionStructure.model_validate(data)
+
+
+def _question_theory(structure: QuestionStructure) -> Theory:
+    """The question's asserted atoms as a theory, only for deterministic scoring."""
+    query = unroll_query_structure(structure)
+    goal = [query.target] if query.target is not None else []
+    return Theory(morphisms=[*query.conditions, *goal], source_text=structure.source_text)
+
+
+def _question_quality(structure: QuestionStructure) -> tuple[int, int, int]:
+    return quality_key(_question_theory(structure))
+
+
+def extract_question_structure(
+    llm: Any,
+    *,
+    question: str,
+    theory: Theory,
+    source_text: str = "",
+    samples: int | None = None,
+    repairs: int | None = None,
+) -> QuestionStructure:
+    """Express the question over the theory vocabulary, sampled best-of-N."""
+    text = (source_text or question).strip()
+    best = _pick_best(
+        lambda: _extract_question_once(llm, question, theory, text),
+        _question_quality,
+        _sample_count(samples),
+    )
+    for _ in range(_repair_count(repairs)):
+        repairable = [
+            gap
+            for gap in symbolic_check(_question_theory(best)).gaps
+            if classify_gap(gap) is GapClass.REPAIRABLE
+        ]
+        if not repairable:
+            break
+        best = _repair_question_once(llm, question, theory, text, best, repairable)
+    return best

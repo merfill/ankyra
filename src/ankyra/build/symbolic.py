@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
+from enum import Enum
 
 from ankyra.build.normalize import FORBIDDEN_PRED_TOKENS
 from ankyra.core.models import Theory
@@ -11,6 +12,37 @@ from ankyra.core.models import Theory
 _NORM = re.compile(r"\s+")
 _CAMEL_OBJ = re.compile(r"^[a-z][a-zA-Z0-9]*$")
 _SNAKE_PRED = re.compile(r"^[a-z][a-z0-9]*(_[a-z0-9]+)*$")
+
+
+class GapClass(str, Enum):
+    """What a deterministic gap licenses — repair, ignore, or deterministic handling."""
+
+    REPAIRABLE = "repairable"
+    LEGITIMATE = "legitimate"
+    DETERMINISTIC = "deterministic"
+
+
+_LEGITIMATE_MARKERS = ("consequence_negates_premise", "axiom_blocks_exception")
+
+
+def classify_gap(gap: str) -> GapClass:
+    """Classify a ``symbolic_check`` gap by the action it licenses.
+
+    A gap that is a correct extraction (an exception rule negating its premise, a
+    rule that truly contradicts an axiom) is *legitimate* and must never trigger a
+    repair. Quote and structure failures are *repairable*; naming failures are
+    cosmetic and handled without the LLM. Unknown gaps default to legitimate so the
+    safe action is always "leave it alone".
+    """
+    if any(marker in gap for marker in _LEGITIMATE_MARKERS):
+        return GapClass.LEGITIMATE
+    if gap.startswith("missing_quote:"):
+        return GapClass.REPAIRABLE
+    if gap in {"structural:empty_theory", "structural:morphism:missing_predicate"}:
+        return GapClass.REPAIRABLE
+    if gap.startswith("naming:"):
+        return GapClass.DETERMINISTIC
+    return GapClass.LEGITIMATE
 
 
 def _norm(text: str | None) -> str:
@@ -135,3 +167,59 @@ def symbolic_check(theory: Theory) -> SymbolicReport:
             seen.add(gap)
             gaps.append(gap)
     return SymbolicReport(gaps=gaps)
+
+
+def enforce_grounded(theory: Theory) -> Theory:
+    """Drop axioms/rules whose quote is not a real substring of the source.
+
+    Enforces the core invariant ("nothing enters the theory without a valid
+    quote") on the extraction path. It is a no-op when the theory carries no
+    ``source_text``: synthetic theories provably built in code have no source to
+    anchor to, and only the LLM extraction path must be grounded.
+    """
+    source = theory.source_text or ""
+    if not source.strip():
+        return theory
+    morphisms = [m for m in theory.morphisms if quote_in_source(m.quote, source)]
+    rules = [r for r in theory.rules if quote_in_source(r.quote, source)]
+    if len(morphisms) == len(theory.morphisms) and len(rules) == len(theory.rules):
+        return theory
+    return theory.model_copy(update={"morphisms": morphisms, "rules": rules})
+
+
+def source_coverage(quotes, source: str | None) -> int:
+    """Source characters covered by at least one valid quote (union of spans)."""
+    haystack = normalize_quote(source)
+    if not haystack:
+        return 0
+    covered = bytearray(len(haystack))
+    for quote in quotes:
+        needle = normalize_quote(quote)
+        if not needle:
+            continue
+        start = haystack.find(needle)
+        while start != -1:
+            covered[start : start + len(needle)] = b"\x01" * len(needle)
+            start = haystack.find(needle, start + 1)
+    return sum(covered)
+
+
+def quality_key(theory: Theory) -> tuple[int, int, int]:
+    """Deterministic lexicographic rank of an extraction candidate (lower wins).
+
+    1. fewer repairable gaps (spec violations); 2. more source characters covered
+    by valid quotes; 3. more compact. Legitimate gaps — an exception rule or a
+    real contradiction — are never penalized. An empty theory is a coverage
+    failure, not a grounding defect, so ``empty_theory`` is not counted here.
+    """
+    hard = sum(
+        1
+        for gap in symbolic_check(theory).gaps
+        if classify_gap(gap) is GapClass.REPAIRABLE
+        and not gap.startswith("structural:empty_theory")
+    )
+    quotes = [m.quote for m in theory.morphisms if quote_in_source(m.quote, theory.source_text)]
+    quotes += [r.quote for r in theory.rules if quote_in_source(r.quote, theory.source_text)]
+    covered = source_coverage(quotes, theory.source_text)
+    size = len(theory.morphisms) + len(theory.rules)
+    return (hard, -covered, size)

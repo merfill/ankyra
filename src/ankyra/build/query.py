@@ -55,3 +55,24 @@ def settle_query(query: Query) -> Query:
         }
     )
     return _drop_goal_echo(settled)
+
+
+def strip_domain_conditions(query: Query, domain: list[str] | None) -> Query:
+    """Drop a question premise that only restricts the variable to a universe sort."""
+    names = {d.casefold() for d in (domain or []) if d}
+    if not names:
+        return query
+    kept = [
+        cond
+        for cond in query.conditions
+        if not (
+            cond.predicate == "is_a"
+            and not cond.negated
+            and cond.modality == "neutral"
+            and cond.object
+            and cond.object.casefold() in names
+        )
+    ]
+    if len(kept) == len(query.conditions):
+        return query
+    return query.model_copy(update={"conditions": kept})

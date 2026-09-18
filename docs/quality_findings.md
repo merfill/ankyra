@@ -90,11 +90,11 @@ The last run has no expectation misses (every soft metric passes) and
   whose quote was a lexical substring, so a rule could silently drop a condition
   (`nice => young` from `nice ∧ person => young`) or a fact could be grounded on a
   conditional sentence (`rough(bear)` quoted from "If the bear is rough and ...").
-  Now a rule reusing an already-grounded quote is never `cited` — it is a
-  hypothesis (`rejected/quote_reused` when hypotheses are forbidden) — and a fact
-  may not quote a sentence already formalized as a rule
-  (`rejected/quote_from_rule`). A fact may still reuse a quote that only grounds a
-  morphism, which is required for legitimate corrections (`threshold`).
+  Now any rule or fact reusing an already-grounded quote for a different atom is
+  never `cited` — it is a hypothesis (`rejected/quote_reused` when hypotheses are
+  forbidden). One quote is the witness of exactly one formalization, for facts and
+  rules alike; a fact may not be grounded on a quote that already states something
+  else (e.g. `is_a(fiona, person)` quoted from "Fiona is nice").
 - **B9. Proposal feedback (DONE).** The hint lists the last three waves
   (`wave, category, action, reason`), so a `missing_payload` or `quote_reused`
   rejection is visible and the next proposal can correct the field/action instead
@@ -102,12 +102,15 @@ The last run has no expectation misses (every soft metric passes) and
 
 ## C. Reproducibility
 
-- **C1. LLM variance (OPEN, provider-level).** The same problem gives different
-  outcomes across runs (`chain`: `extraction_error` then `supported`;
+- **C1. LLM variance (MITIGATED, provider-level residual).** The same problem gives
+  different outcomes across runs (`chain`: `extraction_error` then `supported`;
   `contradiction`: "no" then `refuted`). The provider routes to subcontractors, so
-  pinning a model is not possible. Mitigations: stricter/steadier prompts, lower
-  temperature, provider seed if supported, and multi-sample extraction with a
-  deterministic pick (`ANKYRA_EXTRACT_SAMPLES`).
+  pinning a model is not possible. Mitigations: `ANKYRA_EXTRACT_SAMPLES` best-of-N
+  with a deterministic pick (`symbolic.quality_key`: repairable gaps → source
+  coverage → compactness), `ANKYRA_EXTRACT_REPAIRS` bounded repair over repairable
+  gaps, and the extraction guard `enforce_grounded` (an atom/rule without a valid
+  source quote is dropped, enforcing the core invariant). Prompt stability and a
+  provider seed remain open.
 
 ## D. Explanation / narration
 
@@ -129,14 +132,23 @@ Ankyra results (strict deduction is the default):
 
 | mode | kind accuracy | determinate (True/False) | Unknown | false positives |
 |---|---|---|---|---|
-| strict (`allow_hypotheses=False`) | 40/45 (89%) | 25/30, all `proven` | 15/15 | 0 |
-| abductive (`--hypotheses`) | 39/45 (87%) | 30/30 (28 proven, 2 proven_under) | 5/15 | 10 |
+| strict (`allow_hypotheses=False`) | 45/45 (100%) | 30/30, all `proven` | 15/15 | 0 |
+| abductive (`--hypotheses`) | 37/45 (82%) | 30/30 (29 proven, 1 proven_under) | 7/15 | 8 |
 
 Hypotheses let the wave abduce the missing links and "prove" statements the
 benchmark marks Unknown, so strict is the default and the abductive row is a
-diagnostic. The strict misses are extraction generalization (a generic noun such
-as "people" becomes a class: `is_a(?x, people) ∧ nice => young` is inert) plus the
-B8 guard correctly blocking silent re-formalizations.
+diagnostic. The strict gaps were closed by two Phase 0 formalization rules (see
+`docs/task.md` §0.3): a one-place copula becomes `is_a(subject, complement)` (via
+`StructAtom.predication`), and a rule premise that only restricts a variable to a
+declared `ProblemStructure.domain` sort is dropped as the quantifier's domain
+rather than treated as an inert `is_a(?x, person)` condition. Both are
+deterministic builder rules; the model only reports the surface construction and
+the universe sort. The remaining abductive misses are Unknown problems where an
+unconstrained hypothesis still proves a statement the benchmark leaves open.
+
+One caveat: `domain` is a formalization assumption authored by the extractor. An
+over-declared domain drops a real condition, so it must stay auditable (it is
+carried on `Theory.domain` and the trace); a dedicated invariant is still pending.
 
 External reference (Tafjord et al., "ProofWriter", arXiv:2012.13048; fine-tuned
 T5-11B, templated IID D5-test, ~70k training examples — NOT apples-to-apples):

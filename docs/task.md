@@ -81,7 +81,7 @@ All models are Pydantic.
   name.
 - `Rule` — a Horn clause: `conditions: list[Morphism]` (AND) → `consequence:
   Morphism`. `kind ∈ {implication, exception}`; `source ∈ {quote, hypothesis:<id>}`.
-- `Theory` — `objects`, `morphisms` (asserted axioms), `rules`.
+- `Theory` — `objects`, `morphisms` (asserted axioms), `rules`, `domain`.
 - `Query` — `conditions` (Gamma), `target` (phi, may contain `?x`), `variables`,
   `answer_type`.
 - `Fact` (engine-internal) — a ground atom plus provenance: `used: frozenset`,
@@ -97,10 +97,14 @@ is assembled deterministically):
 
 - `Slot` — a role filler: `id` | `set` (AND) | `variants` (OR) | `exclude`.
 - `StructAtom` — `predicate` (no modality prefix), `subject: Slot`, `object: Slot`,
-  `modality ∈ {permit, obligation, forbidden, neutral}`, `negated`, `quote`.
+  `predication ∈ {copula, verb}`, `modality ∈ {permit, obligation, forbidden,
+  neutral}`, `negated`, `quote`. `copula` marks a predicative "is/are" (complement
+  in `predicate`); the builder turns it into `is_a(subject, predicate)`. `verb` is
+  any other one-place predication (e.g. "X has an engine"), kept as a unary atom.
 - `StructRule` — `antecedent: list[StructAtom]`, `consequent: StructAtom`,
   `kind ∈ {implication, exception}`, `quote`.
-- `ProblemStructure` — `objects`, `facts`, `rules`, `variants`, `references`.
+- `ProblemStructure` — `objects`, `facts`, `rules`, `variants`, `references`,
+  `domain` (universe sort(s) every individual belongs to; membership is vacuous).
 - `QuestionStructure` — `facts`, `ask` (single target, may be null), `rules`,
   `variables`.
 
@@ -121,12 +125,16 @@ quote.
 
 ### 0.3 Build the theory (deterministic)
 - `unroll` — expand `Slot` sets/variants/exclusions into morphisms by
-  subject × object; carry `modality` as a typed field (it is NOT baked into the
-  predicate name); optionally lower modality to prefixes (`obligation → must_`,
-  `forbidden → must_not_`, `permit → may_`) when `ANKYRA_DEONTIC_PREFIXES` is on;
-  assemble `Rule`s (`exception` flips the consequence's `negated`). No LLM.
-- `enrich` — canonicalize polarity (`isNot → is_a + negated`), dedupe,
-  materialize trivia, heal contradictions and dangling ends. No LLM.
+  subject × object; a `copula` one-place atom becomes `is_a(subject, complement)`
+  (a `verb` one stays a unary atom); carry `modality` as a typed field (it is NOT
+  baked into the predicate name); optionally lower modality to prefixes
+  (`obligation → must_`, `forbidden → must_not_`, `permit → may_`) when
+  `ANKYRA_DEONTIC_PREFIXES` is on; assemble `Rule`s (`exception` flips the
+  consequence's `negated`). No LLM.
+- `enrich` — canonicalize polarity (`isNot → is_a + negated`), dedupe, drop a rule
+  premise that only restricts a variable to a declared `domain` sort (the quantifier's
+  domain, not a premise), materialize trivia, heal contradictions and dangling ends.
+  No LLM.
 - `symbolic_check` — verify that every quote is a real substring of the source,
   that names are canonical, and that the structure is well-formed. No LLM.
 - When multiple samples are extracted, pick the best by a deterministic score:
@@ -234,8 +242,9 @@ Existing: `ANKYRA_API_URL`, `ANKYRA_API_KEY`, `ANKYRA_MODEL`, `ANKYRA_TEMPERATUR
 `ANKYRA_REASONING_EFFORT`.
 
 New: `ANKYRA_MAX_WAVES`, `ANKYRA_ALLOW_HYPOTHESES` (default `true`),
-`ANKYRA_STRICT_VOCAB`, `ANKYRA_DEONTIC_PREFIXES`, `ANKYRA_EXTRACT_SAMPLES`,
-`ANKYRA_BUILTINS` (default `false`), `ANKYRA_LIVE`.
+`ANKYRA_STRICT_VOCAB`, `ANKYRA_DEONTIC_PREFIXES`, `ANKYRA_EXTRACT_SAMPLES`
+(default `1`), `ANKYRA_EXTRACT_REPAIRS` (default `0`), `ANKYRA_BUILTINS`
+(default `false`), `ANKYRA_LIVE`.
 
 ## 11. Worked Examples (acceptance tests)
 

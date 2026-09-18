@@ -393,6 +393,69 @@ def frontier(theory: Theory) -> list[str]:
     return [fact.label() for fact in derive_store(theory).facts if not fact.axiom]
 
 
+def _slot_label(morphism: Morphism, grounded: Fact | None) -> str:
+    if grounded is not None:
+        return grounded.label()
+    neg = "NOT " if morphism.negated else ""
+    mod = "" if morphism.modality == "neutral" else f"{morphism.modality}:"
+    args = [a for a in (morphism.subject, morphism.object) if a]
+    return f"{neg}{mod}{morphism.predicate}({','.join(args)})"
+
+
+def near_miss(theory: Theory, target: Morphism | None, *, limit: int = 8) -> list[str]:
+    """Partially-matched rules relevant to the goal, with their unmet body literals.
+
+    Deterministic abduction hint: for every rule whose head can match the goal or
+    the goal's complement, ground the head and report the rules whose body is only
+    partly satisfied in the current closure together with the grounded literals the
+    closure lacks. The engine names *what* is missing; a proposal only supplies it.
+    """
+    if target is None:
+        return []
+    ctx = build_context(theory)
+    goal = instantiate(target, ctx, {})
+    if goal is None:
+        return []
+    variants = [
+        goal,
+        Fact(
+            predicate=goal.predicate,
+            subject=goal.subject,
+            object=goal.object,
+            negated=not goal.negated,
+            modality=goal.modality,
+        ),
+    ]
+    store = derive_store(theory)
+    hints: list[str] = []
+    seen: set[str] = set()
+    for index, rule in enumerate(theory.rules, 1):
+        if not rule.conditions:
+            continue
+        for variant in variants:
+            subst = unify_pattern(rule.consequence, variant, ctx, {})
+            if subst is None:
+                continue
+            head = instantiate(rule.consequence, ctx, subst)
+            if head is None:
+                continue
+            unmet: list[str] = []
+            matched = 0
+            for condition in rule.conditions:
+                grounded = instantiate(condition, ctx, subst)
+                if grounded is not None and store.get(grounded.key) is not None:
+                    matched += 1
+                else:
+                    unmet.append(_slot_label(condition, grounded))
+            if unmet and matched:
+                hint = f"R{index} {head.label()}: unmet {', '.join(unmet)}"
+                if hint not in seen:
+                    seen.add(hint)
+                    hints.append(hint)
+                break
+    return hints[:limit]
+
+
 def match_goal(goal: Morphism, store: AtomStore, ctx: TheoryContext) -> list[GoalHit]:
     """All facts matching ``goal``, best (axiom, shortest provenance) first."""
     hits: list[GoalHit] = []

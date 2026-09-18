@@ -95,6 +95,34 @@ def heal_structural(rules: list[Rule]) -> list[Rule]:
     return out
 
 
+def _is_domain_membership(morphism: Morphism, domain: set[str]) -> bool:
+    return (
+        morphism.predicate == "is_a"
+        and not morphism.negated
+        and morphism.modality == "neutral"
+        and bool(morphism.object)
+        and morphism.object.casefold() in domain
+    )
+
+
+def strip_domain_conditions(rules: list[Rule], domain: list[str]) -> list[Rule]:
+    """Drop a rule premise that restricts the variable to a universe sort.
+
+    A condition ``is_a(?x, D)`` with ``D`` a declared domain sort is the quantifier's
+    domain, not a premise, so it carries no knowledge and must not block the rule.
+    """
+    names = {d.casefold() for d in domain if d}
+    if not names:
+        return rules
+    out: list[Rule] = []
+    for rule in rules:
+        kept = [cond for cond in rule.conditions if not _is_domain_membership(cond, names)]
+        if len(kept) != len(rule.conditions):
+            rule = rule.model_copy(update={"conditions": kept})
+        out.append(rule)
+    return out
+
+
 def enrich_theory(theory: Theory) -> Theory:
     """Normalize polarity, dedupe, and hygienically clean rules — no LLM.
 
@@ -108,6 +136,7 @@ def enrich_theory(theory: Theory) -> Theory:
     rewritten_rules = [_rewrite_rule(r) for r in theory.rules]
     rules = _dedupe_rules([r for r in rewritten_rules if _valid_rule(r)])
     rules = heal_structural(rules)
+    rules = strip_domain_conditions(rules, theory.domain)
 
     for morphism in [*morphisms, *_iter_rule_morphisms(rules)]:
         if morphism.subject and morphism.subject not in ids:

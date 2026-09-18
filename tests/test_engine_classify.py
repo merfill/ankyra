@@ -149,6 +149,38 @@ def test_fact_reusing_a_rule_quote_is_not_cited():
     assert result.category == "hypothesis"
 
 
+def _morphism_quote_theory() -> Theory:
+    return Theory(
+        morphisms=[Morphism(predicate="nice", subject="fiona", quote="Fiona is nice")],
+        source_text="Fiona is nice.",
+    )
+
+
+def test_fact_reusing_a_morphism_quote_is_not_cited():
+    draft = ProposalDraft(
+        action="assert_cited_fact",
+        fact=Morphism(predicate="is_a", subject="fiona", object="person", quote="Fiona is nice"),
+    )
+    result = _classify(draft, _morphism_quote_theory(), Query(target=Morphism(predicate="young", subject="fiona")))
+    assert result.category == "hypothesis"
+    assert result.hypothesis is not None
+
+
+def test_fact_reusing_a_morphism_quote_is_rejected_when_hypotheses_are_forbidden():
+    draft = ProposalDraft(
+        action="assert_cited_fact",
+        fact=Morphism(predicate="is_a", subject="fiona", object="person", quote="Fiona is nice"),
+    )
+    result = _classify(
+        draft,
+        _morphism_quote_theory(),
+        Query(target=Morphism(predicate="young", subject="fiona")),
+        allow_hypotheses=False,
+    )
+    assert result.category == "rejected"
+    assert result.reason == "quote_reused"
+
+
 def test_missing_quote_becomes_a_tagged_hypothesis():
     theory = Theory(
         morphisms=[Morphism(predicate="p", subject="a")],
@@ -205,3 +237,55 @@ def test_reformalize_rejects_target_weakening():
     result = _classify(draft, theory, query)
     assert result.category == "rejected"
     assert result.reason == "target_weakened"
+
+
+def test_a_mislabeled_fact_action_is_decided_by_its_payload():
+    theory = Theory(
+        morphisms=[Morphism(predicate="nice", subject="fiona")],
+        source_text="Fiona is nice.",
+    )
+    query = Query(target=Morphism(predicate="young", subject="fiona"))
+    draft = ProposalDraft(
+        action="propose_rule", fact=Morphism(predicate="young", subject="fiona")
+    )
+    result = _classify(draft, theory, query)
+    assert result.category == "hypothesis"
+    assert result.theory.morphisms[-1].predicate == "young"
+
+
+def test_a_mislabeled_rule_action_is_decided_by_its_payload():
+    theory = Theory(
+        morphisms=[Morphism(predicate="p", subject="a")],
+        source_text="p holds for a and all p are r",
+    )
+    query = Query(target=Morphism(predicate="r", subject="a"))
+    rule = Rule(
+        conditions=[Morphism(predicate="p", subject="?x")],
+        consequence=Morphism(predicate="r", subject="?x"),
+        quote="all p are r",
+    )
+    result = _classify(ProposalDraft(action="assert_cited_fact", rule=rule), theory, query)
+    assert result.category == "cited"
+
+
+def test_conflicting_payloads_are_rejected_as_ambiguous():
+    theory = Theory()
+    query = Query(target=Morphism(predicate="p"))
+    draft = ProposalDraft(
+        action="assert_cited_fact",
+        rule=Rule(
+            conditions=[Morphism(predicate="p", subject="?x")],
+            consequence=Morphism(predicate="r", subject="?x"),
+        ),
+        query=Query(target=Morphism(predicate="p")),
+    )
+    result = _classify(draft, theory, query)
+    assert result.category == "rejected"
+    assert result.reason == "ambiguous_payload"
+
+
+def test_an_empty_proposal_is_missing_payload():
+    draft = ProposalDraft(action="propose_rule")
+    result = _classify(draft, Theory(), Query(target=Morphism(predicate="p")))
+    assert result.category == "rejected"
+    assert result.reason == "missing_payload"

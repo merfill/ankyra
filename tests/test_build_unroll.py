@@ -16,6 +16,62 @@ def test_unary_atom_maps_to_a_nullary_morphism():
     assert morphisms[0].subject is None and morphisms[0].object is None
 
 
+def test_copula_one_place_atom_becomes_membership():
+    atom = StructAtom.model_validate(
+        {"predicate": "cold", "subject": "gary", "predication": "copula"}
+    )
+    morphism = atom_to_morphisms(atom)[0]
+    assert (morphism.predicate, morphism.subject, morphism.object) == ("is_a", "gary", "cold")
+
+
+def test_verb_one_place_atom_stays_unary():
+    atom = StructAtom.model_validate({"predicate": "has_engine", "subject": "x"})
+    morphism = atom_to_morphisms(atom)[0]
+    assert (morphism.predicate, morphism.subject, morphism.object) == (
+        "has_engine",
+        "x",
+        None,
+    )
+
+
+def test_copula_atom_with_an_object_stays_relational():
+    atom = StructAtom.model_validate(
+        {"predicate": "bigger_than", "subject": "a", "object": "b", "predication": "copula"}
+    )
+    morphism = atom_to_morphisms(atom)[0]
+    assert (morphism.predicate, morphism.subject, morphism.object) == (
+        "bigger_than",
+        "a",
+        "b",
+    )
+
+
+def test_copula_fact_and_copula_rule_agree():
+    from ankyra.engine.horn import saturate
+
+    structure = ProblemStructure.model_validate(
+        {
+            "source_text": "Gary is cold. Cold things are green.",
+            "facts": [{"predicate": "cold", "subject": "gary", "predication": "copula"}],
+            "rules": [
+                {
+                    "antecedent": [
+                        {"predicate": "cold", "subject": "?x", "predication": "copula"}
+                    ],
+                    "consequent": {
+                        "predicate": "green",
+                        "subject": "?x",
+                        "predication": "copula",
+                    },
+                    "quote": "Cold things are green",
+                }
+            ],
+        }
+    )
+    store = saturate(unroll_problem_structure(structure))
+    assert store.get(("is_a", "gary", "green", False, "neutral")) is not None
+
+
 def test_and_set_expands_to_one_morphism_per_member():
     atom = StructAtom.model_validate(
         {"predicate": "inspect", "subject": "police", "object": {"set": ["bag", "car"]}}

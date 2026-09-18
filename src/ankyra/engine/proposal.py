@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 
 from ankyra.build.extract import builtins_block, format_theory_for_llm
 from ankyra.core.models import Morphism, Proposal, ProposalAction, Query, Rule
+from ankyra.engine.horn import near_miss
 from ankyra.engine.state import WaveContext
 from ankyra.llm.client import extract_max_tokens, with_max_tokens
 from ankyra.llm.structured import invoke_as_dict
@@ -31,6 +32,40 @@ class ProposalDraft(BaseModel):
     subgoal: str = Field(default="", description="Payload for select_subgoal.")
 
 
+_PAYLOAD_ACTIONS: tuple[tuple[str, ProposalAction], ...] = (
+    ("rule", "propose_rule"),
+    ("fact", "assert_cited_fact"),
+    ("query", "reformalize_query"),
+)
+
+
+def payload_actions(draft: ProposalDraft) -> list[ProposalAction]:
+    """The actions whose payload field the draft actually fills."""
+    actions = [
+        action for field, action in _PAYLOAD_ACTIONS if getattr(draft, field) is not None
+    ]
+    if draft.subgoal.strip():
+        actions.append("select_subgoal")
+    return actions
+
+
+def effective_action(draft: ProposalDraft) -> ProposalAction | None:
+    """The action a draft actually carries, decided by its payload.
+
+    ``action`` is the model's self-report; the payload is what it proposed. A
+    declared action that matches a present payload wins, otherwise the unique
+    present payload determines the action. Zero or several payloads are ambiguous,
+    so the engine refuses to guess — and a correct payload mislabeled with the
+    wrong action is no longer discarded.
+    """
+    actions = payload_actions(draft)
+    if draft.action in actions:
+        return draft.action
+    if len(actions) == 1:
+        return actions[0]
+    return None
+
+
 PROPOSE_SYSTEM = """You are the proposal stage of a symbolic reasoning engine. The engine,
 not you, owns truth: you propose exactly ONE action per wave and a deterministic
 classifier decides whether it enters the theory. Never claim a result is proven.
@@ -44,6 +79,10 @@ Grounding rules:
 - Do not repropose anything already derivable (it is a no-op).
 - Use predicates and object ids from the theory vocabulary. A relation with no
   explicit argument omits that field. Reuse the theory's exact spellings.
+- The hint may list near-miss rules: a rule's head is reached but some body
+  literals are unmet. Propose exactly one unmet literal as a fact (assert_cited_fact)
+  when it is the missing link; without a valid quote it is recorded as a hypothesis.
+  Fill the payload field that matches your action.
 
 Actions, with the field to fill:
 - propose_rule: a Horn rule in "rule": {conditions: [atom...], consequence: atom,
@@ -94,6 +133,12 @@ def build_hint(ctx: WaveContext) -> str:
     gaps = ", ".join(ctx.verdict.gaps) or "(none)"
     frontier = ", ".join(ctx.frontier[:40]) or "(none)"
     hypotheses = ", ".join(hypothesis.id for hypothesis in ctx.hypotheses) or "(none)"
+    misses = near_miss(ctx.theory, ctx.query.target)
+    misses_line = (
+        "Near-miss rules (head reached, body unmet): " + " | ".join(misses) + "\n"
+        if misses
+        else ""
+    )
     return (
         f"Wave: {ctx.wave}\n"
         f"Hypotheses allowed: {ctx.allow_hypotheses}\n"
@@ -105,6 +150,7 @@ def build_hint(ctx: WaveContext) -> str:
         f"Target: {target}\n"
         f"Verdict: {ctx.verdict.status}\n"
         f"Gaps: {gaps}\n"
+        f"{misses_line}"
         f"Derived frontier: {frontier}\n"
     )
 
@@ -138,4 +184,8 @@ def to_proposal(draft: ProposalDraft) -> Proposal:
         payload["query"] = draft.query.model_dump()
     if draft.subgoal:
         payload["subgoal"] = draft.subgoal
-    return Proposal(action=draft.action, narration=draft.narration, payload=payload)
+    return Proposal(
+        action=effective_action(draft) or draft.action,
+        narration=draft.narration,
+        payload=payload,
+    )

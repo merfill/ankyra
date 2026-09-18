@@ -62,6 +62,13 @@ def test_problem_structure_coerces_objects_and_references():
     assert structure.references == ["see above", "as stated"]
 
 
+def test_problem_structure_coerces_domain():
+    structure = ProblemStructure.model_validate(
+        {"domain": ["person", {"id": "thing"}, "", None]}
+    )
+    assert structure.domain == ["person", "thing"]
+
+
 def test_question_structure_allows_null_ask():
     structure = QuestionStructure.model_validate({"facts": [{"predicate": "rain"}]})
     assert structure.ask is None
@@ -83,6 +90,19 @@ def test_problem_structure_source_text_defaults_empty_for_llm_output():
 def test_struct_atom_tolerates_missing_arguments():
     atom = StructAtom.model_validate({"predicate": "raining", "subject": None, "object": None})
     assert atom.subject.id is None and atom.object.id is None
+
+
+def test_struct_atom_predication_defaults_to_verb_and_coerces():
+    default = StructAtom.model_validate({"predicate": "has_engine", "subject": "x"})
+    assert default.predication == "verb"
+    copula = StructAtom.model_validate(
+        {"predicate": "cold", "subject": "gary", "predication": "Copula"}
+    )
+    assert copula.predication == "copula"
+    junk = StructAtom.model_validate(
+        {"predicate": "cold", "subject": "gary", "predication": "is"}
+    )
+    assert junk.predication == "verb"
 
 
 def test_llm_json_schema_is_valid_json_with_field_descriptions():

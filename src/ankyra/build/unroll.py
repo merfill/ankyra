@@ -55,20 +55,39 @@ def _slot_ids(slot: Slot) -> list[str | None]:
 
 
 def atom_to_morphisms(atom: StructAtom, *, deontic_prefixes: bool = False) -> list[Morphism]:
-    """A structural atom -> one morphism per (subject, object) terminal pair."""
+    """A structural atom -> one morphism per (subject, object) terminal pair.
+
+    A one-place copula ("Gary is cold") is class membership, so it becomes
+    ``is_a(subject, complement)``; every other atom keeps its predicate form.
+    """
     predicate = _predicate(atom, deontic_prefixes=deontic_prefixes)
     return [
-        Morphism(
-            predicate=predicate,
-            subject=subj,
-            object=obj,
+        _atom_morphism(predicate, subj, obj, atom)
+        for subj in _slot_ids(atom.subject)
+        for obj in _slot_ids(atom.object)
+    ]
+
+
+def _atom_morphism(
+    predicate: str, subject: str | None, obj: str | None, atom: StructAtom
+) -> Morphism:
+    if atom.predication == "copula" and subject and obj is None and predicate != "is_a":
+        return Morphism(
+            predicate="is_a",
+            subject=subject,
+            object=predicate,
             modality=atom.modality,
             quote=atom.quote or None,
             negated=atom.negated,
         )
-        for subj in _slot_ids(atom.subject)
-        for obj in _slot_ids(atom.object)
-    ]
+    return Morphism(
+        predicate=predicate,
+        subject=subject,
+        object=obj,
+        modality=atom.modality,
+        quote=atom.quote or None,
+        negated=atom.negated,
+    )
 
 
 def _ordered_objects(structure: ProblemStructure) -> list[Object]:
@@ -129,6 +148,7 @@ def unroll_problem_structure(
         morphisms=morphisms,
         rules=rules,
         source_text=structure.source_text,
+        domain=list(structure.domain),
     )
 
 

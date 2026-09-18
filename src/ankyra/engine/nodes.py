@@ -56,7 +56,8 @@ def extract_question_node(state: ReasoningState, deps: GraphDeps) -> dict:
 
 
 def build_query_node(state: ReasoningState, deps: GraphDeps) -> dict:
-    return {"query": build_query(state["question"])}
+    theory = state.get("theory")
+    return {"query": build_query(state["question"], domain=theory.domain if theory else None)}
 
 
 def verify_node(state: ReasoningState, deps: GraphDeps) -> dict:

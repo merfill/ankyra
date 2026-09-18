@@ -60,7 +60,9 @@ All models are Pydantic (`core/models.py`).
   (`implication|exception`), `strength` (always `defeasible`: every rule is a
   default, only asserted facts/axioms are strict), `source` (`quote` or
   `hypothesis:<id>`), `quote`.
-- `Theory` — `objects`, `morphisms` (asserted axioms), `rules`, `source_text`.
+- `Theory` — `objects`, `morphisms` (asserted axioms), `rules`, `source_text`,
+  `domain` (universe sorts; rule premises restricted to a domain sort are vacuous
+  and dropped by the builder).
 - `Query` — `conditions` (Gamma), `target` (phi, may contain `?x`), `variables`,
   `answer_type` (`yes_no|open|instruction`).
 - `Fact` (engine-internal) — a ground atom plus provenance: `used` (transitive
@@ -79,8 +81,15 @@ All models are Pydantic (`core/models.py`).
 
 Phase 0 structures (`core/schemas.py`) are what the LLM actually authors: `Slot`,
 `StructAtom`, `StructRule`, `StructObject`, `ProblemStructure`, `QuestionStructure`.
-A deterministic builder turns them into finished triples; the model never writes
-combinatorial morphisms. `llm_json_schema(model)` is used for prompts.
+A `StructAtom` carries a `predication` (`copula|verb`): a one-place copula ("Gary is
+cold") is emitted with the complement in `predicate` and becomes `is_a(subject,
+predicate)`, while a `verb` one-place atom ("X has an engine") stays a unary
+predicate — this keeps properties out of the `is_a` type hierarchy. A
+`ProblemStructure` declares a `domain` (the universe sort(s) every individual
+belongs to); rule premises that restrict a variable to a domain sort are the
+quantifier's domain, not premises, and are dropped deterministically. A
+deterministic builder turns the structures into finished triples; the model never
+writes combinatorial morphisms. `llm_json_schema(model)` is used for prompts.
 
 ## 3. Phase 0 — decomposition (`build/`)
 
@@ -90,6 +99,13 @@ canonical theory vocabulary).
 1. `extract.extract_problem_structure(text) -> ProblemStructure` — one call that
    also records the verbatim interrogative part (`question`). The LLM only
    decomposes structurally (sets, variants, exclusions, rules, modalities, quotes).
+   With `ANKYRA_EXTRACT_SAMPLES` > 1 it is called N times and the best structure is
+   picked deterministically by `symbolic.quality_key` (fewer repairable gaps →
+   more source coverage → more compact); `ANKYRA_EXTRACT_REPAIRS` adds bounded
+   repair passes over repairable gaps. The assembled theory is then passed through
+   `symbolic.enforce_grounded`, which drops any atom/rule whose quote is not a real
+   source substring (the core "no LLM-owned facts" invariant). The question call
+   (`extract_question_structure`) follows the same sample/repair policy.
 2. `unroll.unroll_problem_structure` → `enrich.enrich_theory` (exposed as
    `pipeline.build_theory`):
    - `unroll` expands slots into morphisms (`atom_to_morphisms`), carries modality
@@ -205,8 +221,8 @@ the end-to-end entry point; `engine/cycle.run_cycle` is the reasoning-only API.
 Dynaconf, env prefix `ANKYRA`, from `.env`. Provider: `API_URL`, `API_KEY`, `MODEL`,
 `TEMPERATURE`, `MAX_TOKENS`, `MAX_TOKENS_EXTRACT`, `EXTRA_BODY`,
 `REASONING_EFFORT`. Engine: `MAX_WAVES`, `ALLOW_HYPOTHESES`, `BUILTINS`,
-`DEFEASIBLE`, `LANG`, `DEONTIC_PREFIXES`, `STRICT_VOCAB`, `EXTRACT_SAMPLES`.
-Tests: `LIVE`.
+`DEFEASIBLE`, `LANG`, `DEONTIC_PREFIXES`, `STRICT_VOCAB`, `EXTRACT_SAMPLES`,
+`EXTRACT_REPAIRS`. Tests: `LIVE`.
 
 ## 9. LLM layer (`llm/`)
 

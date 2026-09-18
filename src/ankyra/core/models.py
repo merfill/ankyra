@@ -147,13 +147,18 @@ class Theory(BaseModel):
     """Objects, asserted axioms (``morphisms``), and Horn ``rules``.
 
     ``source_text`` is carried for deterministic quote checks (Phase 0); the
-    engine ignores it.
+    engine ignores it. ``domain`` names the universe sorts of the problem: a
+    condition that restricts a rule to a domain sort is the quantifier's domain,
+    not a premise, so the builder drops it (see ``build.enrich``).
     """
 
     objects: list[Object] = Field(default_factory=list)
     morphisms: list[Morphism] = Field(default_factory=list)
     rules: list[Rule] = Field(default_factory=list)
     source_text: str = Field(default="", description="Original problem text; injected by Phase 0.")
+    domain: list[str] = Field(
+        default_factory=list, description="Universe sorts declared by Phase 0; membership is vacuous."
+    )
 
 
 class Query(BaseModel):
