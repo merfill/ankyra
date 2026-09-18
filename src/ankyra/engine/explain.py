@@ -9,6 +9,7 @@ the step that uses it.
 from __future__ import annotations
 
 from ankyra.core.models import (
+    Conflict,
     Explanation,
     ExplanationKind,
     ExplanationStep,
@@ -18,8 +19,9 @@ from ankyra.core.models import (
     Theory,
     Verdict,
 )
+from ankyra.engine.horn import build_context
 from ankyra.engine.ledger import HypothesisLedger, morphism_key
-from ankyra.engine.verify import winning_store_hit
+from ankyra.engine.verify import _key_matches, winning_store_hit
 
 
 def render_atom(morphism) -> str:
@@ -33,7 +35,8 @@ def render_atom(morphism) -> str:
 def render_rule(rule) -> str:
     """Readable Horn rule: ``IF is_a(?x,dog) => is_a(?x,mammal) [implication]``."""
     conditions = " AND ".join(render_atom(condition) for condition in rule.conditions) or "TRUE"
-    return f"IF {conditions} => {render_atom(rule.consequence)} [{rule.kind}]"
+    label = rule.kind if rule.strength == "strict" else f"{rule.kind}, defeasible"
+    return f"IF {conditions} => {render_atom(rule.consequence)} [{label}]"
 
 
 def _classify_fact(
@@ -55,18 +58,14 @@ def _classify_fact(
     return "assumption", None, None, None, None
 
 
-def build_explanation(
+def _trace(
     theory: Theory,
-    query: Query,
-    verdict: Verdict,
+    store,
+    hit,
     ledger: HypothesisLedger,
-) -> Explanation:
-    """The ordered derivation of the goal, or an empty trace if it is not proven."""
-    result = winning_store_hit(theory, query)
-    if result is None:
-        return Explanation()
-    store, hit = result
-    axiom_quotes = {morphism_key(m): m.quote for m in theory.morphisms}
+    axiom_quotes: dict[FactKey, str | None],
+) -> tuple[list[ExplanationStep], list[str]]:
+    """Ordered steps of one proof and the hypotheses it actually uses."""
     steps: list[ExplanationStep] = []
     index_of: dict[FactKey, int] = {}
 
@@ -108,9 +107,201 @@ def build_explanation(
 
     visit(hit.fact.key)
     proof_keys = frozenset(hit.fact.used) | {hit.fact.key}
+    return steps, ledger.used(store, proof_keys)
+
+
+def _single(
+    theory: Theory,
+    query: Query,
+    verdict: Verdict,
+    ledger: HypothesisLedger,
+    goal,
+) -> Explanation:
+    """One trace for ``goal`` (default: the target), or empty when unmatched."""
+    result = winning_store_hit(theory, query, goal=goal)
+    if result is None:
+        return Explanation()
+    store, hit = result
+    axiom_quotes = {morphism_key(m): m.quote for m in theory.morphisms}
+    steps, hypotheses = _trace(theory, store, hit, ledger, axiom_quotes)
     return Explanation(
         goal=hit.fact.label(),
         binding=dict(verdict.bindings),
-        hypotheses_used=ledger.used(store, proof_keys),
+        hypotheses_used=hypotheses,
         steps=steps,
     )
+
+
+def _conflict(
+    theory: Theory,
+    query: Query,
+    verdict: Verdict,
+    ledger: HypothesisLedger,
+) -> Explanation:
+    """Both branches for a contradicted target: supporting vs attacking."""
+    goal = query.target
+    negated = goal.model_copy(update={"negated": not goal.negated})
+    axiom_quotes = {morphism_key(m): m.quote for m in theory.morphisms}
+    supporting: list[ExplanationStep] = []
+    attacking: list[ExplanationStep] = []
+    hypotheses: list[str] = []
+    for branch_goal, sink in ((goal, "supporting"), (negated, "attacking")):
+        result = winning_store_hit(theory, query, goal=branch_goal)
+        if result is None:
+            continue
+        steps, used = _trace(theory, result[0], result[1], ledger, axiom_quotes)
+        for hypothesis_id in used:
+            if hypothesis_id not in hypotheses:
+                hypotheses.append(hypothesis_id)
+        if sink == "supporting":
+            supporting = steps
+        else:
+            attacking = steps
+    note = "; ".join(verdict.gaps) or "both polarities are derivable"
+    return Explanation(
+        goal=render_atom(goal),
+        binding=dict(verdict.bindings),
+        hypotheses_used=hypotheses,
+        conflict=Conflict(
+            kind="strict",
+            status="undecided",
+            supporting=supporting,
+            attacking=attacking,
+            defeated="none",
+            note=note,
+        ),
+    )
+
+
+def _rule_steps(theory: Theory, candidates) -> list[ExplanationStep]:
+    steps: list[ExplanationStep] = []
+    for candidate in candidates:
+        rule = theory.rules[candidate.rule_index - 1]
+        steps.append(
+            ExplanationStep(
+                index=len(steps),
+                kind="rule",
+                statement=candidate.head.label(),
+                rule_index=candidate.rule_index,
+                rule=render_rule(rule),
+                source=rule.source,
+                quote=rule.quote,
+                hypothesis=rule.source_hypothesis_id,
+            )
+        )
+    return steps
+
+
+def _defeasible_enabled() -> bool:
+    from ankyra.config.settings import settings
+
+    return bool(settings.get("DEFEASIBLE", False))
+
+
+def _attach_resolved_conflict(
+    theory: Theory, query: Query, explanation: Explanation, goal
+) -> Explanation:
+    """Record which more specific rule won, when the defeasible layer decided it."""
+    if not explanation.steps or not _defeasible_enabled():
+        return explanation
+    conflict = _resolved_conflict(theory, query, goal)
+    if conflict is None:
+        return explanation
+    return explanation.model_copy(update={"conflict": conflict})
+
+
+def _undecided_conflict(theory: Theory, query: Query) -> Explanation | None:
+    """Both competing rule applications for an undecided defeasible conflict."""
+    from ankyra.engine.defeasible import effective_closure
+
+    ctx = build_context(theory)
+    negated_target = query.target.model_copy(update={"negated": not query.target.negated})
+    _, unresolved, _ = effective_closure(theory, query.conditions)
+    supporting = []
+    attacking = []
+    reason = ""
+    for key, entry in unresolved.items():
+        if not (
+            _key_matches(query.target, key, ctx)
+            or _key_matches(negated_target, key, ctx)
+        ):
+            continue
+        reason = reason or entry.reason
+        for candidate in entry.candidates:
+            if candidate.head.negated == query.target.negated:
+                supporting.append(candidate)
+            else:
+                attacking.append(candidate)
+    if not supporting and not attacking:
+        return None
+    return Explanation(
+        goal=render_atom(query.target),
+        binding={},
+        conflict=Conflict(
+            kind="defeasible",
+            status="undecided",
+            supporting=_rule_steps(theory, supporting),
+            attacking=_rule_steps(theory, attacking),
+            defeated="none",
+            reason=reason or "specificity does not decide between the competing defaults",
+            note="undecided: neither default is more specific",
+        ),
+    )
+
+
+def _resolved_conflict(theory: Theory, query: Query, goal) -> Conflict | None:
+    """The defeat that decided ``goal``, with the ``is_a`` witness as the reason."""
+    if goal is None:
+        return None
+    from ankyra.engine.defeasible import effective_closure
+
+    ctx = build_context(theory)
+    negated_goal = goal.model_copy(update={"negated": not goal.negated})
+    _, _, defeats = effective_closure(theory, query.conditions)
+    for defeat in defeats:
+        winner, loser = defeat.winner.head, defeat.loser.head
+        if not _key_matches(goal, winner.key, ctx):
+            continue
+        if not _key_matches(negated_goal, loser.key, ctx):
+            continue
+        return Conflict(
+            kind="defeasible",
+            status="resolved",
+            supporting=_rule_steps(theory, [defeat.winner]),
+            attacking=_rule_steps(theory, [defeat.loser]),
+            defeated="attacking",
+            reason=defeat.reason,
+            note="the more specific default wins",
+        )
+    return None
+
+
+def build_explanation(
+    theory: Theory,
+    query: Query,
+    verdict: Verdict,
+    ledger: HypothesisLedger,
+) -> Explanation:
+    """The mechanical derivation of the target, its refutation, or both branches.
+
+    ``supported`` yields the positive trace; ``target_refuted`` the negative one;
+    ``contradiction`` both branches; everything else an empty trace.
+    """
+    if query.target is None:
+        return Explanation()
+    if verdict.status == "supported":
+        explanation = _single(theory, query, verdict, ledger, query.target)
+        return _attach_resolved_conflict(theory, query, explanation, query.target)
+    if verdict.status == "refuted" and any(
+        gap.startswith("target_refuted:") for gap in verdict.gaps
+    ):
+        negated = query.target.model_copy(update={"negated": not query.target.negated})
+        explanation = _single(theory, query, verdict, ledger, negated)
+        return _attach_resolved_conflict(theory, query, explanation, negated)
+    if verdict.status == "contradiction":
+        return _conflict(theory, query, verdict, ledger)
+    if any(gap.startswith("undecided_conflict:") for gap in verdict.gaps):
+        conflict = _undecided_conflict(theory, query)
+        if conflict is not None:
+            return conflict
+    return Explanation()

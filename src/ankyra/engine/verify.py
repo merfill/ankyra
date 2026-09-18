@@ -2,15 +2,17 @@
 
 from __future__ import annotations
 
-from ankyra.core.models import FactKey, Query, Theory, Verdict
+from ankyra.core.models import Fact, FactKey, Query, Theory, Verdict
 from ankyra.engine.horn import (
     AtomStore,
     GoalHit,
     assumption_explained,
     build_context,
     complementary,
+    derive_closure,
+    derive_store,
     match_goal,
-    saturate,
+    unify_pattern,
 )
 
 
@@ -32,8 +34,8 @@ def winning_store_hit(
     theory: Theory, query: Query, *, goal=None
 ) -> tuple[AtomStore, GoalHit] | None:
     """Store and winning goal hit (default: the target), else ``None``."""
-    ctx = build_context(theory, bindings=query.variables)
-    store = saturate(theory, query.conditions, ctx=ctx)
+    ctx = build_context(theory)
+    store = derive_store(theory, query.conditions, ctx=ctx)
     hit = _winning_hit(query, store, ctx, goal=goal)
     if hit is None:
         return None
@@ -51,28 +53,74 @@ def winning_proof(
     return store, frozenset(hit.fact.used) | {hit.fact.key}
 
 
-def verify(theory: Theory, query: Query) -> Verdict:
-    """Verify the query sequent. Unused premises block support; ``P ∧ ¬P`` refutes.
-
-    Status: ``refuted`` on a complementary pair, ``supported`` when the target
-    matches and every condition is used, ``insufficient`` when the target matches
-    but a premise is unused, ``unsupported`` when nothing matches.
-    """
-    ctx = build_context(theory, bindings=query.variables)
-    axiom_store = saturate(theory, [], ctx=ctx)
-    store = saturate(theory, query.conditions, ctx=ctx)
-    bindings = dict(ctx.bindings)
-
+def _conflicting_pairs(store: AtomStore) -> list[tuple]:
+    """Every ``P`` / ``¬P`` pair in the store, deduplicated by key set."""
+    seen: set[frozenset] = set()
+    pairs: list[tuple] = []
     for fact in store.facts:
         opp = complementary(store, fact)
-        if opp is not None:
-            return Verdict(
-                status="refuted",
-                bindings=bindings,
-                gaps=[f"contradiction:{fact.label()}"],
-                matched=[fact.witness, opp.witness],
-                shelf="refused",
-            )
+        if opp is None:
+            continue
+        signature = frozenset({fact.key, opp.key})
+        if signature in seen:
+            continue
+        seen.add(signature)
+        pairs.append((fact, opp))
+    return pairs
+
+
+def _key_matches(goal, key: FactKey, ctx) -> bool:
+    fact = Fact(
+        predicate=key[0], subject=key[1], object=key[2], negated=key[3], modality=key[4]
+    )
+    return unify_pattern(goal, fact, ctx, {}) is not None
+
+
+def _target_keys(query: Query, store: AtomStore, ctx) -> set[FactKey]:
+    """Keys of any target/negated-target match plus its transitive proof."""
+    if query.target is None:
+        return set()
+    negated_goal = query.target.model_copy(update={"negated": not query.target.negated})
+    keys: set[FactKey] = set()
+    for goal in (query.target, negated_goal):
+        for hit in match_goal(goal, store, ctx):
+            keys.add(hit.fact.key)
+            keys.update(hit.fact.used)
+    return keys
+
+
+def verify(theory: Theory, query: Query) -> Verdict:
+    """Verify the query sequent. Unused premises block support; contradictions are explicit.
+
+    Status: ``contradiction`` when the target's own proof contains ``P ∧ ¬P``;
+    ``supported`` when the target matches and every condition is used;
+    ``insufficient`` when the target matches but a premise is unused; ``refuted``
+    when only its negation is entailed; ``unsupported`` when nothing matches. An
+    inconsistency unrelated to the target is reported as an ``inconsistent_theory:``
+    gap and does not change the answer.
+    """
+    ctx = build_context(theory)
+    axiom_store = derive_store(theory, [], ctx=ctx)
+    store, unresolved, _ = derive_closure(theory, query.conditions, ctx=ctx)
+    bindings = dict(ctx.bindings)
+
+    conflicts = _conflicting_pairs(store)
+    target_keys = _target_keys(query, store, ctx)
+    target_conflicts = [
+        (fact, opp)
+        for fact, opp in conflicts
+        if fact.key in target_keys or opp.key in target_keys
+    ]
+    if target_conflicts:
+        fact, opp = target_conflicts[0]
+        return Verdict(
+            status="contradiction",
+            bindings=bindings,
+            gaps=[f"contradiction:{fact.label()}"],
+            matched=[fact.witness or fact.label(), opp.witness or opp.label()],
+            shelf="refused",
+        )
+    inconsistent_gaps = [f"inconsistent_theory:{fact.label()}" for fact, _ in conflicts]
 
     if query.target is not None:
         hit = _winning_hit(query, store, ctx)
@@ -81,7 +129,7 @@ def verify(theory: Theory, query: Query) -> Verdict:
             return Verdict(
                 status="supported",
                 bindings=bindings,
-                gaps=[],
+                gaps=list(inconsistent_gaps),
                 matched=[hit.fact.witness or hit.fact.label()],
                 shelf="proven",
             )
@@ -96,7 +144,8 @@ def verify(theory: Theory, query: Query) -> Verdict:
             return Verdict(
                 status="insufficient",
                 bindings=bindings,
-                gaps=[f"unused_premise:{query.conditions[i].predicate}" for i in leftover_idx],
+                gaps=inconsistent_gaps
+                + [f"unused_premise:{query.conditions[i].predicate}" for i in leftover_idx],
                 matched=[hits[0].fact.witness or hits[0].fact.label()],
                 shelf="attested",
                 unused_premises=leftover_idx,
@@ -108,13 +157,18 @@ def verify(theory: Theory, query: Query) -> Verdict:
             return Verdict(
                 status="refuted",
                 bindings=bindings,
-                gaps=[f"target_refuted:{query.target.predicate}"],
+                gaps=inconsistent_gaps + [f"target_refuted:{query.target.predicate}"],
                 matched=[negative_hit.fact.witness or negative_hit.fact.label()],
                 shelf="refused",
             )
-        gaps = [f"target_unmatched:{query.target.predicate}"]
+        gaps = inconsistent_gaps + [f"target_unmatched:{query.target.predicate}"]
+        if any(
+            _key_matches(query.target, key, ctx) or _key_matches(negated_goal, key, ctx)
+            for key in unresolved
+        ):
+            gaps.append(f"undecided_conflict:{query.target.predicate}")
     else:
-        gaps = []
+        gaps = list(inconsistent_gaps)
 
     matched: list[str] = []
     cond_results: list[bool] = []

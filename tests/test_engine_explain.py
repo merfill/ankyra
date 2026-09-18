@@ -105,6 +105,42 @@ def test_unproven_goal_has_an_empty_explanation():
     assert result.explanation.goal is None
 
 
+def test_refuted_target_explains_the_negative_branch():
+    theory = Theory(morphisms=[Morphism(predicate="fly", subject="tweety", negated=True)])
+    query = Query(target=Morphism(predicate="fly", subject="tweety"))
+    result = run_cycle(_never, theory, query)
+
+    assert result.verdict.status == "refuted"
+    explanation = result.explanation
+    assert explanation.goal == "NOT fly(tweety)"
+    assert [step.statement for step in explanation.steps] == ["NOT fly(tweety)"]
+    assert result.answer.value == "no"
+    _assert_topological(explanation)
+
+
+def test_contradiction_exposes_both_branches():
+    theory = Theory(
+        morphisms=[
+            Morphism(predicate="raining"),
+            Morphism(predicate="raining", negated=True),
+        ],
+    )
+    query = Query(target=Morphism(predicate="raining"))
+    result = run_cycle(_never, theory, query)
+
+    assert result.verdict.status == "contradiction"
+    conflict = result.explanation.conflict
+    assert conflict is not None
+    assert conflict.kind == "strict"
+    assert conflict.defeated == "none"
+    assert [step.statement for step in conflict.supporting] == ["raining()"]
+    assert [step.statement for step in conflict.attacking] == ["NOT raining()"]
+    assert result.answer.strength == "not_proven"
+    _assert_topological(result.explanation)
+    for step in conflict.supporting + conflict.attacking:
+        assert all(0 <= p < step.index for p in step.premises)
+
+
 @pytest.mark.live
 @live
 def test_live_narration_paraphrases_the_trace():

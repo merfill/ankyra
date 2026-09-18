@@ -261,8 +261,13 @@ def saturate(
     *,
     ctx: TheoryContext | None = None,
     max_iterations: int = 64,
+    strengths: set[str] | None = None,
 ) -> AtomStore:
-    """Forward-chain until a fixed point. Axioms, then assumptions, then rules."""
+    """Forward-chain until a fixed point. Axioms, then assumptions, then rules.
+
+    ``strengths`` restricts firing to rules of those strengths (``rule_index`` still
+    indexes the full ``theory.rules`` list, so provenance stays valid).
+    """
     ctx = ctx or build_context(theory)
     store = AtomStore()
     for morphism in theory.morphisms:
@@ -282,6 +287,8 @@ def saturate(
         snapshot = list(store.facts)
         for i, rule in enumerate(theory.rules, 1):
             if not rule.conditions:
+                continue
+            if strengths is not None and rule.strength not in strengths:
                 continue
             for subst, used_facts in _match_conditions(rule.conditions, snapshot, ctx, {}):
                 derived = instantiate(rule.consequence, ctx, subst)
@@ -348,9 +355,42 @@ def _close_is_a(store: AtomStore) -> bool:
     return progressed
 
 
+def derive_closure(
+    theory: Theory,
+    assumptions: list[Morphism] | None = None,
+    *,
+    ctx: TheoryContext | None = None,
+) -> tuple[AtomStore, dict, list]:
+    """Strict closure, or the defeasible effective closure when enabled.
+
+    Returns the store and, when defeasible, the undecided conflict candidates and
+    the resolved defeats. The single entry point shared by ``verify``,
+    ``winning_store_hit`` and ``frontier`` so the engine and the explanation never
+    disagree on the store.
+    """
+    from ankyra.config.settings import settings
+
+    if bool(settings.get("DEFEASIBLE", False)):
+        from ankyra.engine.defeasible import effective_closure
+
+        return effective_closure(theory, assumptions, ctx=ctx)
+    return saturate(theory, assumptions, ctx=ctx), {}, []
+
+
+def derive_store(
+    theory: Theory,
+    assumptions: list[Morphism] | None = None,
+    *,
+    ctx: TheoryContext | None = None,
+) -> AtomStore:
+    """The store alone (see ``derive_closure``)."""
+    store, _, _ = derive_closure(theory, assumptions, ctx=ctx)
+    return store
+
+
 def frontier(theory: Theory) -> list[str]:
     """Labels of the derived (non-axiom) facts of a theory's closure."""
-    return [fact.label() for fact in saturate(theory).facts if not fact.axiom]
+    return [fact.label() for fact in derive_store(theory).facts if not fact.axiom]
 
 
 def match_goal(goal: Morphism, store: AtomStore, ctx: TheoryContext) -> list[GoalHit]:

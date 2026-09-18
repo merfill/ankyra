@@ -17,13 +17,11 @@ def build_theory(structure: ProblemStructure, *, deontic_prefixes: bool = False)
 
 
 def build_query(
-    theory: Theory,
     structure: QuestionStructure,
     *,
     deontic_prefixes: bool = False,
 ) -> Query:
-    """Unroll then settle a question structure against a theory."""
+    """Unroll then settle a question structure."""
     return settle_query(
-        theory,
-        unroll_query_structure(structure, deontic_prefixes=deontic_prefixes),
+        unroll_query_structure(structure, deontic_prefixes=deontic_prefixes)
     )

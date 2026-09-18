@@ -77,49 +77,15 @@ def _iter_rule_morphisms(rules: list[Rule]) -> list[Morphism]:
     return out
 
 
-def materialize_rule_morphisms(morphisms: list[Morphism], rules: list[Rule]) -> list[Morphism]:
-    """Forward-chain: when every condition is already a fact, add the consequence.
+def heal_structural(rules: list[Rule]) -> list[Rule]:
+    """Drop a rule premise that negates its own consequence; keep the rest.
 
-    Only derived axioms are materialized — not every rule atom, which would make
-    verify treat rule-only slots as unconditionally true.
+    A conflict with an axiom is NOT healed here: it is a real contradiction and
+    must reach the engine, where it is reported instead of silently dropped.
     """
-    facts = list(morphisms)
-    keys = {_key(m) for m in facts}
-    changed = True
-    guard = 0
-    while changed and guard < 32:
-        changed = False
-        guard += 1
-        for rule in rules:
-            if not rule.conditions:
-                continue
-            if any(_key(cond) not in keys for cond in rule.conditions):
-                continue
-            cons_key = _key(rule.consequence)
-            if cons_key in keys:
-                continue
-            added = rule.consequence
-            if not (added.quote or "").strip() and (rule.quote or "").strip():
-                added = added.model_copy(update={"quote": rule.quote})
-            facts.append(added)
-            keys.add(cons_key)
-            changed = True
-    return facts
-
-
-def heal_structural(morphisms: list[Morphism], rules: list[Rule]) -> list[Rule]:
-    """Drop rules that can only fire into a contradiction with existing facts.
-
-    - a rule concluding the opposite of an existing axiom is dropped;
-    - a rule whose premise negates its own consequence has that premise removed,
-      and is dropped if nothing remains.
-    """
-    axiom_keys = {_key(m) for m in morphisms}
     out: list[Rule] = []
     for rule in rules:
         consequence = rule.consequence
-        if _negation_key(consequence) in axiom_keys:
-            continue
         kept = [cond for cond in rule.conditions if _key(cond) != _negation_key(consequence)]
         if rule.conditions and not kept:
             continue
@@ -129,43 +95,19 @@ def heal_structural(morphisms: list[Morphism], rules: list[Rule]) -> list[Rule]:
     return out
 
 
-def heal_contradictory_axioms(morphisms: list[Morphism]) -> list[Morphism]:
-    """If both ``P`` and ``¬P`` are asserted, keep the positive reading."""
-    by_key: dict[tuple, Morphism] = {}
-    for morphism in morphisms:
-        by_key.setdefault(_key(morphism), morphism)
-    out: list[Morphism] = []
-    seen: set[tuple] = set()
-    for morphism in by_key.values():
-        key = _key(morphism)
-        if key in seen:
-            continue
-        opposite = _negation_key(morphism)
-        if opposite in by_key:
-            positive = morphism if not morphism.negated else by_key[opposite]
-            positive_key = _key(positive)
-            if positive_key not in seen:
-                seen.add(positive_key)
-                out.append(positive)
-            continue
-        seen.add(key)
-        out.append(morphism)
-    return out
-
-
 def enrich_theory(theory: Theory) -> Theory:
-    """Normalize polarity, dedupe, materialize, and heal — no LLM."""
+    """Normalize polarity, dedupe, and hygienically clean rules — no LLM.
+
+    Rule consequences are not materialized into axioms (that would hide the rule
+    from the explanation), and contradictory axioms are not collapsed (that would
+    hide a contradiction from the engine).
+    """
     ids = sorted(obj.id for obj in theory.objects if obj.id.strip())
     rewritten_morphisms = [_rewrite_morphism(m) for m in theory.morphisms]
     morphisms = _dedupe_morphisms([m for m in rewritten_morphisms if _valid_morphism(m)])
     rewritten_rules = [_rewrite_rule(r) for r in theory.rules]
     rules = _dedupe_rules([r for r in rewritten_rules if _valid_rule(r)])
-
-    rules = heal_structural(morphisms, rules)
-    morphisms = _dedupe_morphisms(materialize_rule_morphisms(morphisms, rules))
-    rules = heal_structural(morphisms, rules)
-    morphisms = heal_contradictory_axioms(morphisms)
-    morphisms = _dedupe_morphisms(morphisms)
+    rules = heal_structural(rules)
 
     for morphism in [*morphisms, *_iter_rule_morphisms(rules)]:
         if morphism.subject and morphism.subject not in ids:

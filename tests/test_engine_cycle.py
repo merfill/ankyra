@@ -206,6 +206,26 @@ def test_budget_stops_the_cycle():
     assert result.status == "budget"
 
 
+def test_an_unused_premise_is_a_terminal_insufficient():
+    theory = Theory(
+        morphisms=[Morphism(predicate="p", subject="a")],
+        rules=[
+            Rule(
+                conditions=[Morphism(predicate="p", subject="?x")],
+                consequence=Morphism(predicate="r", subject="?x"),
+            )
+        ],
+    )
+    query = Query(
+        conditions=[Morphism(predicate="q", subject="a")],
+        target=Morphism(predicate="r", subject="a"),
+    )
+    result = run_cycle(_never, theory, query, max_waves=5)
+    assert result.status == "insufficient"
+    assert result.answer.kind == "unknown"
+    assert result.history == []
+
+
 @pytest.mark.live
 @live
 def test_live_example_b_full_pipeline_smoke():
@@ -224,7 +244,7 @@ def test_live_example_b_full_pipeline_smoke():
     question = extract_question_structure(
         extractor, question=structure.question, theory=theory, source_text=problem
     )
-    query = build_query(theory, question)
+    query = build_query(question)
 
     proposer = create_chat_llm(role="answer")
     result = run_cycle(

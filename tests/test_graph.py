@@ -6,6 +6,7 @@ import os
 
 import pytest
 
+from ankyra.config.settings import settings
 from ankyra.core.models import Morphism, Rule
 from ankyra.core.schemas import ProblemStructure, QuestionStructure
 from ankyra.engine.nodes import GraphDeps
@@ -17,6 +18,14 @@ live = pytest.mark.skipif(
     not os.getenv("ANKYRA_LIVE"),
     reason="set ANKYRA_LIVE=1 to call the LLM",
 )
+
+
+@pytest.fixture
+def defeasible_on():
+    previous = settings.get("DEFEASIBLE", False)
+    settings.set("DEFEASIBLE", True)
+    yield
+    settings.set("DEFEASIBLE", previous)
 
 
 def _rain_structure():
@@ -80,6 +89,149 @@ def _deps(structure, question, propose):
 
 def _no_proposal(_ctx):
     raise AssertionError("no proposal expected")
+
+
+def _contradiction_structure():
+    return ProblemStructure.model_validate(
+        {
+            "source_text": "It is raining. It is not raining.",
+            "facts": [
+                {"predicate": "raining", "quote": "it is raining"},
+                {"predicate": "raining", "negated": True, "quote": "it is not raining"},
+            ],
+        }
+    )
+
+
+def _contradiction_question():
+    return QuestionStructure.model_validate(
+        {"ask": {"predicate": "raining", "quote": "is it raining"}}
+    )
+
+
+def _diamond_structure():
+    return ProblemStructure.model_validate(
+        {
+            "source_text": "Nixon is a quaker and a republican. Quakers are pacifists, republicans are not.",
+            "objects": ["nixon", "quaker", "republican"],
+            "facts": [
+                {
+                    "predicate": "is_a",
+                    "subject": "nixon",
+                    "object": "quaker",
+                    "quote": "Nixon is a quaker",
+                },
+                {
+                    "predicate": "is_a",
+                    "subject": "nixon",
+                    "object": "republican",
+                    "quote": "a republican",
+                },
+            ],
+            "rules": [
+                {
+                    "antecedent": [
+                        {"predicate": "is_a", "subject": "?x", "object": "quaker", "quote": "quakers"}
+                    ],
+                    "consequent": {"predicate": "pacifist", "subject": "?x", "quote": "are pacifists"},
+                    "quote": "Quakers are pacifists",
+                },
+                {
+                    "antecedent": [
+                        {"predicate": "is_a", "subject": "?x", "object": "republican", "quote": "republicans"}
+                    ],
+                    "consequent": {
+                        "predicate": "pacifist",
+                        "subject": "?x",
+                        "negated": True,
+                        "quote": "not",
+                    },
+                    "quote": "republicans are not",
+                },
+            ],
+        }
+    )
+
+
+def _diamond_question():
+    return QuestionStructure.model_validate(
+        {"ask": {"predicate": "pacifist", "subject": "nixon", "quote": "is Nixon a pacifist"}}
+    )
+
+
+def test_graph_contradiction_is_terminal():
+    deps = _deps(_contradiction_structure(), _contradiction_question(), _no_proposal)
+    final = build_graph(deps).invoke(initial_state(problem_text="raining", max_waves=5))
+
+    assert final["status"] == "contradiction"
+    assert final["answer"].kind == "contradiction"
+    assert final["answer"].strength == "not_proven"
+    assert final["explanation"].conflict.kind == "strict"
+    assert final["history"] == []
+
+
+def test_graph_undecided_conflict_is_terminal(defeasible_on):
+    deps = _deps(_diamond_structure(), _diamond_question(), _no_proposal)
+    final = build_graph(deps).invoke(initial_state(problem_text="diamond", max_waves=5))
+
+    assert final["status"] == "unsupported"
+    assert final["answer"].kind == "unknown"
+    conflict = final["explanation"].conflict
+    assert conflict is not None
+    assert conflict.kind == "defeasible"
+    assert conflict.status == "undecided"
+    assert final["history"] == []
+
+
+def _presupposition_structure():
+    return ProblemStructure.model_validate(
+        {
+            "source_text": "Socrates is a man. All men are mortal.",
+            "objects": ["socrates", "man", "mortal"],
+            "facts": [
+                {
+                    "predicate": "is_a",
+                    "subject": "socrates",
+                    "object": "man",
+                    "quote": "Socrates is a man",
+                }
+            ],
+            "rules": [
+                {
+                    "antecedent": [
+                        {"predicate": "is_a", "subject": "?x", "object": "man", "quote": "all men"}
+                    ],
+                    "consequent": {"predicate": "mortal", "subject": "?x", "quote": "are mortal"},
+                    "quote": "All men are mortal",
+                }
+            ],
+        }
+    )
+
+
+def _presupposition_question():
+    return QuestionStructure.model_validate(
+        {
+            "facts": [
+                {
+                    "predicate": "is_a",
+                    "subject": "socrates",
+                    "object": "philosopher",
+                    "quote": "Socrates is a philosopher",
+                }
+            ],
+            "ask": {"predicate": "mortal", "subject": "socrates", "quote": "is Socrates mortal"},
+        }
+    )
+
+
+def test_graph_unused_premise_is_terminal_insufficient():
+    deps = _deps(_presupposition_structure(), _presupposition_question(), _no_proposal)
+    final = build_graph(deps).invoke(initial_state(problem_text="socrates", max_waves=5))
+
+    assert final["status"] == "insufficient"
+    assert final["answer"].kind == "unknown"
+    assert final["history"] == []
 
 
 def test_graph_example_a_is_proven():

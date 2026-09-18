@@ -56,7 +56,7 @@ def extract_question_node(state: ReasoningState, deps: GraphDeps) -> dict:
 
 
 def build_query_node(state: ReasoningState, deps: GraphDeps) -> dict:
-    return {"query": build_query(state["theory"], state["question"])}
+    return {"query": build_query(state["question"])}
 
 
 def verify_node(state: ReasoningState, deps: GraphDeps) -> dict:
@@ -88,8 +88,12 @@ def verify_node(state: ReasoningState, deps: GraphDeps) -> dict:
         update["pending"] = None
     update["wave"] = wave
 
-    if verdict.status in {"supported", "refuted"}:
+    if verdict.status in {"supported", "refuted", "contradiction", "insufficient"}:
         status = verdict.status
+    elif any(gap.startswith("undecided_conflict:") for gap in verdict.gaps):
+        # A conflict specificity cannot decide is a definitive answer (unknown),
+        # not a reason to keep proposing: stop with the honest verdict.
+        status = "unsupported"
     elif state.get("halt"):
         status = "unsupported"
     elif stuck >= 2:

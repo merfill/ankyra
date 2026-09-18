@@ -18,7 +18,7 @@ from ankyra.config.settings import settings
 from ankyra.graph.build import run_problem
 from ankyra.llm.trace import tracing
 
-from evals.evaluators import ExpectationEvaluator, InvariantEvaluator
+from evals.evaluators import ExpectationEvaluator, InvariantEvaluator, VocabularyEvaluator
 
 ROOT = Path(__file__).resolve().parent
 PROBLEMS = ROOT / "problems.jsonl"
@@ -36,8 +36,10 @@ def load_problems(path: Path = PROBLEMS) -> list[dict]:
 
 def run_one(problem: dict) -> tuple[dict, object]:
     """Run one problem with LLM tracing, returning its trace dict and result."""
-    previous = settings.get("BUILTINS", False)
+    previous_builtins = settings.get("BUILTINS", False)
+    previous_defeasible = settings.get("DEFEASIBLE", False)
     settings.set("BUILTINS", bool(problem.get("builtins", False)))
+    settings.set("DEFEASIBLE", bool(problem.get("defeasible", False)))
     started = time.perf_counter()
     try:
         with tracing() as llm_trace:
@@ -47,7 +49,8 @@ def run_one(problem: dict) -> tuple[dict, object]:
                 max_waves=problem.get("max_waves", 6),
             )
     finally:
-        settings.set("BUILTINS", previous)
+        settings.set("BUILTINS", previous_builtins)
+        settings.set("DEFEASIBLE", previous_defeasible)
     duration_ms = round((time.perf_counter() - started) * 1000, 1)
 
     trace = {
@@ -70,6 +73,7 @@ def run_one(problem: dict) -> tuple[dict, object]:
     scores = [
         InvariantEvaluator().evaluate(problem, result, trace),
         ExpectationEvaluator().evaluate(problem, result, trace),
+        VocabularyEvaluator().evaluate(problem, result, trace),
     ]
     trace["scores"] = [asdict(score) for score in scores]
     return trace, result
@@ -83,9 +87,16 @@ def _summary(traces: list[dict]) -> str:
         1 for t in traces if next(s for s in t["scores"] if s["name"] == "invariants")["passed"]
     )
     calls = sum(len(t["llm_calls"]) for t in traces)
+    reuses = [
+        next(s for s in t["scores"] if s["name"] == "vocabulary")["metrics"][
+            "condition_predicate_reuse"
+        ]
+        for t in traces
+    ]
+    vocab = f" vocab_reuse={sum(reuses) / len(reuses):.2f}" if reuses else ""
     return (
         f"summary: {total} problems | supported={supported} proven={proven} "
-        f"invariant_ok={invariant_ok} | llm_calls={calls}"
+        f"invariant_ok={invariant_ok}{vocab} | llm_calls={calls}"
     )
 
 
@@ -118,7 +129,9 @@ def main(argv: list[str] | None = None) -> int:
             f"calls={len(trace['llm_calls'])} {trace['duration_ms']}ms"
         )
         for score in trace["scores"]:
-            label = "INVARIANT" if score["name"] == "invariants" else "expect?"
+            label = {"invariants": "INVARIANT", "expectations": "EXPECT"}.get(
+                score["name"], score["name"].upper()
+            )
             for note in score["notes"]:
                 print(f"    {label}: {note}")
 

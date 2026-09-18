@@ -57,6 +57,25 @@ def test_negation_is_the_same_predicate_with_a_flag():
     assert pos.negated is False and neg.negated is True
 
 
+def test_unary_morphism_canonicalizes_to_the_subject_slot():
+    from_object = Morphism(predicate="is_wet", object="ground")
+    from_subject = Morphism(predicate="is_wet", subject="ground")
+    assert from_object.subject == "ground" and from_object.object is None
+    assert from_object == from_subject
+
+
+def test_unary_canonicalization_is_idempotent_under_model_copy():
+    morphism = Morphism(predicate="ground_wet", object="ground")
+    assert morphism == morphism.model_copy()
+    copied = morphism.model_copy().model_copy(update={"negated": True})
+    assert (copied.subject, copied.object) == ("ground", None)
+
+
+def test_binary_morphism_keeps_both_slots():
+    m = Morphism(predicate="is_a", subject="poodle", object="dog")
+    assert (m.subject, m.object) == ("poodle", "dog")
+
+
 def test_rule_requires_a_consequence():
     with pytest.raises(ValidationError):
         Rule(conditions=[Morphism(predicate="a")])

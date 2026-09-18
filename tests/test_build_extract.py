@@ -52,6 +52,6 @@ def test_live_problem_and_question_extraction():
     question = extract_question_structure(
         llm, question=structure.question, theory=theory, source_text=problem
     )
-    query = build_query(theory, question)
+    query = build_query(question)
     verdict = verify(theory, query)
     assert verdict.status in {"supported", "insufficient", "unsupported", "refuted"}

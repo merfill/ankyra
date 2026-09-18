@@ -16,7 +16,7 @@ def test_derive_answer_type():
     assert derive_answer_type(Morphism(predicate="is_a", subject="x", object="car"), {"c": "?c"}) == "open"
 
 
-def test_settle_drops_the_goal_echo_and_unused_premises():
+def test_settle_keeps_an_unused_premise_but_drops_the_goal_echo():
     theory = Theory(
         morphisms=[Morphism(predicate="p", subject="a")],
         rules=[
@@ -33,8 +33,50 @@ def test_settle_drops_the_goal_echo_and_unused_premises():
         ],
         target=Morphism(predicate="r", subject="a"),
     )
-    settled = settle_query(theory, query)
-    assert settled.conditions == []
+    settled = settle_query(query)
+    assert settled.conditions == [Morphism(predicate="q", subject="a")]
+    assert verify(theory, settled).status == "insufficient"
+
+
+def test_phase0_open_question_with_variable_labels_binds_the_unknown():
+    theory = Theory(
+        morphisms=[Morphism(predicate="has_engine", subject="vehicle_x")],
+        rules=[
+            Rule(
+                conditions=[Morphism(predicate="has_engine", subject="?v")],
+                consequence=Morphism(predicate="is_a", subject="?v", object="car"),
+            )
+        ],
+    )
+    question = QuestionStructure.model_validate(
+        {
+            "ask": {
+                "predicate": "is_a",
+                "subject": "vehicle_x",
+                "object": "?c",
+                "quote": "what type",
+            },
+            "variables": {"c": "vehicle type"},
+        }
+    )
+    query = build_query(question)
+    assert query.variables == {"c": "vehicle type"}
+    verdict = verify(theory, query)
+    assert verdict.status == "supported"
+    assert verdict.bindings.get("?c") == "car"
+
+
+def test_settle_query_keeps_unary_atoms_in_the_subject_slot():
+    query = Query.model_validate(
+        {
+            "conditions": [{"predicate": "raining", "object": "ground"}],
+            "target": {"predicate": "ground_wet", "object": "ground"},
+        }
+    )
+    settled = settle_query(query)
+    assert (settled.target.subject, settled.target.object) == ("ground", None)
+    assert len(settled.conditions) == 1
+    assert (settled.conditions[0].subject, settled.conditions[0].object) == ("ground", None)
 
 
 def test_phase0_rain_end_to_end_is_proven():
@@ -63,7 +105,7 @@ def test_phase0_rain_end_to_end_is_proven():
             "ask": {"predicate": "is_wet", "object": "ground", "quote": "ground wet"},
         }
     )
-    query = build_query(theory, question)
+    query = build_query(question)
     verdict = verify(theory, query)
     assert verdict.status == "supported"
     assert verdict.shelf == "proven"

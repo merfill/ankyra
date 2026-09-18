@@ -41,8 +41,8 @@ an explicit hypothesis tag (`hypothesis`).
   call trace.
 - `build/` — Phase 0: LLM extraction plus deterministic assembly of the theory and
   query.
-- `engine/` — Phase 1 deterministic Horn engine, Phase 2 guided cycle, Phase 3
-  explanation, and the pipeline nodes.
+- `engine/` — Phase 1 deterministic Horn engine (plus the flag-gated defeasible
+  layer), Phase 2 guided cycle, Phase 3 explanation, and the pipeline nodes.
 - `graph/` — the LangGraph adapter over the engine nodes.
 - `evals/` — offline/live evaluation harness (not part of the package).
 
@@ -54,9 +54,12 @@ All models are Pydantic (`core/models.py`).
 - `Morphism` — an arrow: `predicate`, `subject`, `object`, `modality`
   (`permit|obligation|forbidden|neutral`), `quote`, `negated`. Negation is the
   same predicate with `negated=true`; modality is a field, never a predicate
-  prefix.
+  prefix. A single-argument atom canonicalizes to the `subject` slot, so theory and
+  question agree on unary relations.
 - `Rule` — a Horn clause: `conditions` (AND) → `consequence`, `kind`
-  (`implication|exception`), `source` (`quote` or `hypothesis:<id>`), `quote`.
+  (`implication|exception`), `strength` (always `defeasible`: every rule is a
+  default, only asserted facts/axioms are strict), `source` (`quote` or
+  `hypothesis:<id>`), `quote`.
 - `Theory` — `objects`, `morphisms` (asserted axioms), `rules`, `source_text`.
 - `Query` — `conditions` (Gamma), `target` (phi, may contain `?x`), `variables`,
   `answer_type` (`yes_no|open|instruction`).
@@ -67,9 +70,12 @@ All models are Pydantic (`core/models.py`).
 - `Hypothesis` — `id`, `kind` (`rule|fact`), `payload`, `wave`, `rationale`.
 - `Verdict` — `status`, `bindings`, `gaps`, `matched`, `shelf`, `unused_premises`.
 - `Proposal` / `WaveRecord` — the auditable per-wave record.
-- `Answer` — `value`, `strength` (`proven|proven_under|not_proven`),
-  `hypotheses_used`.
-- `Explanation` / `ExplanationStep` — the mechanical trace.
+- `Answer` — `value`, `kind` (`yes|no|unknown|contradiction|binding|instruction`,
+  the machine-readable direct answer), `strength` (`proven|proven_under|not_proven`),
+  `hypotheses_used`, `defeasible`. `engine.answer.render_answer` localizes it.
+- `Explanation` / `ExplanationStep` / `Conflict` — the mechanical trace, plus the
+  two branches of a contradicted or undecided goal (`kind` `strict|defeasible`,
+  `status` `resolved|undecided`, `defeated`).
 
 Phase 0 structures (`core/schemas.py`) are what the LLM actually authors: `Slot`,
 `StructAtom`, `StructRule`, `StructObject`, `ProblemStructure`, `QuestionStructure`.
@@ -122,16 +128,25 @@ pools and query bindings. `unify_pattern` matches a pattern against a ground fac
   against facts; `builtin_unsafe` enforces that every variable is bound by an
   earlier relational atom.
 - `verify.py` — `verify(theory, query)`:
-  - a complementary pair → `refuted`;
+  - a complementary pair inside the target's proof → `contradiction`;
   - target matched and all conditions used → `supported`;
   - target matched but a premise unused → `insufficient` (+ `unused_premises`);
   - target unmatched; if its negation is entailed → `refuted` with a
     `target_refuted:` gap (a "no" answer); otherwise `unsupported`.
+  - an inconsistency unrelated to the target is an `inconsistent_theory:` gap and
+    does not change the answer.
+- `derive_closure` / `derive_store` — the single entry point that returns the
+  strict Horn closure, or the defeasible effective closure when
+  `ANKYRA_DEFEASIBLE` is on.
+- `defeasible.py` — the non-monotonic layer: strict closure first, then defeasible
+  rule applications resolved by specificity over `is_a`; NFA (strict overrides),
+  undecided conflicts (Nixon diamond) accepted by neither branch. See
+  `docs/defeasible_reasoning.md`.
 
 Gap codes: `target_unmatched:`, `condition_unmatched:`, `unused_premise:`,
-`contradiction:`, `target_refuted:`. `winning_store_hit` / `winning_proof` return
-the store and the proof keys of a supported verdict for explanation and
-hypothesis accounting.
+`contradiction:`, `target_refuted:`, `inconsistent_theory:`, `undecided_conflict:`.
+`winning_store_hit` / `winning_proof` return the store and the proof keys of a
+supported verdict for explanation and hypothesis accounting.
 
 ## 5. Phase 2 — the guided cycle (`engine/`)
 
@@ -163,12 +178,14 @@ forbidden), `proposal_error`, `extraction_error`.
 
 ## 6. Phase 3 — explanation (`engine/explain.py`)
 
-`build_explanation` walks the winning proof from the goal through each fact's
-direct `premises` (post-order DFS), producing steps mapped to real edges or to an
-identified hypothesis. Step kinds: `axiom | assumption | rule | is_a | hypothesis`;
-`render_rule` shows the applied rule. `narrate.narrate_explanation` optionally
-paraphrases a finished trace in a configurable language (`ANKYRA_LANG`); it may not
-add facts.
+`build_explanation` branches on the terminal status: `supported`/`target_refuted`
+walk the positive or negative proof from the goal through each fact's direct
+`premises` (post-order DFS); `contradiction` and an undecided defeasible conflict
+populate `Explanation.conflict` with both branches. Step kinds:
+`axiom | assumption | rule | is_a | hypothesis`; `render_rule` shows the applied
+rule (and marks it defeasible). `narrate.narrate_explanation` optionally
+paraphrases a finished trace in a configurable language (`ANKYRA_LANG`), starting
+from the deterministic direct answer (`render_answer`); it may not add facts.
 
 ## 7. Orchestration (`graph/`, `engine/nodes.py`)
 
@@ -187,8 +204,9 @@ the end-to-end entry point; `engine/cycle.run_cycle` is the reasoning-only API.
 
 Dynaconf, env prefix `ANKYRA`, from `.env`. Provider: `API_URL`, `API_KEY`, `MODEL`,
 `TEMPERATURE`, `MAX_TOKENS`, `MAX_TOKENS_EXTRACT`, `EXTRA_BODY`,
-`REASONING_EFFORT`. Engine: `MAX_WAVES`, `ALLOW_HYPOTHESES`, `BUILTINS`, `LANG`,
-`DEONTIC_PREFIXES`, `STRICT_VOCAB`, `EXTRACT_SAMPLES`. Tests: `LIVE`.
+`REASONING_EFFORT`. Engine: `MAX_WAVES`, `ALLOW_HYPOTHESES`, `BUILTINS`,
+`DEFEASIBLE`, `LANG`, `DEONTIC_PREFIXES`, `STRICT_VOCAB`, `EXTRACT_SAMPLES`.
+Tests: `LIVE`.
 
 ## 9. LLM layer (`llm/`)
 
@@ -207,7 +225,7 @@ Dynaconf, env prefix `ANKYRA`, from `.env`. Provider: `API_URL`, `API_KEY`, `MOD
   `structure`/`symbolic`/`theory`/`query`/`verdict`/`waves`/`answer`/`explanation`),
   prints metrics.
 - `evaluators.py` — `Evaluator` protocol, `InvariantEvaluator` (hard),
-  `ExpectationEvaluator` (soft).
+  `ExpectationEvaluator` (soft; compares `status`, `kind`, `strength`, `value`).
 - `narrate.py` — reads saved traces and prints readable reasoning.
 - `tests/test_evals_live.py` asserts invariants only; expectations are metrics.
 

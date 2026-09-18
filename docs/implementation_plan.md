@@ -119,6 +119,44 @@ facts. Answer strength is explicit: `proven`, `proven_under(H)`, or `not_proven`
   honest refusal. This example also demonstrates the key insight that the class
   rules were never in the source text.
 
+### Example C — Nixon diamond (defeasible conflict, undecided)
+
+- Phase 0: facts `is_a(nixon, quaker)`, `is_a(nixon, republican)`; rules
+  `R1: is_a(?x, quaker) => pacifist(?x)` and
+  `R2: is_a(?x, republican) => NOT pacifist(?x)`, both defaults (all rules are);
+  question `phi = pacifist(nixon)`, type `yes_no`. `ANKYRA_DEFEASIBLE` on.
+- Strict closure yields the two `is_a` facts and no `pacifist`. Both defaults
+  produce candidates; there is no `is_a` between `quaker` and `republican`, so
+  specificity is undefined.
+- `verify` → `unsupported` with gap `undecided_conflict:pacifist`; answer
+  `not_proven`.
+- Explanation: `Explanation.conflict` (`kind = defeasible`, `status = undecided`,
+  `defeated = none`) with both rule applications.
+- This is the boundary of defeasibility: equal or incomparable specificity is
+  never guessed.
+
+### Example D — penguin, both directions (specificity + defeasible marker)
+
+- (a) "Birds can fly. Penguins are birds, but penguins cannot fly. Tweety is a
+  penguin." → `is_a(penguin, bird)` makes the penguin default strictly more
+  specific: `refuted` with `target_refuted:fly`, answer "no",
+  `Answer.defeasible = true`.
+- (b) "Birds cannot fly. Penguins can fly. Tweety is a penguin." → the same
+  specificity picks the other polarity: `supported`, answer "yes",
+  `Answer.defeasible = true`.
+- Demonstrates that defeat is polarity-independent and that the answer marks a
+  default as such.
+
+### Example E — strict contradiction (inconsistent theory)
+
+- "All dogs are mammals. Rex is a dog. Rex is not a mammal. Is Rex a mammal?"
+  Strict closure derives `is_a(rex, mammal)` and holds `NOT is_a(rex, mammal)`;
+  the pair is in the target's proof → `Status.contradiction`, answer `not_proven`,
+  `Explanation.conflict` (`kind = strict`, both branches).
+- An inconsistency unrelated to the target (`q ∧ ¬q`, question about `p`) is a
+  weaker case: the answer is produced normally and the theory carries an
+  `inconsistent_theory:` gap (decision D-G).
+
 ## 5. DECIDED — comparisons / builtins (decision D1)
 
 Status: **DECIDED** — v0 ships without builtins; v0.1 adds the evaluator.
@@ -180,29 +218,38 @@ This bites Example B (`power > 50`, `wheelCount >= 4`).
 3. Guided cycle with hypothesis ledger + tests on Example B.
 4. Mechanical explanation from provenance; optional LLM narration.
 5. Extension point for builtins (Option A) behind a flag.
+6. ~~**Open-query binding & honest insufficiency.**~~ **DONE.** `Query.variables` is a
+   declaration of unknowns only — the binding comes from unification
+   (`verify`/`explain` no longer seed `build_context` with it); `settle_query`
+   never deletes a question premise, so an unused one reaches `verify` as
+   `insufficient`, which the cycle treats as terminal. Fixes `vehicle`
+   (`no_progress` → `supported`/`proven_under`) and `insufficient`
+   (`supported` → `insufficient`). See `quality_findings` A4/B7.
 
 ## 8. Backlog (from the eval harness)
 
 Source: `docs/quality_findings.md`. Ordered by priority.
 
-1. **Explanation fidelity (bug).** `build_explanation` must respect the terminal
-   status: `target_refuted` -> negative proof; `contradiction` / unsupported -> empty
-   trace. Today a positive proof is shown even for `refuted`: `exception` derives both
-   `fly(tweety)` and `NOT fly(tweety)` (witnesses `rule:1`/`rule:2`) yet the trace
-   shows only the positive branch. Surfaced by the Russian narration review;
-   **decide the exact rendering before implementing.**
-2. **Rule provenance in explanations.** Stop `enrich.materialize_rule_morphisms` from
-   turning a rule consequence into an axiom (or keep its provenance), so the rule
-   appears in the trace: `rain` shows `wet(ground)` as an axiom and hides the rule.
-   Surfaced by the narration review; **decide before implementing.**
+1. ~~**Explanation fidelity (bug).**~~ **DONE.** `build_explanation` branches on the
+   status: `target_refuted` -> negative proof; `contradiction` -> both branches in
+   `Explanation.conflict`; an undecided defeasible conflict -> both competing rules;
+   `unsupported` / `insufficient` -> empty trace. A new terminal status
+   `contradiction` is reported only when the complementary pair is in the target's
+   proof; an unrelated inconsistency is an `inconsistent_theory:` gap.
+2. ~~**Rule provenance in explanations.**~~ **DONE.** `materialize_rule_morphisms`
+   and `heal_contradictory_axioms` are gone: rule consequences are not axioms, and a
+   real contradiction reaches the engine.
 3. **Presupposition capture.** Get "given that / assuming" clauses into question
    conditions reliably (stricter question prompt + broader examples, or a dedicated
    question pass).
 4. **Variance mitigations.** `ANKYRA_EXTRACT_SAMPLES` multi-sample extraction with a
    deterministic pick; steadier prompts; provider seed if available.
-5. **Non-monotonic exceptions (design note ready).** See `docs/defeasible_reasoning.md`:
-   recommended semantics = defeasible rules + negation-as-failure + specificity via
-   `is_a`, under well-founded semantics, behind a flag. Awaiting the product decision.
+5. ~~**Non-monotonic exceptions.**~~ **DONE** behind `ANKYRA_DEFEASIBLE` (default
+   off): every rule is a default and only asserted facts are strict (neither
+   extraction nor a predicate heuristic authors strength), the layer in
+   `engine/defeasible.py` (NFA + specificity via `is_a`), `Answer.defeasible`, and
+   `Explanation.conflict` with the `is_a` reason for resolved defeats and both
+   branches for undecided ones. See `docs/defeasible_reasoning.md`.
 6. **Builtins case.** A dedicated eval that actually exercises `gte`/`gt` thresholds.
 7. **LLM judge.** Implement `LLMJudgeEvaluator` (correctness + efficiency against a
    per-problem rubric) on the existing `Evaluator` interface.
@@ -210,3 +257,9 @@ Source: `docs/quality_findings.md`. Ordered by priority.
 9. **Pluggable inference semantics (future).** See `docs/logic_layer.md`: extract a
    narrow `Inference` protocol only when the second semantics (defeasible) lands; do
    not abstract speculatively.
+10. ~~**Direct answer field.**~~ **DONE.** `Answer.kind`
+    (`yes|no|unknown|contradiction|binding|instruction`) is computed deterministically
+    and `engine.answer.render_answer` localizes it; `evals.narrate` prints it and the
+    LLM narration starts from it. Benchmark scoring maps the
+    `(kind, strength, defeasible)` tuple plus reason buckets per benchmark — the
+    engine keeps no benchmark semantics.

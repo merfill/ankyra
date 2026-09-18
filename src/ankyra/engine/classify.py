@@ -14,7 +14,7 @@ from ankyra.build.normalize import is_var
 from ankyra.build.symbolic import quote_in_source
 from ankyra.core.models import Hypothesis, Morphism, ProposalCategory, Query, Rule, Theory
 from ankyra.engine.builtins import builtin_unsafe
-from ankyra.engine.horn import build_context, instantiate, saturate
+from ankyra.engine.horn import build_context, derive_store, instantiate
 from ankyra.engine.ledger import HypothesisLedger, morphism_key
 from ankyra.engine.proposal import ProposalDraft
 
@@ -29,7 +29,7 @@ class Classification:
 
 
 def _closure_keys(theory: Theory) -> set:
-    return {fact.key for fact in saturate(theory).facts}
+    return {fact.key for fact in derive_store(theory).facts}
 
 
 def _adds_new_facts(theory: Theory, candidate: Theory) -> bool:

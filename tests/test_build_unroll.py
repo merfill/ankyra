@@ -71,6 +71,37 @@ def test_exception_flips_the_consequence_polarity():
     assert rule.consequence.negated is True
 
 
+def test_every_rule_is_a_default():
+    structure = ProblemStructure.model_validate(
+        {
+            "source_text": "Birds fly. A penguin is a bird.",
+            "rules": [
+                {
+                    "antecedent": [{"predicate": "is_a", "subject": "?x", "object": "bird"}],
+                    "consequent": {"predicate": "fly", "subject": "?x"},
+                    "quote": "Birds fly",
+                },
+                {
+                    "antecedent": [{"predicate": "is_a", "subject": "?x", "object": "penguin"}],
+                    "consequent": {"predicate": "is_a", "subject": "?x", "object": "bird"},
+                    "quote": "a penguin is a bird",
+                },
+            ],
+        }
+    )
+    assert [rule.strength for rule in unroll_problem_structure(structure).rules] == [
+        "defeasible",
+        "defeasible",
+    ]
+
+
+def test_unary_atom_uses_the_subject_slot():
+    atom = StructAtom.model_validate({"predicate": "is_wet", "object": "ground"})
+    morphism = atom_to_morphisms(atom)[0]
+    assert morphism.subject == "ground"
+    assert morphism.object is None
+
+
 def test_problem_structure_source_text_is_carried():
     structure = ProblemStructure.model_validate(
         {"source_text": "It is raining.", "facts": [{"predicate": "raining"}]}

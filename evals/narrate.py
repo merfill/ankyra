@@ -9,7 +9,8 @@ import argparse
 import json
 from pathlib import Path
 
-from ankyra.core.models import Explanation, Theory
+from ankyra.core.models import Answer, Explanation, Theory
+from ankyra.engine.answer import render_answer
 from ankyra.engine.explain import render_rule
 from ankyra.engine.narrate import narrate_explanation
 from ankyra.llm.client import create_chat_llm
@@ -29,10 +30,10 @@ def _with_rule_text(explanation: Explanation, theory: Theory | None) -> Explanat
     return explanation.model_copy(update={"steps": steps})
 
 
-def _steps(explanation: Explanation) -> str:
-    lines = []
-    for step in explanation.steps:
-        detail = f"  {step.index}. [{step.kind}] {step.statement}"
+def _render_steps(steps, indent: str = "  ") -> list[str]:
+    lines: list[str] = []
+    for step in steps:
+        detail = f"{indent}{step.index}. [{step.kind}] {step.statement}"
         if step.premises:
             detail += f"  <- {step.premises}"
         if step.source:
@@ -41,8 +42,51 @@ def _steps(explanation: Explanation) -> str:
             detail += f'  quote="{step.quote}"'
         lines.append(detail)
         if step.rule:
-            lines.append(f"        rule {step.rule_index}: {step.rule}")
+            lines.append(f"{indent}      rule {step.rule_index}: {step.rule}")
+    return lines
+
+
+def _steps(explanation: Explanation) -> str:
+    lines = _render_steps(explanation.steps)
     return "\n".join(lines) if lines else "  (no derivation)"
+
+
+def _conflict_block(explanation: Explanation) -> str:
+    conflict = explanation.conflict
+    if conflict is None:
+        return ""
+    detail = f"Conflict ({conflict.kind}, {conflict.status}, defeated={conflict.defeated}):"
+    if conflict.reason:
+        detail += f" {conflict.reason}."
+    if conflict.note:
+        detail += f" {conflict.note}"
+    lines = [detail, "  supporting:"]
+    lines += _render_steps(conflict.supporting, indent="    ") or ["    (none)"]
+    lines.append("  attacking:")
+    lines += _render_steps(conflict.attacking, indent="    ") or ["    (none)"]
+    return "\n".join(lines)
+
+
+def _verdict_block(trace: dict) -> str:
+    verdict = trace.get("verdict") or {}
+    lines = []
+    if verdict.get("gaps"):
+        lines.append(f"Gaps: {', '.join(verdict['gaps'])}")
+    if verdict.get("bindings"):
+        bindings = {k: v for k, v in verdict["bindings"].items() if k.startswith("?")}
+        if bindings:
+            lines.append(f"Bindings: {bindings}")
+    if verdict.get("unused_premises"):
+        lines.append(f"Unused premises: {verdict['unused_premises']}")
+    if trace.get("frontier"):
+        lines.append(f"Frontier: {', '.join(trace['frontier'])}")
+    waves = trace.get("waves") or []
+    if waves:
+        lines.append("Waves: " + " | ".join(
+            f"w{w.get('wave')}:{w.get('category')}{('(' + w['reason'] + ')') if w.get('reason') else ''}"
+            for w in waves
+        ))
+    return "\n".join(lines)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -71,17 +115,26 @@ def main(argv: list[str] | None = None) -> int:
         )
         theory = Theory.model_validate(trace["theory"]) if trace.get("theory") else None
         explanation = _with_rule_text(explanation, theory)
-        answer = trace.get("answer") or {}
+        answer = Answer.model_validate(trace["answer"]) if trace.get("answer") else Answer()
         print("=" * 78)
         print(f"[{problem.get('id')}] L{problem.get('level')} — {problem['text']}")
+        print(render_answer(answer, args.lang))
         print("Mechanical steps:")
         print(_steps(explanation))
+        if explanation.conflict is not None:
+            print(_conflict_block(explanation))
+        verdict_block = _verdict_block(trace)
+        if verdict_block:
+            print(verdict_block)
         print(
-            f"Status: {trace.get('status')} | strength: {answer.get('strength')} "
-            f"| value: {answer.get('value')} | hypotheses: {answer.get('hypotheses_used')}"
+            f"Status: {trace.get('status')} | kind: {answer.kind} "
+            f"| strength: {answer.strength} | value: {answer.value} "
+            f"| hypotheses: {answer.hypotheses_used}"
         )
-        if explanation.steps:
-            narration = narrate_explanation(llm, explanation, language=args.lang)
+        if explanation.steps or explanation.conflict is not None:
+            narration = narrate_explanation(
+                llm, explanation, answer=answer, language=args.lang
+            )
             print(f"Narration ({args.lang}):")
             print("  " + narration.strip().replace("\n", "\n  "))
         else:

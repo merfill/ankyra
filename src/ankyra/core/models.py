@@ -9,13 +9,23 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 Modality = Literal["permit", "obligation", "forbidden", "neutral"]
 RuleKind = Literal["implication", "exception"]
+RuleStrength = Literal["strict", "defeasible"]
 HypothesisKind = Literal["rule", "fact"]
 AnswerType = Literal["yes_no", "open", "instruction"]
-Status = Literal["supported", "insufficient", "unsupported", "refuted", "no_progress", "budget"]
+AnswerKind = Literal["yes", "no", "unknown", "contradiction", "binding", "instruction"]
+Status = Literal[
+    "supported",
+    "insufficient",
+    "unsupported",
+    "refuted",
+    "contradiction",
+    "no_progress",
+    "budget",
+]
 AnswerStrength = Literal["proven", "proven_under", "not_proven"]
 ProposalAction = Literal["reformalize_query", "propose_rule", "assert_cited_fact", "select_subgoal"]
 ProposalCategory = Literal["derivable", "cited", "hypothesis", "rejected"]
@@ -79,6 +89,20 @@ class Morphism(BaseModel):
     def _coerce_modality(cls, value: Any) -> Any:
         return normalize_modality(value)
 
+    @model_validator(mode="after")
+    def _canonicalize_unary_slot(self) -> "Morphism":
+        """A single-argument atom always uses ``subject``; slots are positional.
+
+        ``subject``/``object`` carry no meaning for a unary relation, so the
+        builder and the question must agree on one slot. Both sides normalize here,
+        which is what lets ``wet(ground)`` from a rule match ``wet(ground)`` from a
+        question regardless of which slot the extractor chose.
+        """
+        if self.object and not self.subject:
+            self.subject = self.object
+            self.object = None
+        return self
+
 
 class Rule(BaseModel):
     """A Horn clause: ``conditions`` (AND) => ``consequence``."""
@@ -91,6 +115,16 @@ class Rule(BaseModel):
         description="'quote' when grounded in the text, else 'hypothesis:<id>'.",
     )
     quote: str | None = Field(default=None, description="Verbatim source span supporting the rule.")
+
+    @property
+    def strength(self) -> RuleStrength:
+        """Every rule is a default; only asserted facts/axioms are strict.
+
+        The LLM never authors strength, and no predicate heuristic is guessed:
+        class-taxonomy rules are defaults too, so an `is_a` conflict is resolved by
+        specificity like any other (and reported undecided when it cannot be).
+        """
+        return "defeasible"
 
     @field_validator("source", mode="before")
     @classmethod
@@ -213,8 +247,15 @@ class Answer(BaseModel):
     """Final answer with its explicit strength and hypothesis accounting."""
 
     value: str | None = Field(default=None)
+    kind: AnswerKind = Field(
+        default="unknown",
+        description="Machine-readable answer shape: yes/no/unknown/contradiction/binding/instruction.",
+    )
     strength: AnswerStrength = Field(default="not_proven")
     hypotheses_used: list[str] = Field(default_factory=list)
+    defeasible: bool = Field(
+        default=False, description="True when the proof applies a defeasible rule."
+    )
 
 
 ExplanationKind = Literal["axiom", "assumption", "rule", "is_a", "hypothesis"]
@@ -234,6 +275,28 @@ class ExplanationStep(BaseModel):
     hypothesis: str | None = None
 
 
+ConflictKind = Literal["strict", "defeasible"]
+ConflictStatus = Literal["resolved", "undecided"]
+ConflictDefeated = Literal["supporting", "attacking", "none"]
+
+
+class Conflict(BaseModel):
+    """Two competing derivations of the same goal: the supporting branch vs its attack.
+
+    ``strict`` is an inconsistent theory (both polarities hold). ``defeasible`` is a
+    default conflict; ``defeated`` names the branch that loses, or ``none`` when
+    specificity does not decide (the Nixon diamond).
+    """
+
+    kind: ConflictKind = "strict"
+    status: ConflictStatus = "undecided"
+    supporting: list[ExplanationStep] = Field(default_factory=list)
+    attacking: list[ExplanationStep] = Field(default_factory=list)
+    defeated: ConflictDefeated = "none"
+    reason: str = Field(default="", description="Why the engine chose a side, or why it could not.")
+    note: str = ""
+
+
 class Explanation(BaseModel):
     """Mechanical proof trace, ordered from premises to the goal."""
 
@@ -241,3 +304,4 @@ class Explanation(BaseModel):
     binding: dict[str, str] = Field(default_factory=dict)
     hypotheses_used: list[str] = Field(default_factory=list)
     steps: list[ExplanationStep] = Field(default_factory=list)
+    conflict: Conflict | None = Field(default=None, description="Both branches when the goal is contradicted.")

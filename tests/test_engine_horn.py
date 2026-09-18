@@ -17,7 +17,7 @@ def test_unary_fact_derives_another_fact_with_provenance():
         ],
     )
     store = saturate(theory)
-    derived = store.get(("is_wet", "", "ground", False, "neutral"))
+    derived = store.get(("is_wet", "ground", "", False, "neutral"))
     assert derived is not None
     assert derived.rule_index == 1
     assert ("raining", "", "", False, "neutral") in derived.used

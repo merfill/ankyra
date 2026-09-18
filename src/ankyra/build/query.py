@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 from ankyra.build.normalize import is_var, predicate_polarity
-from ankyra.core.models import AnswerType, Morphism, Query, Theory
-from ankyra.engine.verify import verify
+from ankyra.core.models import AnswerType, Morphism, Query
 
 
 def derive_answer_type(target: Morphism | None, variables: dict[str, str]) -> AnswerType:
@@ -43,11 +42,11 @@ def _drop_goal_echo(query: Query) -> Query:
     return query.model_copy(update={"conditions": kept})
 
 
-def settle_query(theory: Theory, query: Query) -> Query:
-    """Normalize polarity, drop the goal echo, and slim unused premises.
+def settle_query(query: Query) -> Query:
+    """Normalize polarity and drop the goal echo.
 
-    Premises no winning proof uses are removed one round at a time, re-verifying
-    after every round until the verdict is stable.
+    Unused question premises are kept: ``verify`` reports them as ``insufficient``
+    instead of the builder silently deleting a premise the question asserted.
     """
     settled = query.model_copy(
         update={
@@ -55,14 +54,4 @@ def settle_query(theory: Theory, query: Query) -> Query:
             "target": _normalize_polarity(query.target) if query.target else None,
         }
     )
-    settled = _drop_goal_echo(settled)
-    for _ in range(len(settled.conditions)):
-        verdict = verify(theory, settled)
-        unused = set(verdict.unused_premises)
-        if not unused:
-            break
-        kept = [cond for i, cond in enumerate(settled.conditions) if i not in unused]
-        if len(kept) == len(settled.conditions):
-            break
-        settled = settled.model_copy(update={"conditions": kept})
-    return settled
+    return _drop_goal_echo(settled)
