@@ -225,6 +225,14 @@ This bites Example B (`power > 50`, `wheelCount >= 4`).
    `insufficient`, which the cycle treats as terminal. Fixes `vehicle`
    (`no_progress` → `supported`/`proven_under`) and `insufficient`
    (`supported` → `insufficient`). See `quality_findings` A4/B7.
+7. ~~**Public benchmark harness (ProofWriter).**~~ **DONE.** Committed Tier A sample
+   (45 open-world synthetic-core problems, depth 0/1/2/3/5) built deterministically
+   by `evals.build_proofwriter_sample`; `evals.proofwriter` maps
+   True/False/Unknown to `Answer.kind` with explicit polarity handling and reports
+   strict vs abductive modes. Baseline: strict **40/45** (determinate 25/30 all
+   `proven`, Unknown 15/15, no false positives); abduction 30/30 determinate but
+   Unknown 5/15. Added the quote re-formalization guard (`classify`, B8) and the
+   last-waves hint feedback (B9). See `quality_findings` section E.
 
 ## 8. Backlog (from the eval harness)
 

@@ -8,3 +8,6 @@ __pycache__/
 
 # Eval harness output (generated traces)
 evals/out/
+
+# Cached benchmark downloads
+evals/data/.cache/

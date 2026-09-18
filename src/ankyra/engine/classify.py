@@ -11,7 +11,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from ankyra.build.normalize import is_var
-from ankyra.build.symbolic import quote_in_source
+from ankyra.build.symbolic import normalize_quote, quote_in_source
 from ankyra.core.models import Hypothesis, Morphism, ProposalCategory, Query, Rule, Theory
 from ankyra.engine.builtins import builtin_unsafe
 from ankyra.engine.horn import build_context, derive_store, instantiate
@@ -47,6 +47,32 @@ def _empty_predicates(rule: Rule) -> bool:
     if not (rule.consequence.predicate or "").strip():
         return True
     return any(not (cond.predicate or "").strip() for cond in rule.conditions)
+
+
+def _same_quote(left: str | None, right: str | None) -> bool:
+    normalized = normalize_quote(left)
+    return bool(normalized) and normalized == normalize_quote(right)
+
+
+def _quote_in_use(theory: Theory, quote: str | None) -> bool:
+    """True when this quote already grounds a theory element.
+
+    A quote is a lexical witness for ONE formalization; reusing it to state a
+    different rule silently changes the formalization (drops a restriction or
+    flips it), so the new rule is an assumption, not ground.
+    """
+    if any(_same_quote(quote, m.quote) for m in theory.morphisms):
+        return True
+    return any(_same_quote(quote, r.quote) for r in theory.rules)
+
+
+def _quote_grounds_a_rule(theory: Theory, quote: str | None) -> bool:
+    """True when this quote is a conditional already formalized as a rule.
+
+    A conditional does not assert its antecedent, so a bare fact may not be
+    grounded on it.
+    """
+    return any(_same_quote(quote, rule.quote) for rule in theory.rules)
 
 
 def _with_morphism(theory: Theory, morphism: Morphism) -> Theory:
@@ -88,10 +114,13 @@ def _apply_atom(
     candidate = _with_morphism(theory, morphism)
     if not _adds_new_facts(theory, candidate):
         return Classification("derivable", "already_derivable", theory, query)
-    if quote_in_source(morphism.quote, source_text):
+    quoted = quote_in_source(morphism.quote, source_text)
+    if quoted and not _quote_grounds_a_rule(theory, morphism.quote):
         return Classification("cited", "cited", candidate, query)
     if not allow_hypotheses:
-        return Classification("rejected", "hypotheses_forbidden", theory, query)
+        return Classification(
+            "rejected", "quote_from_rule" if quoted else "hypotheses_forbidden", theory, query
+        )
     hypothesis_id = ledger.next_id()
     hypothesis = ledger.add_fact(
         hypothesis_id,
@@ -135,10 +164,13 @@ def _apply_rule(
     candidate = _with_rule(theory, rule)
     if not _adds_new_facts(theory, candidate):
         return Classification("derivable", "already_derivable", theory, query)
-    if quote_in_source(rule.quote, source_text):
+    quoted = quote_in_source(rule.quote, source_text)
+    if quoted and not _quote_in_use(theory, rule.quote):
         return Classification("cited", "cited", candidate, query)
     if not allow_hypotheses:
-        return Classification("rejected", "hypotheses_forbidden", theory, query)
+        return Classification(
+            "rejected", "quote_reused" if quoted else "hypotheses_forbidden", theory, query
+        )
     hypothesis_id = ledger.next_id()
     tagged = rule.model_copy(update={"source": f"hypothesis:{hypothesis_id}"})
     candidate = _with_rule(theory, tagged)

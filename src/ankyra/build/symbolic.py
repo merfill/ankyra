@@ -18,9 +18,14 @@ def _norm(text: str | None) -> str:
     return _NORM.sub(" ", cleaned.strip().casefold())
 
 
+def normalize_quote(quote: str | None) -> str:
+    """Normalized comparison form of a quote (case/space/hyphen insensitive)."""
+    return _norm(quote)
+
+
 def quote_in_source(quote: str | None, source: str | None) -> bool:
     """True when the quote is a real (normalized) substring of the source."""
-    normalized = _norm(quote)
+    normalized = normalize_quote(quote)
     if not normalized:
         return False
     return normalized in _norm(source)

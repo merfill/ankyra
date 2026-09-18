@@ -38,6 +38,7 @@ class WaveContext:
     source_text: str = ""
     allow_hypotheses: bool = True
     hypotheses: list[Hypothesis] = field(default_factory=list)
+    history: list[WaveRecord] = field(default_factory=list)
 
 
 @dataclass

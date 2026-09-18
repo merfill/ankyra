@@ -14,6 +14,10 @@ evidence and proposed general fixes. Companion: `docs/quality_findings_ru.md`.
   expectations are reported as soft metrics (`ExpectationEvaluator`).
 - Reasoning can be read in natural language: `python -m evals.narrate --lang ru`
   (narration language via `ANKYRA_LANG`, default `en`).
+- **ProofWriter Tier A** (`python -m evals.proofwriter` over the committed
+  `evals/data/proofwriter_tier_a.jsonl`): 45 open-world synthetic-core problems
+  at depth 0/1/2/3/5, with its own answer-kind scoring. Strict deduction by
+  default; `--hypotheses` selects the abductive mode. See section E.
 
 ## Aggregate
 
@@ -82,6 +86,19 @@ The last run has no expectation misses (every soft metric passes) and
   target never matched (`vehicle` ended `no_progress`). Now `variables` is a
   declaration only and the binding comes from unification (`vehicle` ->
   `supported`/`proven_under`/`H1`).
+- **B8. Quote re-formalization guard (FIXED).** `classify` accepted any proposal
+  whose quote was a lexical substring, so a rule could silently drop a condition
+  (`nice => young` from `nice ∧ person => young`) or a fact could be grounded on a
+  conditional sentence (`rough(bear)` quoted from "If the bear is rough and ...").
+  Now a rule reusing an already-grounded quote is never `cited` — it is a
+  hypothesis (`rejected/quote_reused` when hypotheses are forbidden) — and a fact
+  may not quote a sentence already formalized as a rule
+  (`rejected/quote_from_rule`). A fact may still reuse a quote that only grounds a
+  morphism, which is required for legitimate corrections (`threshold`).
+- **B9. Proposal feedback (DONE).** The hint lists the last three waves
+  (`wave, category, action, reason`), so a `missing_payload` or `quote_reused`
+  rejection is visible and the next proposal can correct the field/action instead
+  of repeating it (`engine/proposal.py`, `WaveContext.history`).
 
 ## C. Reproducibility
 
@@ -99,7 +116,48 @@ The last run has no expectation misses (every soft metric passes) and
 - **D2. Degenerate traces (FIXED).** Trivial successful cases name the rule again
   (`rain`) — consequence of B2.
 
+## E. External benchmark — ProofWriter (Tier A)
+
+Harness: `evals/proofwriter.py` over the committed Tier A sample (45 problems;
+open-world synthetic core, depth 0/1/2/3/5; built by
+`evals/build_proofwriter_sample.py`). Mapping: `True -> kind yes`,
+`False -> kind no`, `Unknown -> kind unknown`, with an explicit polarity check for
+negated statements (0 flips observed). No training, no benchmark semantics in the
+engine.
+
+Ankyra results (strict deduction is the default):
+
+| mode | kind accuracy | determinate (True/False) | Unknown | false positives |
+|---|---|---|---|---|
+| strict (`allow_hypotheses=False`) | 40/45 (89%) | 25/30, all `proven` | 15/15 | 0 |
+| abductive (`--hypotheses`) | 39/45 (87%) | 30/30 (28 proven, 2 proven_under) | 5/15 | 10 |
+
+Hypotheses let the wave abduce the missing links and "prove" statements the
+benchmark marks Unknown, so strict is the default and the abductive row is a
+diagnostic. The strict misses are extraction generalization (a generic noun such
+as "people" becomes a class: `is_a(?x, people) ∧ nice => young` is inert) plus the
+B8 guard correctly blocking silent re-formalizations.
+
+External reference (Tafjord et al., "ProofWriter", arXiv:2012.13048; fine-tuned
+T5-11B, templated IID D5-test, ~70k training examples — NOT apples-to-apples):
+
+| system | answer (CWA) | answer (OWA) | proof (OWA) |
+|---|---|---|---|
+| ProofWriter All-At-Once | 99.6 | 99.7 | ~95–98 |
+| ProofWriter Iterative | 99.7 | 99.6 | 97.6 |
+| PRover | 99.3 | — | 87.1 |
+
+Out-of-domain (hand-written Birds/Electricity, different grammar): answer
+All 85.5% / Iter 97.0%, proof All 84.5% / Iter 97.0%. The IID ~99% reflects a
+model trained on the same generated distribution; the OOD row is closer to a
+zero-shot setting. Our subset is 45 vs their ~12k, and our proof is mechanical
+provenance (their metric is exact-match proof graphs), so only answer accuracy is
+comparable.
+
 ## Priority
 
 1. **C1** variance mitigations (sampling + prompt stability), including the
    model-side A4 residual.
+2. **Extraction generalization** seen on ProofWriter (generic nouns, modifier
+   retention): the wave may repair it via ledgered hypotheses, and strict mode
+   surfaces the assumption instead of hiding it.

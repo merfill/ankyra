@@ -116,6 +116,7 @@ def propose_node(state: ReasoningState, deps: GraphDeps) -> dict:
         source_text=state["theory"].source_text,
         allow_hypotheses=state["allow_hypotheses"],
         hypotheses=list(state.get("hypotheses") or []),
+        history=list(state.get("history") or []),
     )
     try:
         draft = deps.propose(context)

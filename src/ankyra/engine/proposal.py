@@ -73,6 +73,20 @@ def _fmt(morphism: Morphism | None) -> str:
     return f"{neg}{modality}{morphism.predicate}({args})"
 
 
+def _recent_waves(ctx: WaveContext) -> str:
+    """Compact record of the last proposals so a rejected action can be fixed."""
+    if not ctx.history:
+        return ""
+    parts = []
+    for record in ctx.history[-3:]:
+        action = record.proposal.action if record.proposal is not None else "?"
+        detail = f"w{record.wave} {record.category} {action}"
+        if record.reason:
+            detail += f"({record.reason})"
+        parts.append(detail)
+    return "Previous waves: " + " | ".join(parts) + "\n"
+
+
 def build_hint(ctx: WaveContext) -> str:
     """Problem + theory + verdict + frontier, the full context for one proposal."""
     conditions = ", ".join(_fmt(c) for c in ctx.query.conditions) or "(none)"
@@ -83,7 +97,8 @@ def build_hint(ctx: WaveContext) -> str:
     return (
         f"Wave: {ctx.wave}\n"
         f"Hypotheses allowed: {ctx.allow_hypotheses}\n"
-        f"Existing hypotheses: {hypotheses}\n\n"
+        f"Existing hypotheses: {hypotheses}\n"
+        f"{_recent_waves(ctx)}\n"
         f"Source text:\n{ctx.source_text.strip()}\n"
         f"{format_theory_for_llm(ctx.theory)}\n"
         f"Question conditions: {conditions}\n"
