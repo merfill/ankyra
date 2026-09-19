@@ -260,12 +260,12 @@ This bites Example B (`power > 50`, `wheelCount >= 4`).
    Open: whether to keep the premise when the sort is over-declared and never drop the
    sole binder, plus an auditable `over_declared_domain:` gap; reproduce on live
    extraction first (project rule: no speculative machinery).
-9. **Staged ProofWriter expansion (tiers B–D) — IN PROGRESS (A/B done).** The
+9. **Staged ProofWriter expansion (tiers B–D) — IN PROGRESS (A/B/C done).** The
    committed sample grows along the collection's axes in gated steps, each **run
    once** and re-run only on a mismatch (cost-aware;
    `ANKYRA_EXTRACT_SAMPLES=1`):
-   A 45 (done) → B 75 (A + 30 NatLang; first run **74/75**, gate met) → C 150
-   (75 core + 75 NatLang) → D 300
+   A 45 (done) → B 75 (A + 30 NatLang; **74/75**, gate met) → C 150 (75 core + 75
+   NatLang; **148/150**, gate met after the B8 span-overlap fix) → D 300
    (C + 150 `depth-3ext`); the full collection (6 368 theories, ≈11 h) is a gated
    final run, the all-questions set (54 848, ≈97 h) out of scope by default.
    Gates per tier: 0 grounded false proofs, every determinate answer `proven`,

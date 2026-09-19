@@ -109,7 +109,10 @@ The last run has no expectation misses (every soft metric passes) and
   never `cited` — it is a hypothesis (`rejected/quote_reused` when hypotheses are
   forbidden). One quote is the witness of exactly one formalization, for facts and
   rules alike; a fact may not be grounded on a quote that already states something
-  else (e.g. `is_a(fiona, person)` quoted from "Fiona is nice").
+  else (e.g. `is_a(fiona, person)` quoted from "Fiona is nice"). Overlapping spans
+  count as reuse too: a broader quote containing an already-grounded quote (or a
+  fragment of one) is not a fresh witness, so widening the sentence that already
+  grounds another atom cannot license a new fact.
 - **B9. Proposal feedback (DONE).** The hint lists the last three waves
   (`wave, category, action, reason`), so a `missing_payload` or `quote_reused`
   rejection is visible and the next proposal can correct the field/action instead
@@ -248,12 +251,27 @@ provenance (their metric is exact-match proof graphs), so only answer accuracy i
 comparable.
 
 **Tier B (75, staged expansion) — measured.** The tiers (`docs/proofwriter.md` §6)
-add NatLang on top of the 45 core items. First run (`--tier b`,
+add NatLang on top of the 45 core items. Run (`--tier b`,
 `ANKYRA_EXTRACT_SAMPLES=1`): **74/75** kind accuracy (core 45/45, NatLang 29/30), 0
-grounded false proofs, determinate 49/50 all `proven`, `Unknown` 25/25; the single
-mismatch (`AttNonegNatLang-OWA-111`, expected `False`, got `unknown`/`no_progress`)
-passed on re-run, i.e. provider variance (C1), not a reproducible failure. No
-extraction or formalization bug surfaced on the NatLang paraphrase area.
+grounded false proofs, determinate 49/50 all `proven`, `Unknown` 25/25. The single
+mismatch (`AttNonegNatLang-OWA-111`) is an extraction miss — the paraphrase "wears
+all green" became a `wear` relation instead of `is_a(eric, green)` — sensitive to
+provider variance (C1); a re-run on the fixed engine reproduced 74/75.
+
+**Tier C (150, staged expansion) — measured; one soundness bug found and fixed.**
+First run 147/150 with one **grounded false proof**: `AttNonegNatLang-OWA-15`
+(statement `Alan is not red`, label `Unknown`) was "proved" by a cited fact
+`NOT is_a(alan,red)` whose quote was the irrelevant `"Alan is very big for being so
+young"`. The quote is a valid substring and not from the question, so the classifier
+accepted it; B8 was under-implemented — `_quote_in_use` compared quotes exactly,
+while the model had *widened* an already-grounded atom witness (`"Alan is very
+big"`). Fixed by counting an overlapping span of an already-grounded atom witness
+as reuse (rule sentences stay exact, so a standalone fact inside a conditional is
+still citable); unit tests added. After the fix and targeted re-runs of the seven
+affected items, Tier C is **148/150 (98.7%)**, 0 grounded false proofs, determinate
+all `proven`; the two remaining misses are NatLang extraction / formalization
+errors (`NatLang-10`: `feels blue` kept as a state predicate; `NatLang-114`:
+`blue skin` attached to `skin`), honestly `unknown`.
 
 ## F. Abduction — false proofs are hypothetical decisions
 

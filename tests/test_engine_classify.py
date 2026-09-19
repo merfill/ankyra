@@ -295,6 +295,56 @@ def test_fact_reusing_a_morphism_quote_is_rejected_when_hypotheses_are_forbidden
     assert result.reason == "quote_reused"
 
 
+def _alan_theory() -> Theory:
+    return Theory(
+        morphisms=[Morphism(predicate="is_a", subject="alan", object="big", quote="Alan is very big")],
+        source_text="Alan is very big for being so young.",
+    )
+
+
+def test_a_broader_span_reusing_an_existing_quote_is_not_cited():
+    draft = ProposalDraft(
+        action="assert_cited_fact",
+        fact=Morphism(
+            predicate="is_a", subject="alan", object="red", negated=True,
+            quote="Alan is very big for being so young",
+        ),
+    )
+    result = _classify(draft, _alan_theory(), Query(target=Morphism(predicate="is_a", subject="alan", object="blue")))
+    assert result.category == "hypothesis"
+
+
+def test_a_broader_span_reusing_an_existing_quote_is_rejected_when_hypotheses_are_forbidden():
+    draft = ProposalDraft(
+        action="assert_cited_fact",
+        fact=Morphism(
+            predicate="is_a", subject="alan", object="red", negated=True,
+            quote="Alan is very big for being so young",
+        ),
+    )
+    result = _classify(
+        draft,
+        _alan_theory(),
+        Query(target=Morphism(predicate="is_a", subject="alan", object="blue")),
+        allow_hypotheses=False,
+    )
+    assert result.category == "rejected"
+    assert result.reason == "quote_reused"
+
+
+def test_a_narrower_span_inside_an_existing_quote_is_not_cited():
+    theory = Theory(
+        morphisms=[Morphism(predicate="is_a", subject="anne", object="nice", quote="Anne is nice and round")],
+        source_text="Anne is nice and round.",
+    )
+    draft = ProposalDraft(
+        action="assert_cited_fact",
+        fact=Morphism(predicate="is_a", subject="anne", object="round", quote="Anne is nice"),
+    )
+    result = _classify(draft, theory, Query(target=Morphism(predicate="is_a", subject="anne", object="young")))
+    assert result.category == "hypothesis"
+
+
 def test_missing_quote_becomes_a_tagged_hypothesis():
     theory = Theory(
         morphisms=[Morphism(predicate="p", subject="a")],

@@ -179,12 +179,23 @@ full collection is a gated final run.
 Tier E runs once with targeted re-runs of failures. The all-questions set
 (54 848 items, ≈97 h) is a separate decision and out of scope by default.
 
-**Results.** Tier A: strict 45/45 (§5). Tier B, first run (`--tier b`,
-`ANKYRA_EXTRACT_SAMPLES=1`): **74/75** kind accuracy — core 45/45, NatLang 29/30;
-0 grounded false proofs; determinate 49/50 all `proven`; `Unknown` 25/25. The one
-mismatch (`AttNonegNatLang-OWA-111`, expected `False`, got `unknown`/`no_progress`)
-passed on re-run, so it is provider variance (C1), not a reproducible failure; the
-gate is met. No extraction or formalization bug surfaced on the NatLang area.
+**Results.** Tier A: strict 45/45 (§5). Tier B (`--tier b`,
+`ANKYRA_EXTRACT_SAMPLES=1`): **74/75** kind accuracy — core 45/45, NatLang 29/30; 0
+grounded false proofs; determinate 49/50 all `proven`; `Unknown` 25/25. The one
+mismatch (`AttNonegNatLang-OWA-111`) is an extraction miss — the paraphrase "wears
+all green" became a `wear` relation instead of `is_a(eric, green)` — and is
+sensitive to provider variance (C1); the gate is met, and a re-run on the fixed
+engine reproduced 74/75.
+
+Tier C (`--tier c`): the first run scored 147/150 but with one **grounded false
+proof** (`AttNonegNatLang-OWA-15`: `NOT is_a(alan, red)` licensed by an unrelated
+quote). That exposed an under-implemented B8 guard, now fixed (an overlapping span
+of an already-grounded atom witness counts as reuse; `quality_findings` B8). After
+the fix and targeted re-runs of the seven affected items, Tier C is **148/150
+(98.7%)**, 0 grounded false proofs, determinate all `proven`. The two remaining
+misses are NatLang extraction / formalization errors (`NatLang-10`: `feels blue`
+kept as a state predicate; `NatLang-114`: `blue skin` attached to `skin`), answered
+as honest `unknown`.
 
 Thresholds and the Tier C/D splits are policy knobs, not architecture; they can be
 tightened as the extraction improves. Tiers B–D are added to the committed sample

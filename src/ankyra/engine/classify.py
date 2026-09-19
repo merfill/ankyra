@@ -49,11 +49,6 @@ def _empty_predicates(rule: Rule) -> bool:
     return any(not (cond.predicate or "").strip() for cond in rule.conditions)
 
 
-def _same_quote(left: str | None, right: str | None) -> bool:
-    normalized = normalize_quote(left)
-    return bool(normalized) and normalized == normalize_quote(right)
-
-
 def _quote_in_question(quote: str | None, question_text: str | None, source_text: str) -> bool:
     """True when the quote is taken from the interrogative span.
 
@@ -70,15 +65,26 @@ def _quote_in_question(quote: str | None, question_text: str | None, source_text
 
 
 def _quote_in_use(theory: Theory, quote: str | None) -> bool:
-    """True when this quote already grounds a theory element.
+    """True when this quote already grounds a different theory element.
 
     A quote is a lexical witness for ONE formalization; reusing it to state a
     different atom or rule silently changes the formalization (drops a restriction
-    or flips it), so the new element is an assumption, not ground.
+    or flips it), so the new element is an assumption, not ground. The caller has
+    already ruled out the same atom via ``_adds_new_facts``, so any overlap with an
+    already-grounded atom witness is a different formalization: a fact may not be
+    grounded on an atom's quote, nor on a broader span that contains it. Rule
+    *sentences* are compared exactly instead — a standalone fact whose phrase also
+    occurs inside a conditional sentence is still citable (see the conditional-quote
+    guard, which handles that case).
     """
-    if any(_same_quote(quote, m.quote) for m in theory.morphisms):
-        return True
-    return any(_same_quote(quote, r.quote) for r in theory.rules)
+    candidate = normalize_quote(quote)
+    if not candidate:
+        return False
+    for morphism in theory.morphisms:
+        used = normalize_quote(morphism.quote)
+        if used and (candidate == used or candidate in used or used in candidate):
+            return True
+    return any(candidate == normalize_quote(rule.quote) for rule in theory.rules)
 
 
 def _with_morphism(theory: Theory, morphism: Morphism) -> Theory:
