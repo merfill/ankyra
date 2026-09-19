@@ -197,6 +197,19 @@ misses are NatLang extraction / formalization errors (`NatLang-10`: `feels blue`
 kept as a state predicate; `NatLang-114`: `blue skin` attached to `skin`), answered
 as honest `unknown`.
 
+Tier D (`--tier d`, 75 core + 75 NatLang + 150 `depth-3ext`): **296/300 (99%)**
+(core 74/75, NatLang 73/75, `depth-3ext` 149/150), determinate 198/200 all
+`proven`, no hypotheses. The gate is **not green — accepted for now**. Triage (one
+re-run each): `RelNeg-OWA-D1-1025` and `AttNonegNatLang-OWA-107` did not reproduce
+(provider variance); `AttNoneg-OWA-D0-2873` (a named-entity conditional
+over-generalized to `is_a(?x,young) => is_a(?x,rough)`) and
+`AttNonegNatLang-OWA-114` (the known `blue skin` miss) reproduce. Two **open
+findings**, no code change yet: (1) `reformalize_query` may add `Gamma` conditions
+that are absent from the question, and those ungrounded conditions can refute the
+target — a soundness hole; (2) a named-entity conditional can be extracted as a
+universal rule (extraction; deterministic NL parsing is forbidden). See
+`quality_findings` E.
+
 Thresholds and the Tier C/D splits are policy knobs, not architecture; they can be
 tightened as the extraction improves. Tiers B–D are added to the committed sample
 by extending `evals/build_proofwriter_sample.py` (per-tier selection spec), and

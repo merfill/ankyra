@@ -14,10 +14,11 @@ evidence and proposed general fixes. Companion: `docs/quality_findings_ru.md`.
   expectations are reported as soft metrics (`ExpectationEvaluator`).
 - Reasoning can be read in natural language: `python -m evals.narrate --lang ru`
   (narration language via `ANKYRA_LANG`, default `en`).
-- **ProofWriter Tier A** (`python -m evals.proofwriter` over the committed
-  `evals/data/proofwriter_tier_a.jsonl`): 45 open-world synthetic-core problems
-  at depth 0/1/2/3/5, with its own answer-kind scoring. Strict deduction by
-  default; `--hypotheses` selects the abductive mode. See section E.
+- **ProofWriter tiers** (`python -m evals.proofwriter --tier a|b|c|d` over the
+  committed `evals/data/proofwriter_tier_<x>.jsonl`): staged open-world samples
+  (A 45 core; B 75 +NatLang; C 150; D 300 +`depth-3ext`), each with its own
+  answer-kind scoring. Strict deduction by default; `--hypotheses` selects the
+  abductive mode. See section E and `docs/proofwriter.md`.
 
 ## Aggregate
 
@@ -187,7 +188,7 @@ The last run has no expectation misses (every soft metric passes) and
   competing branches of a specificity conflict, so a defeasible shift is
   attributable. The base is untouched, keeping D3 monotone.
 
-## E. External benchmark — ProofWriter (Tier A)
+## E. External benchmark — ProofWriter (staged tiers)
 
 Harness: `evals/proofwriter.py` over the committed Tier A sample (45 problems;
 open-world synthetic core, depth 0/1/2/3/5; built by
@@ -273,6 +274,27 @@ all `proven`; the two remaining misses are NatLang extraction / formalization
 errors (`NatLang-10`: `feels blue` kept as a state predicate; `NatLang-114`:
 `blue skin` attached to `skin`), honestly `unknown`.
 
+**Tier D (300, staged expansion) — measured; gate not green (accepted for now).**
+75 core + 75 NatLang + 150 `depth-3ext`: **296/300 (99%)** (core 74/75, NatLang
+73/75, `depth-3ext` 149/150), determinate 198/200 all `proven`, 0 hypotheses. Four
+mismatches, triaged by one re-run each: `RelNeg-OWA-D1-1025` and
+`AttNonegNatLang-OWA-107` are provider variance (did not reproduce);
+`AttNoneg-OWA-D0-2873` and `AttNonegNatLang-OWA-114` reproduce. Two open findings,
+no code change yet:
+
+- **Gamma injection via `reformalize_query` (soundness hole).** `RelNeg-OWA-D1-1025`
+  ("The lion does not chase the lion", `Unknown`) was refuted by a wave-0
+  `reformalize_query` that added the conditions `is_a(lion,red)` and
+  `NOT like(lion,rabbit)` — neither is in the question. `classify._reformalize`
+  guards only the target (`target_weakened`); conditions are merged ungrounded, so a
+  question's `Gamma` can be fabricated to make the target derivable. Options: reject
+  a condition not already in the query (conservative), or ledger it as a hypothesis.
+- **Named-entity conditional over-generalized (extraction).** `AttNoneg-OWA-D0-2873`
+  ("Gary is not rough", `Unknown`) was refuted because "If Harry is young then Harry
+  is rough" was extracted as the universal `is_a(?x,young) => is_a(?x,rough)`, which
+  fires for Gary. Deterministic code cannot catch this without NL parsing (forbidden);
+  the fix is extraction-prompt hardening (constants for named individuals).
+
 ## F. Abduction — false proofs are hypothetical decisions
 
 Harness: `evals/proofwriter.py --hypotheses`, `ANKYRA_EXTRACT_SAMPLES=3`; every run
@@ -342,20 +364,25 @@ unit-tested):
 
 ## Results summary
 
-State after the extraction-canonicalization and soundness-guard work (N=3,
-`ANKYRA_EXTRACT_SAMPLES=3`):
+State after the extraction-canonicalization, soundness-guard and staged-benchmark
+work (`ANKYRA_EXTRACT_SAMPLES=1`):
 
-- **Strict ProofWriter: 45/45**, 30/30 determinate all `proven`, 15/15 Unknown, 0
-  grounded false positives; every mismatch shape `match`.
+- **ProofWriter staged tiers (strict, 0 hypotheses):** A **45/45**, B **74/75**,
+  C **148/150** (after the B8 span-overlap fix), D **296/300** (75 core + 75 NatLang
+  + 150 `depth-3ext`); every determinate answer `proven`. D's gate is not green —
+  one reproducible grounded false proof (`AttNoneg-OWA-D0-2873`, an over-generalized
+  named-entity rule) plus one provider-variance mismatch; accepted for now (open
+  findings 21–22 in `implementation_plan.md`). See `docs/proofwriter.md` §6.
 - **Abductive mode:** hypothetical refutations are removed (B, guard); the remaining
   misses are hypothetical decisions/question-begging, both explicitly guarded and
   labelled `proven_under`; no grounded false proof.
 - **Soundness guards added:** a hypothesis cannot refute (A/B), a non-cited fact
   hypothesis cannot assert the closed target (B), a quote from the question or from
-  only inside a conditional cannot license an axiom (B12).
+  only inside a conditional cannot license an axiom (B12), and an overlapping span
+  of an already-grounded atom witness counts as reuse (B8).
 - **Extraction canonicalization:** `relation_kind` ascription/possession/action
   (A, B11); per-rule quantifier sort `forall` (B, B10).
 - **Reproducibility:** provider nondeterminism accepted as external; deterministic
-  tie-break by structural fingerprint; parallel samples keep the LLM trace.
+  tie-break by structural fingerprint; no best-of-N sampling (`SAMPLES=1`).
 - **Closed without implementation:** dropped-conjunct detector (A6, not reproduced).
-- Tests: `262 passed, 16 skipped`.
+- Tests: `285 passed, 24 skipped`.

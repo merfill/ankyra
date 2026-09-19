@@ -260,13 +260,15 @@ This bites Example B (`power > 50`, `wheelCount >= 4`).
    Open: whether to keep the premise when the sort is over-declared and never drop the
    sole binder, plus an auditable `over_declared_domain:` gap; reproduce on live
    extraction first (project rule: no speculative machinery).
-9. **Staged ProofWriter expansion (tiers B–D) — IN PROGRESS (A/B/C done).** The
-   committed sample grows along the collection's axes in gated steps, each **run
-   once** and re-run only on a mismatch (cost-aware;
+9. **Staged ProofWriter expansion (tiers B–D) — DONE; D gate not green, accepted.**
+   The committed sample grows along the collection's axes in gated steps, each
+   **run once** and re-run only on a mismatch (cost-aware;
    `ANKYRA_EXTRACT_SAMPLES=1`):
    A 45 (done) → B 75 (A + 30 NatLang; **74/75**, gate met) → C 150 (75 core + 75
    NatLang; **148/150**, gate met after the B8 span-overlap fix) → D 300
-   (C + 150 `depth-3ext`); the full collection (6 368 theories, ≈11 h) is a gated
+   (C + 150 `depth-3ext`; **296/300**, gate not green — 2 grounded mismatches, one
+   reproducible and one provider variance; accepted for now, findings 21–22); the
+   full collection (6 368 theories, ≈11 h) is a gated
    final run, the all-questions set (54 848, ≈97 h) out of scope by default.
    Gates per tier: 0 grounded false proofs, every determinate answer `proven`,
    kind accuracy ≥ 90% (B) / 95% (C, D); every remaining failure categorized. The
@@ -403,3 +405,15 @@ Source: `docs/quality_findings.md`. Ordered by priority.
     explicit. First concrete step: attribute explanation steps grounded on Gamma as
     `presupposition`, widening `ExplanationStep.source` so `external` is additive
     later. Beyond that first step, deferred — no source framework (cf. item 9).
+21. **Gamma injection via `reformalize_query` — OPEN (accepted for now).**
+    `classify._reformalize` guards the target but merges conditions ungrounded, so a
+    wave can fabricate question conditions (`Gamma`) that make the target derivable
+    (Tier D `RelNeg-OWA-D1-1025`; not reproduced in one re-run). Fix options: reject
+    a condition not already in the query (conservative), or ledger it as a
+    hypothesis. See `quality_findings` E.
+22. **Named-entity conditional over-generalized — OPEN (extraction).** A conditional
+    about a named individual ("If Harry is young then Harry is rough") became a
+    universal rule and refuted an unrelated `Unknown` (Tier D
+    `AttNoneg-OWA-D0-2873`, reproducible). Deterministic code cannot catch it without
+    NL parsing (forbidden); it needs extraction-prompt hardening (constants for
+    named individuals). See `quality_findings` E.
