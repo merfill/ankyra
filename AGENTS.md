@@ -51,8 +51,15 @@ language, default `en`).
 - `README.md` — what it is, install, quick start.
 - `ARCHITECTURE.md` — layers, flows, data model, module map.
 - `docs/task.md` — technical specification.
+- `docs/reasoning_roadmap.md` — **main development axis**: staged decidable
+  formalisms (L0 Horn → L1 negation → L2 FOL → L3 CSP → L4 numeric; plus
+  defeasible) and the benchmark gating each stage.
 - `docs/implementation_plan.md` — roadmap and backlog.
 - `docs/quality_findings.md` — eval-harness findings.
+- `docs/proofwriter.md` — ProofWriter collection notes (eval harness).
+- `docs/prontoqa.md` — ProntoQA collection notes (planned L1 gate).
+- `docs/ar_lsat.md` — AR-LSAT collection notes (planned L3 gate, separate engine).
+- `docs/gsm8k.md` — GSM8K collection notes (planned L4 stage, separate engine).
 - `docs/defeasible_reasoning.md` — non-monotonic exceptions design note.
 - `docs/logic_layer.md` — pluggable inference semantics (future) note.
 - `docs/statement_sources.md` — origin vs logical role for assertions design note.

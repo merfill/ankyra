@@ -268,8 +268,10 @@ This bites Example B (`power > 50`, `wheelCount >= 4`).
    NatLang; **148/150**, gate met after the B8 span-overlap fix) → D 300
    (C + 150 `depth-3ext`; **296/300**, gate not green — 2 grounded mismatches, one
    reproducible and one provider variance; accepted for now, findings 21–22); the
-   full collection (6 368 theories, ≈11 h) is a gated
-   final run, the all-questions set (54 848, ≈97 h) out of scope by default.
+   full collection (6 368 theories, ≈11 h), Tier E, is **CANCELLED** — there is no
+   free LLM access and API tokens are paid out of pocket; the all-questions set
+   (54 848, ≈97 h) stays out of scope. **Tier D (300, 99%, 0 grounded false
+   proofs) is the accepted proof of concept.**
    Gates per tier: 0 grounded false proofs, every determinate answer `proven`,
    kind accuracy ≥ 90% (B) / 95% (C, D); every remaining failure categorized. The
    tiers serve both measurement and debugging. Built by
@@ -417,3 +419,32 @@ Source: `docs/quality_findings.md`. Ordered by priority.
     `AttNoneg-OWA-D0-2873`, reproducible). Deterministic code cannot catch it without
     NL parsing (forbidden); it needs extraction-prompt hardening (constants for
     named individuals). See `quality_findings` E.
+
+## 9. Reasoning roadmap (main axis)
+
+The main development axis is the staged widening of **decidable formalisms**: the
+LLM proposes a formalization in a logic `L`, and a sound decision procedure for
+`L` decides it. Coverage is measured in named formalisms, not in untethered
+"reasoning". The full description is `docs/reasoning_roadmap.md`; per-collection
+notes are `docs/proofwriter.md`, `docs/prontoqa.md`, `docs/ar_lsat.md`,
+`docs/gsm8k.md`.
+
+Stages:
+
+- **L0 — definite Horn** (current spine: `is_a`, complementary-pair negation,
+  OWA). Benchmark ProofWriter; Tier D 296/300 is the accepted proof of concept.
+- **L1 — stratified negation / negation-as-failure** with a declared world
+  assumption, for disjointness and explicit negative knowledge. Benchmark
+  ProntoQA; flag `ANKYRA_NEGATION_MODE`.
+- **L2 — disjunction / positive FOL / proof by cases**, for compositional chains.
+  Benchmark ProntoQA-OOD (compositional); flag `ANKYRA_LOGIC`.
+- **L3 — finite-domain CSP/SAT, a separate engine.** Benchmark AR-LSAT.
+- **L4 — arithmetic, a separate numeric engine or tool-use.** Benchmark GSM8K.
+- **D — defeasible** (implemented behind `ANKYRA_DEFEASIBLE`, unbenchmarked); a
+  defeasible-NLI set is a cheap, differentiating gate.
+
+Decisions: L3/L4 are separate engines and low priority; arithmetic is preferably
+tool-use, not an in-repo core. The architecture seam is `docs/logic_layer.md`
+(only semantics becomes pluggable). **Prerequisite:** close soundness findings
+21–22 first. **Budget:** each stage enters with a small committed sample (no free
+LLM access); full collections are separately budgeted.

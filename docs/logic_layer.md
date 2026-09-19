@@ -2,7 +2,8 @@
 
 Whether and when to abstract the inference semantics so different logics can be
 used in perspective. Canonical language: English; Russian mirror:
-`docs/logic_layer_ru.md`. Related: `docs/defeasible_reasoning.md`.
+`docs/logic_layer_ru.md`. Related: `docs/reasoning_roadmap.md`,
+`docs/defeasible_reasoning.md`.
 
 ## 1. Context
 
@@ -91,5 +92,8 @@ nodes and classification depend on the protocol, not on `saturate`.
 ## 9. Open question
 
 Is a pluggable logic layer a **near-term** need (several semantics are planned) or
-**speculative** (one Horn core plus defeasible will suffice)? Decide before
-extracting the protocol; until then this note is a placeholder, not a task.
+**speculative** (one Horn core plus defeasible will suffice)? **Answered by
+`docs/reasoning_roadmap.md`:** several formalisms are planned as the main axis
+(L1 stratified negation, L2 disjunction/FOL, plus separate L3/L4 engines), so the
+seam is near-term. Extract the protocol when L1 lands, not before; until then this
+note is a design sketch, not a task.

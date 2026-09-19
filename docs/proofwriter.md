@@ -174,9 +174,11 @@ full collection is a gated final run.
 | B | 75 | A + 30 NatLang (10 theories × 3 labels) | NatLang reconnaissance and debugging; gate: 0 grounded false proofs, kind accuracy ≥ 90%, every failure triaged |
 | C | 150 | 75 core (5 × 3 labels × 5) + 75 NatLang (25 theories × 3 labels) | scale; gate: 0 grounded false proofs, kind accuracy ≥ 95% |
 | D | 300 | C + 150 `depth-3ext` (50 theories × 3 labels) | second area; gate: 0 grounded false proofs, kind accuracy ≥ 95%, per-area report |
-| E | full | 6 368 theories, one question each, all areas (≈11 h) | final gated run; stop on the first grounded false proof |
+| E | full | 6 368 theories, one question each, all areas (≈11 h) | **cancelled** — no free LLM access; not run |
 
-Tier E runs once with targeted re-runs of failures. The all-questions set
+Tier E is **cancelled**: there is no free LLM access and API tokens are paid out of
+pocket, so the full-collection run will not be executed. **Tier D (300 items, 99%,
+0 grounded false proofs) is the accepted proof of concept.** The all-questions set
 (54 848 items, ≈97 h) is a separate decision and out of scope by default.
 
 **Results.** Tier A: strict 45/45 (§5). Tier B (`--tier b`,
@@ -294,7 +296,7 @@ categorized (fixed, or documented as a benchmark artifact / provider variance).
 - a tier runs **once**; individual items are re-run with `--ids`;
 - traces are cached in `evals/out/proofwriter` (gitignored) — re-read, do not
   re-run;
-- Tier E runs once with targeted re-runs of failures;
+- Tier E is cancelled (no free LLM access);
 - `SAMPLES=1` everywhere.
 
 ### 7.6 Deliverables
