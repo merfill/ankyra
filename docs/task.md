@@ -332,3 +332,9 @@ Tracked in `docs/implementation_plan.md`; summarized here.
   `must_`/`must_not_`/`may_` lowering is available behind `ANKYRA_DEONTIC_PREFIXES`
   (with the polarity fold and the double-prefix fix). Option A — always prefix —
   remains the fallback.
+
+## 14. External Benchmark
+
+The eval harness validates the engine against the public **ProofWriter** collection.
+The collection, its axes and how the harness uses it are documented in
+`docs/proofwriter.md`.

@@ -236,7 +236,8 @@ This bites Example B (`power > 50`, `wheelCount >= 4`).
    Unknown 7/15 (8 false positives). Added the quote re-formalization guard
    (`classify`, B8), the last-waves hint feedback (B9), and the Phase 0 copula /
    domain formalization (`StructAtom.predication`, `ProblemStructure.domain`) that
-   closed the strict gaps. See `quality_findings` section E.
+   closed the strict gaps. See `quality_findings` section E. The collection, its
+   axes and the harness are documented in `docs/proofwriter.md`.
 8. ~~**Copula / domain formalization (Phase 0).**~~ **DONE.** A one-place copula
    becomes `is_a(subject, complement)` (never a bare unary predicate), and a rule
    premise restricting a variable to a declared `domain` sort is dropped as the
@@ -259,6 +260,19 @@ This bites Example B (`power > 50`, `wheelCount >= 4`).
    Open: whether to keep the premise when the sort is over-declared and never drop the
    sole binder, plus an auditable `over_declared_domain:` gap; reproduce on live
    extraction first (project rule: no speculative machinery).
+9. **Staged ProofWriter expansion (tiers B–D) — IN PROGRESS (A/B done).** The
+   committed sample grows along the collection's axes in gated steps, each **run
+   once** and re-run only on a mismatch (cost-aware;
+   `ANKYRA_EXTRACT_SAMPLES=1`):
+   A 45 (done) → B 75 (A + 30 NatLang; first run **74/75**, gate met) → C 150
+   (75 core + 75 NatLang) → D 300
+   (C + 150 `depth-3ext`); the full collection (6 368 theories, ≈11 h) is a gated
+   final run, the all-questions set (54 848, ≈97 h) out of scope by default.
+   Gates per tier: 0 grounded false proofs, every determinate answer `proven`,
+   kind accuracy ≥ 90% (B) / 95% (C, D); every remaining failure categorized. The
+   tiers serve both measurement and debugging. Built by
+   `evals.build_proofwriter_sample --tier`, run by `evals.proofwriter --tier`,
+   debugged with `evals.narrate --traces-dir`. See `docs/proofwriter.md` §6–7.
 
 ## 8. Backlog (from the eval harness)
 
@@ -285,7 +299,14 @@ Source: `docs/quality_findings.md`. Ordered by priority.
    cue-phrase detector is forbidden by `docs/task.md` §3.8, and raising
    `ANKYRA_EXTRACT_SAMPLES` is measured to give nothing (C1). Live presupposition
    cases are hard-asserted in `tests/test_evals_live.py`.
-4. **Variance mitigations.** `ANKYRA_EXTRACT_SAMPLES` best-of-N extraction,
+4. **Variance mitigations.** **Fixed policy: `ANKYRA_EXTRACT_SAMPLES=1` always.**
+   Best-of-N extraction sampling is *not* used: it was measured not to improve
+   outcomes (C1) — the selection ranker (`quality_key`/`_rank_key`) is a
+   syntax/grounding metric that ties on logically different structures, so extra
+   samples add cost and self-inflicted nondeterminism without buying correctness.
+   Provider variance is handled by repeated independent runs in the harness, never
+   by sampling. Historical runs in this document that mention
+   `ANKYRA_EXTRACT_SAMPLES=3` predate this rule and stand only as measurements.
    `ANKYRA_EXTRACT_REPAIRS` bounded repair, and `enforce_grounded` are done. The
    provider is measured nondeterministic even at `T=0` (and `ANKYRA_SEED` is
    unverified, kept opt-in only). Selection was hardened: tie-break by canonical

@@ -246,6 +246,15 @@ All 85.5% / Iter 97.0%, proof All 84.5% / Iter 97.0%. IID-числа ~99% — у
 Наша выборка — 45 против их ~12k, а наш proof — механический provenance (у них
 exact-match графа вывода), поэтому сопоставима только answer accuracy.
 
+**Этап B (75, поэтапное расширение) — измерено.** Этапы (`docs/proofwriter_ru.md`
+§6) добавляют NatLang поверх 45 core-задач. Первый прогон (`--tier b`,
+`ANKYRA_EXTRACT_SAMPLES=1`): **74/75** kind accuracy (core 45/45, NatLang 29/30),
+0 grounded false proofs, детерминированные 49/50 все `proven`, `Unknown` 25/25;
+единственное расхождение (`AttNonegNatLang-OWA-111`, ждали `False`, получили
+`unknown`/`no_progress`) прошло на перепрогоне, то есть провайдерская
+вариативность (C1), а не воспроизводимый сбой. Багов извлечения или формализации
+на NatLang-области не выявлено.
+
 ## F. Абдукция — ложные доказательства суть гипотетические решения
 
 Харнесс: `evals/proofwriter.py --hypotheses`, `ANKYRA_EXTRACT_SAMPLES=3`; трасы

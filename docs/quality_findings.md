@@ -247,6 +247,14 @@ zero-shot setting. Our subset is 45 vs their ~12k, and our proof is mechanical
 provenance (their metric is exact-match proof graphs), so only answer accuracy is
 comparable.
 
+**Tier B (75, staged expansion) — measured.** The tiers (`docs/proofwriter.md` §6)
+add NatLang on top of the 45 core items. First run (`--tier b`,
+`ANKYRA_EXTRACT_SAMPLES=1`): **74/75** kind accuracy (core 45/45, NatLang 29/30), 0
+grounded false proofs, determinate 49/50 all `proven`, `Unknown` 25/25; the single
+mismatch (`AttNonegNatLang-OWA-111`, expected `False`, got `unknown`/`no_progress`)
+passed on re-run, i.e. provider variance (C1), not a reproducible failure. No
+extraction or formalization bug surfaced on the NatLang paraphrase area.
+
 ## F. Abduction — false proofs are hypothetical decisions
 
 Harness: `evals/proofwriter.py --hypotheses`, `ANKYRA_EXTRACT_SAMPLES=3`; every run

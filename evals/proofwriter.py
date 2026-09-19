@@ -26,8 +26,11 @@ expected label is inverted to match the ask that was actually verified; the flip
 is reported per problem.
 
 Usage:
-    uv run python -m evals.proofwriter [--ids a,b] [--limit N] [--no-write]
-        [--hypotheses]
+    uv run python -m evals.proofwriter [--tier a|b|c|d] [--ids a,b] [--limit N]
+        [--no-write] [--hypotheses]
+
+Tiers are committed samples built by ``evals.build_proofwriter_sample`` (see
+``docs/proofwriter.md``).
 """
 
 from __future__ import annotations
@@ -43,6 +46,12 @@ from evals.run import run_one
 ROOT = Path(__file__).resolve().parent
 SAMPLE = ROOT / "data" / "proofwriter_tier_a.jsonl"
 OUT = ROOT / "out" / "proofwriter"
+TIERS = ["a", "b", "c", "d"]
+
+
+def sample_path(tier: str = "a") -> Path:
+    return ROOT / "data" / f"proofwriter_tier_{tier}.jsonl"
+
 
 _LABEL_TO_KIND = {"True": "yes", "False": "no", "Unknown": "unknown"}
 _DEPTHS = ["depth-0", "depth-1", "depth-2", "depth-3", "depth-5"]
@@ -193,7 +202,8 @@ def _report(scores: list[dict], records: dict[str, dict]) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Run the ProofWriter Tier A eval.")
+    parser = argparse.ArgumentParser(description="Run a ProofWriter tier eval.")
+    parser.add_argument("--tier", default="a", choices=TIERS, help="Committed sample tier (default: a).")
     parser.add_argument("--ids", default="", help="Comma-separated problem ids (default: all).")
     parser.add_argument("--limit", type=int, default=0, help="Run at most N problems.")
     parser.add_argument("--out", default=str(OUT), help="Directory for per-problem traces.")
@@ -204,7 +214,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     wanted = {item.strip() for item in args.ids.split(",") if item.strip()}
-    records = [r for r in load_sample() if not wanted or r["id"] in wanted]
+    records = [r for r in load_sample(sample_path(args.tier)) if not wanted or r["id"] in wanted]
     if args.limit:
         records = records[: args.limit]
     out_dir = Path(args.out)

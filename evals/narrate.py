@@ -89,17 +89,21 @@ def _verdict_block(trace: dict) -> str:
     return "\n".join(lines)
 
 
-def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Narrate existing eval traces.")
-    parser.add_argument("--lang", default="ru", help="Narration language (name or code).")
-    parser.add_argument("--out", default=str(OUT))
-    parser.add_argument("--ids", default="")
-    args = parser.parse_args(argv)
+def _load_items(args, wanted: set[str]) -> list[tuple[str, object, object, dict]]:
+    """Return ``(id, text, level, trace)`` items from a traces dir or problem traces."""
+    if args.traces_dir:
+        items = []
+        for path in sorted(Path(args.traces_dir).glob("*.json")):
+            data = json.loads(path.read_text(encoding="utf-8"))
+            trace = data.get("trace", data)
+            problem_id = trace.get("id") or path.stem
+            if wanted and problem_id not in wanted:
+                continue
+            items.append((problem_id, trace.get("text"), trace.get("level"), trace))
+        return items
 
-    wanted = {item.strip() for item in args.ids.split(",") if item.strip()}
     out_dir = Path(args.out)
-    llm = create_chat_llm(role="answer")
-
+    items = []
     for problem in load_problems():
         if wanted and problem.get("id") not in wanted:
             continue
@@ -107,7 +111,30 @@ def main(argv: list[str] | None = None) -> int:
         if not path.exists():
             print(f"[{problem.get('id')}] no trace at {path}")
             continue
-        trace = json.loads(path.read_text(encoding="utf-8"))
+        items.append((problem.get("id"), problem["text"], problem.get("level"),
+                      json.loads(path.read_text(encoding="utf-8"))))
+    return items
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Narrate existing eval traces.")
+    parser.add_argument("--lang", default="ru", help="Narration language (name or code).")
+    parser.add_argument("--out", default=str(OUT))
+    parser.add_argument("--ids", default="")
+    parser.add_argument(
+        "--traces-dir", default="",
+        help="Directory of trace JSON files (e.g. evals/out/proofwriter); wrapper files are unwrapped.",
+    )
+    parser.add_argument(
+        "--no-narration", dest="narration", action="store_false",
+        help="Skip the LLM narration (render the mechanical trace only).",
+    )
+    args = parser.parse_args(argv)
+
+    wanted = {item.strip() for item in args.ids.split(",") if item.strip()}
+    llm = create_chat_llm(role="answer") if args.narration else None
+
+    for problem_id, text, level, trace in _load_items(args, wanted):
         explanation = (
             Explanation.model_validate(trace["explanation"])
             if trace.get("explanation")
@@ -117,7 +144,7 @@ def main(argv: list[str] | None = None) -> int:
         explanation = _with_rule_text(explanation, theory)
         answer = Answer.model_validate(trace["answer"]) if trace.get("answer") else Answer()
         print("=" * 78)
-        print(f"[{problem.get('id')}] L{problem.get('level')} — {problem['text']}")
+        print(f"[{problem_id}] L{level} — {text}")
         print(render_answer(answer, args.lang))
         print("Mechanical steps:")
         print(_steps(explanation))
@@ -131,6 +158,8 @@ def main(argv: list[str] | None = None) -> int:
             f"| strength: {answer.strength} | value: {answer.value} "
             f"| hypotheses: {answer.hypotheses_used}"
         )
+        if not args.narration:
+            continue
         if explanation.steps or explanation.conflict is not None:
             narration = narrate_explanation(
                 llm, explanation, answer=answer, language=args.lang

@@ -325,3 +325,8 @@ Dynaconf, префикс `ANKYRA` (см. `src/ankyra/config/settings.py`).
   `must_`/`must_not_`/`may_` в стиле OntoLegal доступно за `ANKYRA_DEONTIC_PREFIXES`
   (с polarity fold и фиксом двойного префикса). Вариант A — всегда префикс —
   остаётся fallback.
+
+## 14. Внешний бенчмарк
+
+Eval-харнесс проверяет движок на публичной коллекции **ProofWriter**. Коллекция,
+её оси и то, как её использует харнесс, описаны в `docs/proofwriter_ru.md`.
