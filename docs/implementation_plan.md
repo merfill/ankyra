@@ -241,8 +241,24 @@ This bites Example B (`power > 50`, `wheelCount >= 4`).
    becomes `is_a(subject, complement)` (never a bare unary predicate), and a rule
    premise restricting a variable to a declared `domain` sort is dropped as the
    quantifier's domain. Closed the ProofWriter `Att*` generalization gaps without
-   prompt special-cases. `domain` is an auditable formalization assumption; an
-   over-declaration invariant is still pending.
+   prompt special-cases.
+   **Domain drop — NEEDS INVESTIGATION.** Two distinct effects were observed on
+   synthetic structures (not reproduced on ProofWriter), so this is a finding to
+   reproduce and size before any fix:
+   - *(a) under-derivation:* `enrich.strip_domain_conditions` drops `is_a(?x,D)` for a
+     global `domain` sort unconditionally, even when it is the variable's only binder;
+     the rule then has no binder and can never fire. The per-rule
+     `unroll._normalize_domain` deliberately keeps the sole binder, so the two paths
+     disagree. Verified: `domain=["bird"]`, rule `is_a(?x,bird) => fly(?x)` becomes
+     condition-less and derives nothing. Likely a bug, independent of over-declaration.
+   - *(b) over-derivation (unsound):* when the sort is over-declared and the domain
+     premise coexists with another binder, dropping it removes a real restriction and
+     the rule fires for non-D individuals. Verified: `domain=["bird"]`, rule
+     `is_a(?x,bird) AND has_wings(?x) => fly(?x)`, facts `is_a(rex,dog)`,
+     `has_wings(rex)` derives `fly(rex)`.
+   Open: whether to keep the premise when the sort is over-declared and never drop the
+   sole binder, plus an auditable `over_declared_domain:` gap; reproduce on live
+   extraction first (project rule: no speculative machinery).
 
 ## 8. Backlog (from the eval harness)
 
@@ -257,9 +273,18 @@ Source: `docs/quality_findings.md`. Ordered by priority.
 2. ~~**Rule provenance in explanations.**~~ **DONE.** `materialize_rule_morphisms`
    and `heal_contradictory_axioms` are gone: rule consequences are not axioms, and a
    real contradiction reaches the engine.
-3. **Presupposition capture.** Get "given that / assuming" clauses into question
-   conditions reliably (stricter question prompt + broader examples, or a dedicated
-   question pass).
+3. ~~**Presupposition capture.**~~ **CLOSED (not reproduced / by design).**
+   Explicit markers ("given that / assuming / suppose", RU "при условии что") are
+   captured in live probes 7/7, and a no-marker control is not over-captured. The
+   explicit `QuestionStructure.presuppositions` decomposition is implemented (routed
+   to `Query.conditions`, never the theory), and explanation steps grounded on Gamma
+   are tagged `source="presupposition"` (`docs/statement_sources.md`). A comma-joined
+   declarative is read by Phase 0.2 as a descriptive fact, so its answer is honestly
+   `supported`; forcing it into Gamma would demote given information to a
+   hypothetical, so it is left as is. Remaining variation is model-side (C1); a
+   cue-phrase detector is forbidden by `docs/task.md` §3.8, and raising
+   `ANKYRA_EXTRACT_SAMPLES` is measured to give nothing (C1). Live presupposition
+   cases are hard-asserted in `tests/test_evals_live.py`.
 4. **Variance mitigations.** `ANKYRA_EXTRACT_SAMPLES` best-of-N extraction,
    `ANKYRA_EXTRACT_REPAIRS` bounded repair, and `enforce_grounded` are done. The
    provider is measured nondeterministic even at `T=0` (and `ANKYRA_SEED` is
@@ -275,13 +300,30 @@ Source: `docs/quality_findings.md`. Ordered by priority.
    `engine/defeasible.py` (NFA + specificity via `is_a`), `Answer.defeasible`, and
    `Explanation.conflict` with the `is_a` reason for resolved defeats and both
    branches for undecided ones. See `docs/defeasible_reasoning.md`.
-6. **Builtins case.** A dedicated eval that actually exercises `gte`/`gt` thresholds.
-7. **LLM judge.** Implement `LLMJudgeEvaluator` (correctness + efficiency against a
-   per-problem rubric) on the existing `Evaluator` interface.
+6. ~~**Builtins case.**~~ **DONE.** Deterministic offline coverage through the full
+   builder (`tests/test_build_builtins.py`: `gte`/`gt`/`lte`/string `neq` over
+   structure → Theory/Query → verify → Answer, plus the below-threshold and
+   flag-off negatives); `check_naming` no longer flags numeric literals or variables
+   as object names; the live harness hard-asserts the expectation of the
+   `builtins: true` problem, not merely its invariants.
+7. ~~**LLM judge.**~~ **REJECTED (won't do).** The deterministic evaluators
+   (invariants + expectations) plus a ground-truth benchmark (ProofWriter, strict
+   45/45) already verify correctness, and soundness is symbolic — not a matter of
+   judgement. An LLM judge would (a) have an unclear target (narration quality is
+   cosmetic and mechanically derived; extraction quality is measurable
+   deterministically via quote coverage, gaps and wave count), (b) be a stochastic
+   judge of the same stochastic provider — noise on noise, no reproducibility, (c)
+   give the LLM a deciding role in evaluation, against the engine's design commitment,
+   and (d) cost calls for a rubric that cannot be trusted as a metric. Keep the
+   `Evaluator` interface as an extension point; revisit only if a concrete qualitative
+   question appears that deterministic metrics and ground truth cannot answer.
 8. **`ARCHITECTURE.md`** — written (layers, flows, module map).
-9. **Pluggable inference semantics (future).** See `docs/logic_layer.md`: extract a
-   narrow `Inference` protocol only when the second semantics (defeasible) lands; do
-   not abstract speculatively.
+9. **Pluggable inference semantics — DEFERRED.** See `docs/logic_layer.md`: a
+   placeholder, not a task. The second semantics (defeasible) already landed and is
+   integrated through the `DEFEASIBLE` flag in `engine/horn.py:derive_closure`, so no
+   seam is forced yet. Extract the narrow `Inference` protocol only when a genuinely
+   new logic (ASP/probabilistic/…) or a demonstrated need appears; do not abstract
+   speculatively.
 10. ~~**Direct answer field.**~~ **DONE.** `Answer.kind`
     (`yes|no|unknown|contradiction|binding|instruction`) is computed deterministically
     and `engine.answer.render_answer` localizes it; `evals.narrate` prints it and the
@@ -307,10 +349,10 @@ Source: `docs/quality_findings.md`. Ordered by priority.
     (`hypothetical_refutation:`) and answers `unknown`/`not_proven`, removing the
     8 hypothetical-refutation misses on ProofWriter abductive mode. See
     `docs/quality_findings.md` section F.
-14. ~~**Reproducibility plumbing.**~~ **PARTLY DONE.** `ANKYRA_SEED` merges a seed
-    into `ANKYRA_EXTRA_BODY`, and best-of-N extraction samples are issued
-    concurrently (`ANKYRA_EXTRACT_PARALLEL`, default true). Provider support for the
-    seed is unverified (it stays opt-in).
+14. ~~**Reproducibility plumbing.**~~ **DROPPED (won't do).** `ANKYRA_SEED` merges a
+    seed into `ANKYRA_EXTRA_BODY`, and best-of-N extraction samples are issued
+    concurrently (`ANKYRA_EXTRACT_PARALLEL`, default true). Provider-side seed
+    support is not pursued in this project.
 15. ~~**Question-begging guard.**~~ **DONE.** A non-cited fact hypothesis whose atom
     unifies the *closed* target is `rejected/question_begging`; cited descriptive
     facts and open-target bindings are exempt, so Example B is safe. See
@@ -334,3 +376,9 @@ Source: `docs/quality_findings.md`. Ordered by priority.
     inside a rule's sentence cannot license an axiom (`quote_only_in_conditional`;
     `quote_conditional` rejection, repairable `conditional_quote:` gap). Removed two
     strict false proofs; strict is 45/45. See `quality_findings` B12.
+20. **Statement sources — origin vs logical role (design).** See
+    `docs/statement_sources.md`. Origin (`cited` / `presupposition` / `hypothesis` /
+    `external`) is audit-only and must never feed the closure; the logical role stays
+    explicit. First concrete step: attribute explanation steps grounded on Gamma as
+    `presupposition`, widening `ExplanationStep.source` so `external` is additive
+    later. Beyond that first step, deferred — no source framework (cf. item 9).

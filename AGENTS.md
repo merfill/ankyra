@@ -15,6 +15,19 @@ names the universe sort(s) every individual belongs to; a rule premise that only
 restricts a variable to a domain sort is the quantifier's domain, not a premise,
 and is dropped.
 
+## Design boundary: no NL parsers
+
+Deterministic code must never interpret natural language. Normalizing identifiers
+and closed enum fields the LLM has **already extracted** (`predicate`/`object` ids,
+`modality`, `relation_kind`, `predication`, slot keys) is allowed — it acts on
+structured output, not on the source. Heuristics over the raw `source_text`/`question`
+that key on words, morphology, cue phrases ("given that …"), or a hand-written term
+list are forbidden: they do not generalize across domains, and the semantics live in
+the extraction prompt. The only raw-text operations allowed are structural witness
+checks — verbatim quote substring/span, coverage, and length. Under this rule
+`build/normalize.py`, `core/models.py:normalize_modality`, and the `core/schemas.py`
+field coercion are acceptable; a cue-phrase detector would not be.
+
 ## Commands
 
 - Package manager — **uv**, not `pip`. Requires Python ≥ 3.11.
@@ -41,6 +54,8 @@ language, default `en`).
 - `docs/implementation_plan.md` — roadmap and backlog.
 - `docs/quality_findings.md` — eval-harness findings.
 - `docs/defeasible_reasoning.md` — non-monotonic exceptions design note.
+- `docs/logic_layer.md` — pluggable inference semantics (future) note.
+- `docs/statement_sources.md` — origin vs logical role for assertions design note.
 - English is canonical; Russian mirrors are `<name>_ru.md`.
 - Glossary (Russian): `provenance` → «история вывода» (graph/edge → «граф/ребро
   вывода»); `justification` → «обоснование». Keep code identifiers in English.

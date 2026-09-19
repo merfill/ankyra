@@ -110,9 +110,11 @@ PROBLEM_HUMAN = """Problem:
 
 Produce the ProblemStructure JSON."""
 
-QUESTION_SYSTEM = """You turn a question into a STRUCTURAL decomposition on top of a theory.
-A deterministic expander turns your structure into conditions and a target. Return
-valid JSON matching the QuestionStructure schema: facts, rules, ask, variables.
+QUESTION_SYSTEM = """You DECOMPOSE a question into the conditions it asserts as given
+(Gamma) and the single conclusion it asks (the target), on top of a theory. A
+deterministic expander turns your structure into conditions and a target. Return
+valid JSON matching the QuestionStructure schema: presuppositions, rules, ask,
+variables.
 
 ATOM GRAMMAR — same shape as the theory: {"predicate": "...", "subject": <slot>,
 "object": <slot>, "relation_kind": "ascription|possession|action",
@@ -125,20 +127,27 @@ omit "object"; the builder makes is_a(subject, property). Use "possession" for "
 and "action" otherwise.
 
 The theory below (Objects, Predicates, Morphisms, Rules) is the vocabulary for the
-FACTS and RULES of the question: reuse its predicates and object ids exactly when the
-question refers to a theory relation, without renaming. A named individual the theory
+PRESUPPOSITIONS and RULES of the question: reuse its predicates and object ids exactly
+when the question refers to a theory relation, without renaming. A named individual the theory
 does not mention may still appear as a CONSTANT object id — do not drop such a
 condition; the engine reports non-theory conditions honestly. The ASK is exempt
 entirely: it states the question's own conclusion in the question's own short wording
 and may use predicates/ids the theory does not have. Concrete named things stay
 CONSTANTS; a variable is used only for a genuine unknown the answer must supply.
 
-How to structure the question:
-1. facts = ONLY the relations the question itself ASSERTS as given. This INCLUDES
-   presuppositions: clauses like "given that X is Y", "assuming ...", "suppose ..." are
-   conditions of the question and MUST be kept as facts, never dropped. Do NOT copy the
-   theory's own facts into the question. AND-enumerations go into one fact's
-   {"set": [...]}; OR-alternatives into {"variants": [...]}.
+How to decompose the question:
+1. presuppositions = Gamma: ONLY the relations the QUESTION itself ASSERTS as given.
+   This INCLUDES:
+   - explicit clauses: "given that X is Y", "assuming ...", "suppose ...",
+     "provided that ..." (and their Russian equivalents "при условии что",
+     "предположим", "допустим");
+   - a declarative clause joined to the interrogative by a comma or semicolon when the
+     question builds on it: "Socrates is a philosopher, is Socrates mortal?" has
+     presupposition is_a(socrates, philosopher) and ask is_a(socrates, mortal);
+     "Rex is a puppy, does Rex bark?" has presupposition is_a(rex, puppy).
+   Every such clause MUST be listed; never drop it. Do NOT copy the theory's own facts
+   into the question. AND-enumerations go into one atom's {"set": [...]};
+   OR-alternatives into {"variants": [...]}.
 2. ask = the single conclusion being asked, and almost every question has one.
    - A value/class/actor/quantity/list question (what / which / who / how many / what
      type) is OPEN: put a variable in the unknown slot and record it in "variables"
@@ -154,14 +163,15 @@ How to structure the question:
    Concrete named things are constants, not variables.
 4. rules: only a real condition inside the question ("if / when"). Never copy a theory
    rule into the question.
-5. Every fact, rule and ask carries ONE minimal verbatim quote.
+5. Every presupposition, rule and ask carries ONE minimal verbatim quote.
 
 EXAMPLE (shape only):
-"Given that Socrates is a philosopher, is Socrates mortal?"
-  facts = [{"predicate":"is_a","subject":"socrates","object":"philosopher","quote":"Socrates is a philosopher"}]
+"Socrates is a philosopher, is Socrates mortal?"
+  presuppositions = [{"predicate":"is_a","subject":"socrates","object":"philosopher","quote":"Socrates is a philosopher"}]
   ask = {"predicate":"is_a","subject":"socrates","object":"mortal","quote":"is Socrates mortal"}
   variables = {}
-The "given that" clause is a question condition and MUST appear in facts.
+The declarative clause is a question condition and MUST appear in presuppositions; the
+ask keeps only the interrogative part.
 Return ONLY valid JSON, no markdown fences."""
 
 BUILTINS_BLOCK = """
@@ -190,9 +200,10 @@ Problems to fix:
 
 QUESTION_REPAIR_BLOCK = """The previous decomposition below was rejected by a
 deterministic checker. Fix ONLY the listed problems and return the FULL corrected
-structure. Keep presuppositions ("given that ...", "assuming ...") as question
-facts. Every atom MUST carry one verbatim quote from the source; if an atom cannot
-be grounded, delete it. Do not invent conditions the question does not assert.
+structure. Keep presuppositions ("given that ...", "assuming ...", and a declarative
+clause joined to the interrogative by a comma) in "presuppositions". Every atom MUST
+carry one verbatim quote from the source; if an atom cannot be grounded, delete it. Do
+not invent conditions the question does not assert.
 
 Previous decomposition:
 {previous}

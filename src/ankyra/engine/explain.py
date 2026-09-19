@@ -46,7 +46,8 @@ def _classify_fact(
     axiom_quotes: dict[FactKey, str | None],
 ) -> tuple[ExplanationKind, str | None, str | None, str | None, int | None]:
     if fact.key in ledger.fact_keys:
-        return "hypothesis", None, None, ledger.fact_keys[fact.key], fact.rule_index
+        hypothesis_id = ledger.fact_keys[fact.key]
+        return "hypothesis", f"hypothesis:{hypothesis_id}", None, hypothesis_id, fact.rule_index
     quote = axiom_quotes.get(fact.key)
     if fact.axiom:
         return "axiom", "quote" if quote else None, quote, None, None
@@ -55,7 +56,10 @@ def _classify_fact(
         return "rule", rule.source, rule.quote, rule.source_hypothesis_id, fact.rule_index
     if fact.witness.startswith("is_a:"):
         return "is_a", None, None, None, None
-    return "assumption", None, None, None, None
+    # A non-axiom, non-derived, non-hypothesis fact is a question condition (Gamma);
+    # its origin is the question itself, tagged for audit only (see
+    # docs/statement_sources.md). The logical role stays "assumption".
+    return "assumption", "presupposition", None, None, None
 
 
 def _trace(

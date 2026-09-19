@@ -86,6 +86,23 @@ def test_disabled_builtins_do_not_fire():
     assert store.get(("is_a", "x", "car", False, "neutral")) is None
 
 
+def test_a_builtin_with_an_unbound_operand_never_fires(enabled):
+    theory = Theory(
+        morphisms=[Morphism(predicate="power", subject="x", object="150")],
+        rules=[
+            Rule(
+                conditions=[
+                    Morphism(predicate="gte", subject="?p", object="50"),
+                    Morphism(predicate="power", subject="?x", object="?p"),
+                ],
+                consequence=Morphism(predicate="is_a", subject="?x", object="car"),
+            )
+        ],
+    )
+    store = saturate(theory)
+    assert store.get(("is_a", "x", "car", False, "neutral")) is None
+
+
 def test_builtin_unsafe_detects_an_unbound_operand(enabled):
     rule = Rule(
         conditions=[

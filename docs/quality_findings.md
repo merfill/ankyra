@@ -44,7 +44,7 @@ The last run has no expectation misses (every soft metric passes) and
 - **A3. Ask polarity (FIXED).** "Can Tweety fly?" produced a negated ask copied
   from "cannot fly". Fix: the ask must be the question's conclusion in positive
   form (`R2`).
-- **A4. Presupposition premise (FIXED engine side; model residual OPEN).**
+- **A4. Presupposition premise (FIXED; residual not reproduced).**
   `settle_query` deleted every question premise no proof used, so `verify` could
   never report `insufficient` — "given that Socrates is a philosopher" *was*
   extracted, then silently dropped. Fix: unused premises are preserved and
@@ -52,6 +52,14 @@ The last run has no expectation misses (every soft metric passes) and
   no longer take the unused `theory`). The residual is model-side: a later live run
   extracted `facts=[]`, i.e. the model itself omitted the clause and `supported` is
   then legitimate. That residual is C1 (compliance/variance), not an engine bug.
+  Follow-up measurement (live): explicit markers ("given that / assuming / suppose",
+  RU "при условии что") are captured 7/7, and a no-marker control is not
+  over-captured, so the residual is not currently reproducible. A comma-joined
+  declarative ("Socrates is a philosopher, is Socrates mortal?") is read by Phase 0.2
+  as a descriptive fact, not a question condition, so the answer is honestly
+  `supported`; this is by design, not a miss. Item closed; the explicit
+  `QuestionStructure.presuppositions` decomposition and the `presupposition`
+  explanation source are implemented. See `docs/statement_sources.md`.
 - **A5. Code semantic guessing removed (FIXED).** `is`→`is_a`, `has`→`has_feature`,
   `isNot`→`is_a` deleted from the engine (`R5`); these are now prompt conventions.
 - **A6. Dropped conjunction (NOT REPRODUCED — closed).** A suspected extraction loss
@@ -147,7 +155,9 @@ The last run has no expectation misses (every soft metric passes) and
     one problem split 4:1 yet all scored `(0, -220, 10)`). Ties are now broken by a
     canonical structural fingerprint (`extract._rank_key`), so the pick no longer
     depends on thread/arrival order — the previous nondeterminism was partly
-    self-inflicted by concurrent sampling.
+    self-inflicted by concurrent sampling. **Consequence: raising
+    `ANKYRA_EXTRACT_SAMPLES` does not improve outcomes and is not pursued** — the
+    ranker cannot see the logical difference it would need to select on.
   - `ANKYRA_EXTRACT_PARALLEL` issues samples concurrently; each worker runs in a
     copied context, so the LLM trace records every sample again (it silently lost
     all `extract_problem`/`extract_question` calls before).
@@ -212,6 +222,14 @@ extractor. An over-declared sort drops a real condition, so it must stay auditab
 it is carried per rule on `Rule.forall` (and the legacy global `Theory.domain`) and
 shown in the trace. B10 makes it per-rule rather than global, so one over-declared
 sort no longer cuts conditions in unrelated rules.
+
+Two follow-up synthetic observations (**NEEDS INVESTIGATION**; not reproduced on
+ProofWriter): (a) *under-derivation* — `enrich.strip_domain_conditions` drops a
+global-domain premise even when it is the variable's only binder, leaving a
+condition-less rule that can never fire (the per-rule `unroll._normalize_domain`
+deliberately keeps the sole binder); (b) *over-derivation, unsound* — an over-declared
+sort whose premise coexists with another binder makes the rule fire for non-sort
+individuals. See `implementation_plan.md` milestone 8 for the verified examples.
 
 External reference (Tafjord et al., "ProofWriter", arXiv:2012.13048; fine-tuned
 T5-11B, templated IID D5-test, ~70k training examples — NOT apples-to-apples):

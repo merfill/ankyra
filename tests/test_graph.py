@@ -212,7 +212,7 @@ def _presupposition_structure():
 def _presupposition_question():
     return QuestionStructure.model_validate(
         {
-            "facts": [
+            "presuppositions": [
                 {
                     "predicate": "is_a",
                     "subject": "socrates",

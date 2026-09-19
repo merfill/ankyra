@@ -301,10 +301,10 @@ def test_problem_structure_source_text_is_carried():
     assert unroll_problem_structure(structure).source_text == "It is raining."
 
 
-def test_query_unroll_maps_facts_target_and_variables():
+def test_query_unroll_maps_presuppositions_target_and_variables():
     structure = QuestionStructure.model_validate(
         {
-            "facts": [{"predicate": "has_engine", "subject": "x"}],
+            "presuppositions": [{"predicate": "has_engine", "subject": "x"}],
             "ask": {"predicate": "is_a", "subject": "x", "object": "?c"},
             "variables": {"?c": "?c"},
         }
@@ -318,7 +318,7 @@ def test_query_unroll_maps_facts_target_and_variables():
 
 def test_query_without_ask_is_an_instruction():
     query = unroll_query_structure(
-        QuestionStructure.model_validate({"facts": [{"predicate": "a"}]})
+        QuestionStructure.model_validate({"presuppositions": [{"predicate": "a"}]})
     )
     assert query.target is None
     assert query.answer_type == "instruction"

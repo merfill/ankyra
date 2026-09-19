@@ -79,6 +79,34 @@ def test_explanation_of_a_hypothesis_rule_carries_its_id():
     _assert_topological(explanation)
 
 
+def test_a_question_condition_used_in_the_proof_is_source_presupposition():
+    theory = Theory(
+        rules=[
+            Rule(
+                conditions=[
+                    Morphism(predicate="is_a", subject="?x", object="philosopher")
+                ],
+                consequence=Morphism(predicate="is_a", subject="?x", object="mortal"),
+            )
+        ]
+    )
+    query = Query(
+        conditions=[Morphism(predicate="is_a", subject="socrates", object="philosopher")],
+        target=Morphism(predicate="is_a", subject="socrates", object="mortal"),
+    )
+    result = run_cycle(_never, theory, query)
+
+    assert result.verdict.status == "supported"
+    presupposition = next(
+        step
+        for step in result.explanation.steps
+        if step.statement == "is_a(socrates,philosopher)"
+    )
+    assert presupposition.kind == "assumption"
+    assert presupposition.source == "presupposition"
+    _assert_topological(result.explanation)
+
+
 def test_explanation_of_is_a_chain_uses_the_two_edges():
     theory = Theory(
         morphisms=[

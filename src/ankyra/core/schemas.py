@@ -272,7 +272,14 @@ class QuestionStructure(BaseModel):
     """
 
     source_text: str = Field(default="", description="Omit in LLM JSON (injected by caller).")
-    facts: list[StructAtom] = Field(default_factory=list, description="Conditions the question asserts.")
+    presuppositions: list[StructAtom] = Field(
+        default_factory=list,
+        description="Gamma: the relations the QUESTION itself asserts as given (never "
+        "theory facts). Includes explicit clauses ('given that ...', 'assuming ...', "
+        "'suppose ...', 'provided that ...') AND a declarative clause joined to the "
+        "interrogative by a comma or semicolon whose content the question builds on "
+        "('Socrates is a philosopher, is Socrates mortal?').",
+    )
     rules: list[StructRule] = Field(default_factory=list, description="Only real conditionals inside the question.")
     ask: StructAtom | None = Field(default=None, description="Single target, or null.")
     variables: dict[str, str] = Field(default_factory=dict, description="Theory slot name (no '?') -> literal.")

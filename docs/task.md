@@ -80,6 +80,15 @@ states `no_progress | budget`.
    non-cited fact hypothesis may not assert the closed target — so the goal can
    never be proved by citing or assuming the goal itself, nor by treating a
    conditional premise as an asserted fact.
+8. **Deterministic code never parses natural language.** Normalizing identifiers and
+   closed enum fields the LLM has *already extracted* — predicate/object ids,
+   `modality`, `relation_kind`, `predication`, slot keys — is allowed: it operates on
+   structured output, not on the source. Any heuristic over the raw `source_text` or
+   `question` that keys on words, morphology, cue phrases, or a hand-written term
+   list is forbidden (a "syntactic analyzer"): semantics belong to the extraction
+   prompt and the symbolic engine, and term-level rules do not generalize across
+   domains. The only legitimate operations on raw text are structural witness checks
+   — a quote's verbatim substring/span, coverage, and length.
 
 ## 4. Data Model
 
@@ -269,9 +278,9 @@ Existing: `ANKYRA_API_URL`, `ANKYRA_API_KEY`, `ANKYRA_MODEL`, `ANKYRA_TEMPERATUR
 `ANKYRA_REASONING_EFFORT`.
 
 New: `ANKYRA_MAX_WAVES`, `ANKYRA_ALLOW_HYPOTHESES` (default `true`),
-`ANKYRA_STRICT_VOCAB`, `ANKYRA_DEONTIC_PREFIXES`, `ANKYRA_EXTRACT_SAMPLES`
-(default `1`), `ANKYRA_EXTRACT_REPAIRS` (default `0`), `ANKYRA_BUILTINS`
-(default `false`), `ANKYRA_LIVE`.
+`ANKYRA_DEONTIC_PREFIXES`, `ANKYRA_EXTRACT_SAMPLES` (default `1`),
+`ANKYRA_EXTRACT_REPAIRS` (default `0`), `ANKYRA_BUILTINS` (default `false`),
+`ANKYRA_LIVE`.
 
 ## 11. Worked Examples (acceptance tests)
 

@@ -80,7 +80,9 @@ def test_problem_structure_coerces_domain():
 
 
 def test_question_structure_allows_null_ask():
-    structure = QuestionStructure.model_validate({"facts": [{"predicate": "rain"}]})
+    structure = QuestionStructure.model_validate(
+        {"presuppositions": [{"predicate": "rain"}]}
+    )
     assert structure.ask is None
 
     asked = QuestionStructure.model_validate({"ask": {"predicate": "is_wet", "subject": "?x"}})

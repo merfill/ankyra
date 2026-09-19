@@ -214,7 +214,7 @@ def unroll_query_structure(
 ) -> Query:
     """Facts -> conditions (Gamma), ask -> target (phi); variables carried over."""
     conditions: list[Morphism] = []
-    for atom in structure.facts:
+    for atom in structure.presuppositions:
         conditions.extend(atom_to_morphisms(atom, deontic_prefixes=deontic_prefixes))
     for struct_rule in structure.rules:
         for atom in struct_rule.antecedent:

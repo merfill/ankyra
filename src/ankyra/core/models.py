@@ -302,7 +302,11 @@ class ExplanationStep(BaseModel):
     premises: list[int] = Field(default_factory=list, description="Indices of premise steps.")
     rule_index: int | None = None
     rule: str | None = Field(default=None, description="Rendered rule 'IF ... => ... [kind]' for rule steps.")
-    source: str | None = Field(default=None, description="'quote' or 'hypothesis:<id>'.")
+    source: str | None = Field(
+        default=None,
+        description="Origin: 'quote' (cited from the text), 'hypothesis:<id>', or "
+        "'presupposition' (a question condition, Gamma).",
+    )
     quote: str | None = None
     hypothesis: str | None = None
 

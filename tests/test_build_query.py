@@ -135,7 +135,7 @@ def test_build_query_strips_domain_conditions():
     question = QuestionStructure.model_validate(
         {
             "source_text": "given that Fiona is a person, is Fiona young?",
-            "facts": [
+            "presuppositions": [
                 {"predicate": "is_a", "subject": "fiona", "object": "person"},
                 {"predicate": "nice", "subject": "fiona"},
             ],

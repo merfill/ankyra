@@ -235,7 +235,7 @@ the end-to-end entry point; `engine/cycle.run_cycle` is the reasoning-only API.
 Dynaconf, env prefix `ANKYRA`, from `.env`. Provider: `API_URL`, `API_KEY`, `MODEL`,
 `TEMPERATURE`, `MAX_TOKENS`, `MAX_TOKENS_EXTRACT`, `EXTRA_BODY`,
 `REASONING_EFFORT`. Engine: `MAX_WAVES`, `ALLOW_HYPOTHESES`, `BUILTINS`,
-`DEFEASIBLE`, `LANG`, `DEONTIC_PREFIXES`, `STRICT_VOCAB`, `EXTRACT_SAMPLES`,
+`DEFEASIBLE`, `LANG`, `DEONTIC_PREFIXES`, `EXTRACT_SAMPLES`,
 `EXTRACT_REPAIRS`. Tests: `LIVE`.
 
 ## 9. LLM layer (`llm/`)

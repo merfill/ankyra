@@ -6,12 +6,13 @@ import re
 from dataclasses import dataclass, field
 from enum import Enum
 
-from ankyra.build.normalize import FORBIDDEN_PRED_TOKENS
+from ankyra.build.normalize import FORBIDDEN_PRED_TOKENS, is_var
 from ankyra.core.models import Theory
 
 _NORM = re.compile(r"\s+")
 _CAMEL_OBJ = re.compile(r"^[a-z][a-zA-Z0-9]*$")
 _SNAKE_PRED = re.compile(r"^[a-z][a-z0-9]*(_[a-z0-9]+)*$")
+_NUMERIC_TERM = re.compile(r"^[+-]?\d+(\.\d+)?$")
 
 
 class GapClass(str, Enum):
@@ -171,6 +172,8 @@ def check_naming(theory: Theory) -> list[str]:
     for obj in theory.objects:
         name = (obj.id or "").strip()
         if not name:
+            continue
+        if is_var(name) or _NUMERIC_TERM.match(name):
             continue
         if not _CAMEL_OBJ.match(name):
             gaps.append(f"naming:object:{name}:rewrite_to_lowerCamelCase")
