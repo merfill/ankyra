@@ -37,6 +37,7 @@ class _FakeResult:
         self.explanation = None
         self.history: list = []
         self.hypotheses: list = []
+        self.revisions: list = []
 
 
 def _reset_flags(previous: dict) -> None:

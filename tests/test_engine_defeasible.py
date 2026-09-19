@@ -116,6 +116,23 @@ def test_specificity_resolution_marks_the_answer_defeasible(defeasible_on):
     assert conflict.reason == "penguin is-a bird"
 
 
+def test_resolved_conflict_names_the_hypotheses_behind_specificity(defeasible_on):
+    theory = _penguin_theory(penguins_fly=False)
+    ledger = HypothesisLedger()
+    ledger.add_fact(
+        "Hh",
+        Morphism(predicate="is_a", subject="penguin", object="bird"),
+        key=("is_a", "penguin", "bird", False, "neutral"),
+        rationale="class hierarchy",
+        wave=0,
+    )
+    query = Query(target=Morphism(predicate="fly", subject="tweety"))
+    verdict = verify(theory, query)
+    conflict = build_explanation(theory, query, verdict, ledger).conflict
+    assert conflict is not None
+    assert conflict.source_ids == ["Hh"]
+
+
 def test_undecided_conflict_is_reported_with_both_branches(defeasible_on):
     theory = _diamond_theory()
     query = Query(target=Morphism(predicate="pacifist", subject="nixon"))

@@ -11,9 +11,17 @@ from dataclasses import dataclass
 from typing import Callable
 
 from ankyra.build.pipeline import build_query, build_theory
-from ankyra.core.models import Answer, Explanation, Query, Theory, WaveRecord
+from ankyra.core.models import (
+    Answer,
+    Explanation,
+    Query,
+    Revision,
+    RevisionTrigger,
+    Theory,
+    WaveRecord,
+)
 from ankyra.core.schemas import ProblemStructure, QuestionStructure
-from ankyra.engine.answer import build_answer
+from ankyra.engine.answer import build_answer, refutation_is_hypothetical
 from ankyra.engine.classify import classify
 from ankyra.engine.explain import build_explanation
 from ankyra.engine.horn import frontier
@@ -60,6 +68,36 @@ def build_query_node(state: ReasoningState, deps: GraphDeps) -> dict:
     return {"query": build_query(state["question"], domain=theory.domain if theory else None)}
 
 
+_REVISION_TRIGGERS: dict[str, RevisionTrigger] = {
+    "cited": "new_cited_fact",
+    "hypothesis": "new_hypothesis",
+}
+
+
+def _revision(
+    previous: Answer | None, current: Answer, pending: PendingWave | None
+) -> Revision | None:
+    """An answer change caused by the wave that just completed, if any.
+
+    ``None`` when there is no prior answer or it is unchanged; the trigger names
+    the accepted proposal that caused the change. Wave 0 has no prior answer, so
+    the first answer (even when terminal) is not itself a revision.
+    """
+    if previous is None or previous == current:
+        return None
+    trigger: RevisionTrigger = _REVISION_TRIGGERS.get(
+        pending.category if pending is not None else "", "answer_change"
+    )
+    source_ids = [pending.hypothesis.id] if pending is not None and pending.hypothesis else []
+    return Revision(
+        wave=pending.wave if pending is not None else 0,
+        trigger=trigger,
+        previous=previous,
+        current=current,
+        source_ids=source_ids,
+    )
+
+
 def verify_node(state: ReasoningState, deps: GraphDeps) -> dict:
     """Verify, append the previous wave's record, and commit the routing status."""
     theory = state["theory"]
@@ -103,7 +141,31 @@ def verify_node(state: ReasoningState, deps: GraphDeps) -> dict:
         status = "budget"
     else:
         status = "running"
+
+    if status == "refuted" and query.target is not None and refutation_is_hypothetical(
+        theory, query, state["ledger"]
+    ):
+        # A hypothesis cannot refute a target: assuming the counter-fact only makes
+        # the answer hold under that assumption, so report the honest unknown.
+        verdict = verdict.model_copy(
+            update={
+                "status": "unsupported",
+                "shelf": "attested",
+                "gaps": [
+                    *(g for g in verdict.gaps if not g.startswith("target_refuted:")),
+                    f"hypothetical_refutation:{query.target.predicate}",
+                ],
+            }
+        )
+        status = "unsupported"
+        update["verdict"] = verdict
     update["status"] = status
+
+    current_answer = build_answer(theory, query, verdict, state["ledger"], status)
+    update["last_answer"] = current_answer
+    revision = _revision(state.get("last_answer"), current_answer, pending)
+    if revision is not None:
+        update["revisions"] = [revision]
     return update
 
 
@@ -132,6 +194,7 @@ def propose_node(state: ReasoningState, deps: GraphDeps) -> dict:
 def classify_node(state: ReasoningState, deps: GraphDeps) -> dict:
     draft = state["draft"]
     ledger = state["ledger"]
+    structure = state.get("structure")
     result = classify(
         draft,
         state["theory"],
@@ -140,6 +203,7 @@ def classify_node(state: ReasoningState, deps: GraphDeps) -> dict:
         source_text=state["theory"].source_text,
         allow_hypotheses=state["allow_hypotheses"],
         wave=state["wave"],
+        question_text=structure.question if structure is not None else "",
     )
     pending = PendingWave(
         proposal=to_proposal(draft),
@@ -167,9 +231,13 @@ def explain_node(state: ReasoningState, deps: GraphDeps) -> dict:
             "answer": Answer(value=None, strength="not_proven"),
             "explanation": Explanation(),
         }
+    explanation = build_explanation(theory, query, verdict, ledger)
+    revisions = list(state.get("revisions") or [])
+    if revisions:
+        explanation = explanation.model_copy(update={"revisions": revisions})
     return {
         "answer": build_answer(theory, query, verdict, ledger, state["status"]),
-        "explanation": build_explanation(theory, query, verdict, ledger),
+        "explanation": explanation,
     }
 
 

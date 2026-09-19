@@ -38,6 +38,8 @@ def classify_gap(gap: str) -> GapClass:
         return GapClass.LEGITIMATE
     if gap.startswith("missing_quote:"):
         return GapClass.REPAIRABLE
+    if gap.startswith("conditional_quote:"):
+        return GapClass.REPAIRABLE
     if gap in {"structural:empty_theory", "structural:morphism:missing_predicate"}:
         return GapClass.REPAIRABLE
     if gap.startswith("naming:"):
@@ -67,11 +69,57 @@ def _morphism_key(morphism) -> tuple:
     return (morphism.predicate, morphism.subject, morphism.object, morphism.negated, morphism.modality)
 
 
+def _quote_occurrences(needle: str, haystack: str) -> list[tuple[int, int]]:
+    spans: list[tuple[int, int]] = []
+    start = haystack.find(needle)
+    while start != -1:
+        spans.append((start, start + len(needle)))
+        start = haystack.find(needle, start + 1)
+    return spans
+
+
+def _conditional_spans(theory: Theory) -> list[tuple[int, int]]:
+    """Source spans of each rule's conditional sentence."""
+    source = normalize_quote(theory.source_text)
+    spans: list[tuple[int, int]] = []
+    for rule in theory.rules:
+        normalized = normalize_quote(rule.quote)
+        if normalized:
+            spans.extend(_quote_occurrences(normalized, source))
+    return spans
+
+
+def quote_only_in_conditional(quote: str | None, theory: Theory) -> bool:
+    """True when every occurrence of ``quote`` lies inside a rule's span.
+
+    A conditional premise ("If Harry is red then ...") cannot assert the same
+    phrase as a fact; asserting it is a fabricated axiom. If the phrase also occurs
+    standalone in the source, at least one occurrence is outside the rule spans and
+    the quote stays usable.
+    """
+    normalized = normalize_quote(quote)
+    if not normalized:
+        return False
+    source = normalize_quote(theory.source_text)
+    if not source:
+        return False
+    spans = _conditional_spans(theory)
+    occurrences = _quote_occurrences(normalized, source)
+    if not occurrences:
+        return False
+    return all(
+        any(a <= start and start + len(normalized) <= b for a, b in spans)
+        for start, _ in occurrences
+    )
+
+
 def check_quote_witnesses(theory: Theory) -> list[str]:
     gaps: list[str] = []
     for m in theory.morphisms:
         if not quote_in_source(m.quote, theory.source_text):
             gaps.append(f"missing_quote:morphism:{m.predicate}({m.subject},{m.object})")
+        elif quote_only_in_conditional(m.quote, theory):
+            gaps.append(f"conditional_quote:morphism:{m.predicate}({m.subject},{m.object})")
     for i, rule in enumerate(theory.rules, 1):
         if not quote_in_source(rule.quote, theory.source_text):
             gaps.append(f"missing_quote:rule:{i}")

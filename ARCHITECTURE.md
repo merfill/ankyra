@@ -59,10 +59,9 @@ All models are Pydantic (`core/models.py`).
 - `Rule` — a Horn clause: `conditions` (AND) → `consequence`, `kind`
   (`implication|exception`), `strength` (always `defeasible`: every rule is a
   default, only asserted facts/axioms are strict), `source` (`quote` or
-  `hypothesis:<id>`), `quote`.
+  `hypothesis:<id>`), `forall` (audit only: quantifier var → universe sort), `quote`.
 - `Theory` — `objects`, `morphisms` (asserted axioms), `rules`, `source_text`,
-  `domain` (universe sorts; rule premises restricted to a domain sort are vacuous
-  and dropped by the builder).
+  `domain` (legacy global universe sorts; per-rule `forall` is the structural form).
 - `Query` — `conditions` (Gamma), `target` (phi, may contain `?x`), `variables`,
   `answer_type` (`yes_no|open|instruction`).
 - `Fact` (engine-internal) — a ground atom plus provenance: `used` (transitive
@@ -81,15 +80,19 @@ All models are Pydantic (`core/models.py`).
 
 Phase 0 structures (`core/schemas.py`) are what the LLM actually authors: `Slot`,
 `StructAtom`, `StructRule`, `StructObject`, `ProblemStructure`, `QuestionStructure`.
-A `StructAtom` carries a `predication` (`copula|verb`): a one-place copula ("Gary is
-cold") is emitted with the complement in `predicate` and becomes `is_a(subject,
-predicate)`, while a `verb` one-place atom ("X has an engine") stays a unary
-predicate — this keeps properties out of the `is_a` type hierarchy. A
-`ProblemStructure` declares a `domain` (the universe sort(s) every individual
-belongs to); rule premises that restrict a variable to a domain sort are the
-quantifier's domain, not premises, and are dropped deterministically. A
-deterministic builder turns the structures into finished triples; the model never
-writes combinatorial morphisms. `llm_json_schema(model)` is used for prompts.
+A `StructAtom` carries a `relation_kind` (`ascription|possession|action`): an
+ascription ("Gary is cold", "cold people") is emitted with the property in
+`predicate` and becomes `is_a(subject, property)` in every position, so facts and
+rule atoms unify; a possession ("X has an engine") stays a binary predicate and is
+never `is_a`; an action is any other verb/relation. The legacy `predication`
+(`copula|verb`) is accepted and a copula implies ascription. A quantified
+rule carries `forall` (variable → universe sort) as a structural field: the builder
+treats a matching `is_a(?x, sort)` premise as the quantifier's domain, not a
+premise, and drops it — unless it is the variable's only binder, which would leave
+the rule unsafe. The legacy global `ProblemStructure.domain` is the same idea
+without per-rule precision. A deterministic builder turns the structures into
+finished triples; the model never writes combinatorial morphisms.
+`llm_json_schema(model)` is used for prompts.
 
 ## 3. Phase 0 — decomposition (`build/`)
 
@@ -170,23 +173,34 @@ The inner loop is deterministic; only the proposal is an LLM call. One action pe
 wave (invariant G1).
 
 - `state.py` — `WaveContext` (what the proposer sees), `PendingWave`, and the
-  `ReasoningState` TypedDict. `history` and `hypotheses` are append-only
-  (`operator.add` reducers); `merge_state` gives the same semantics to the linear
-  driver.
+  `ReasoningState` TypedDict. `history`, `hypotheses` and `revisions` are
+  append-only (`operator.add` reducers); `merge_state` gives the same semantics to
+  the linear driver. `last_answer` carries the previous wave's answer snapshot so
+  `verify_node` can detect an answer change.
 - `proposal.py` — `ProposalDraft` schema, `build_hint` (problem + theory + verdict
   + gaps + frontier), `propose` (one structured call), `signature`/`to_proposal`.
 - `classify.py` — `classify(draft, theory, query, ledger, ...)`: schema/safety
   checks, then `derivable | cited | hypothesis | rejected` (range restriction,
   `unsafe_builtin`, `hypotheses_forbidden`, `target_weakened`). Application is
   monotonic: axioms and rules are appended, hypotheses go to the ledger with a
-  `hypothesis:<id>` source.
+  `hypothesis:<id>` source. A quote drawn from the interrogative span
+  (`_quote_in_question`) never counts as `cited`, so the goal cannot be asserted by
+  citing the question; a quote that occurs only inside a conditional cannot assert a
+  fact (`quote_only_in_conditional`); and a non-cited fact hypothesis whose atom
+  unifies the closed target is `rejected/question_begging`
+  (`_asserts_closed_target`) — assuming the goal proves nothing. Cited descriptive
+  facts and open-target bindings stay allowed.
 - `ledger.py` — `HypothesisLedger`; `used(store, proof_keys)` returns only the
   hypotheses that actually occur in the proof.
 - `answer.py` — `build_answer`: `supported` → "yes"/binding, hypotheses → strength
   `proven_under`, `target_refuted` → "no", otherwise `not_proven`.
 - `nodes.py` — `GraphDeps` (injected stages) and the pipeline nodes plus pure
-  routers. `engine/cycle.py` drives the same nodes linearly (`run_cycle`,
-  `CycleResult`), so there is one implementation of every step.
+  routers. `verify_node` snapshots the answer each wave and emits a `Revision`
+  (trigger + accepted hypothesis ids) when it changes; it also downgrades a
+  hypothesis-backed refutation to `unsupported` (`hypothetical_refutation:`), since
+  assuming `P` cannot refute `¬P`. `explain_node` attaches the revisions to
+  `Explanation.revisions`. `engine/cycle.py` drives the same nodes linearly
+  (`run_cycle`, `CycleResult`), so there is one implementation of every step.
 
 Stop conditions: `supported`, `refuted`, `no_progress` (two consecutive waves with
 no theory/query growth), `budget` (`ANKYRA_MAX_WAVES`), `unsupported` (hypotheses
@@ -247,7 +261,8 @@ Dynaconf, env prefix `ANKYRA`, from `.env`. Provider: `API_URL`, `API_KEY`, `MOD
 
 ## 11. Invariants and open items
 
-Invariants: no LLM-owned facts; monotonic theory; freedom in proposal, determinism
+Invariants: no LLM-owned facts; monotonic base (the theory only grows — the answer
+may change and is then recorded as a `Revision`); freedom in proposal, determinism
 in classification; theory and question are separate artifacts; every explanation
 step maps to a real edge or a hypothesis; answer strength is explicit.
 

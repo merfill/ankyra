@@ -13,7 +13,7 @@ disjunction, so each alternative stays individually matchable.
 
 from __future__ import annotations
 
-from ankyra.build.normalize import canonicalize_predicate
+from ankyra.build.normalize import canonicalize_predicate, is_var
 from ankyra.build.query import derive_answer_type
 from ankyra.core.models import Morphism, Object, Query, Rule, Theory
 from ankyra.core.schemas import ProblemStructure, QuestionStructure, Slot, StructAtom
@@ -57,8 +57,9 @@ def _slot_ids(slot: Slot) -> list[str | None]:
 def atom_to_morphisms(atom: StructAtom, *, deontic_prefixes: bool = False) -> list[Morphism]:
     """A structural atom -> one morphism per (subject, object) terminal pair.
 
-    A one-place copula ("Gary is cold") is class membership, so it becomes
-    ``is_a(subject, complement)``; every other atom keeps its predicate form.
+    An ascription ("Gary is cold", "cold people") is class/property membership, so it
+    becomes ``is_a(subject, property)`` regardless of the surface construction; every
+    other atom (possession, action) keeps its predicate form.
     """
     predicate = _predicate(atom, deontic_prefixes=deontic_prefixes)
     return [
@@ -71,7 +72,7 @@ def atom_to_morphisms(atom: StructAtom, *, deontic_prefixes: bool = False) -> li
 def _atom_morphism(
     predicate: str, subject: str | None, obj: str | None, atom: StructAtom
 ) -> Morphism:
-    if atom.predication == "copula" and subject and obj is None and predicate != "is_a":
+    if atom.relation_kind == "ascription" and subject and obj is None and predicate != "is_a":
         return Morphism(
             predicate="is_a",
             subject=subject,
@@ -112,6 +113,56 @@ def _ordered_objects(structure: ProblemStructure) -> list[Object]:
     return [Object(id=oid) for oid in ordered]
 
 
+def _domain_var(atom: StructAtom, sorts: dict[str, str]) -> str | None:
+    """The variable of a quantifier declaration ``is_a(?x, sort)`` whose sort matches."""
+    if atom.predicate != "is_a" or atom.negated or atom.modality != "neutral":
+        return None
+    var = atom.subject.id
+    sort = atom.object.id
+    if not var or not sort or var not in sorts:
+        return None
+    return var if sorts[var].casefold() == sort.casefold() else None
+
+
+def _atom_vars(atom: StructAtom) -> set[str]:
+    return {term for term in (atom.subject.id, atom.object.id) if term and is_var(term)}
+
+
+def _normalize_domain(
+    antecedent: list[StructAtom], sorts: dict[str, str]
+) -> list[StructAtom]:
+    """Reconcile the rule body with its ``forall`` quantifier domain.
+
+    The domain premise ``is_a(?x, sort)`` is not knowledge: when another positive
+    premise already binds ``?x`` it is dropped. When it is the only binder (e.g.
+    "All people need sleep"), it is kept — or synthesized from ``forall`` when the
+    extractor omitted it — because a free variable would make the rule unsafe.
+    """
+    if not sorts:
+        return antecedent
+    bound: set[str] = set()
+    domain_atoms: dict[str, StructAtom] = {}
+    others: list[StructAtom] = []
+    for atom in antecedent:
+        var = _domain_var(atom, sorts)
+        if var is not None:
+            domain_atoms.setdefault(var, atom)
+        else:
+            others.append(atom)
+            bound |= _atom_vars(atom)
+    kept = list(others)
+    for var, sort in sorts.items():
+        if var in bound:
+            continue
+        atom = domain_atoms.get(var)
+        if atom is None:
+            atom = StructAtom.model_validate(
+                {"predicate": "is_a", "subject": var, "object": sort}
+            )
+        kept.append(atom)
+    return kept
+
+
 def unroll_problem_structure(
     structure: ProblemStructure,
     *,
@@ -124,8 +175,11 @@ def unroll_problem_structure(
 
     rules: list[Rule] = []
     for struct_rule in structure.rules:
+        sorts = {
+            f"?{name.lstrip('?')}": sort for name, sort in (struct_rule.forall or {}).items()
+        }
         conditions: list[Morphism] = []
-        for atom in struct_rule.antecedent:
+        for atom in _normalize_domain(struct_rule.antecedent, sorts):
             conditions.extend(atom_to_morphisms(atom, deontic_prefixes=deontic_prefixes))
         consequents = atom_to_morphisms(struct_rule.consequent, deontic_prefixes=deontic_prefixes)
         if not consequents:
@@ -138,6 +192,7 @@ def unroll_problem_structure(
                 conditions=conditions,
                 consequence=consequence,
                 kind=struct_rule.kind,
+                forall=sorts,
                 source="quote",
                 quote=struct_rule.quote or None,
             )

@@ -79,8 +79,10 @@ facts. Answer strength is explicit: `proven`, `proven_under(H)`, or `not_proven`
 - **D2.** No LLM-authored fact enters the theory without either a valid quote
   (`cited`) or an explicit hypothesis tag (`hypothesis`). The old ReAct
   `new_predicates` injection is rejected outright.
-- **D3.** Monotonicity: the base only grows; the target is never weakened; no
-  deletion of premises. (Kept for now; can be relaxed later by policy.)
+- **D3.** Monotonicity of the *base*: it only grows; the target is never weakened;
+  no deletion of premises. The answer itself may change under defeasible semantics;
+  such changes are recorded as `Revision` events (item 12), never by mutating the
+  base. (Kept for now; can be relaxed later by policy.)
 - **D4.** Answer strength is always reported (`proven` vs `proven_under(H)`).
 - **D5.** Phase 0 separates theory from question.
 - **D6.** Freedom in proposal, determinism in classification.
@@ -258,10 +260,15 @@ Source: `docs/quality_findings.md`. Ordered by priority.
 3. **Presupposition capture.** Get "given that / assuming" clauses into question
    conditions reliably (stricter question prompt + broader examples, or a dedicated
    question pass).
-4. **Variance mitigations.** `ANKYRA_EXTRACT_SAMPLES` best-of-N extraction with a
-   deterministic pick (`symbolic.quality_key`: grounding gaps → source coverage →
-   compactness) and `ANKYRA_EXTRACT_REPAIRS` bounded repair over repairable gaps.
-   Done. Prompt stability and a provider seed remain.
+4. **Variance mitigations.** `ANKYRA_EXTRACT_SAMPLES` best-of-N extraction,
+   `ANKYRA_EXTRACT_REPAIRS` bounded repair, and `enforce_grounded` are done. The
+   provider is measured nondeterministic even at `T=0` (and `ANKYRA_SEED` is
+   unverified, kept opt-in only). Selection was hardened: tie-break by canonical
+   structural fingerprint (`extract._rank_key`, no arrival-order dependence),
+   concurrent samples keep the LLM trace (`copy_context`), and per-role
+   `ANKYRA_EXTRACT_TEMPERATURE=0` is honoured. Provider-level determinism is
+   accepted as external and out of scope; self-consistency clustering and prompt
+   stability remain optional robustness work.
 5. ~~**Non-monotonic exceptions.**~~ **DONE** behind `ANKYRA_DEFEASIBLE` (default
    off): every rule is a default and only asserted facts are strict (neither
    extraction nor a predicate heuristic authors strength), the layer in
@@ -281,9 +288,49 @@ Source: `docs/quality_findings.md`. Ordered by priority.
     LLM narration starts from it. Benchmark scoring maps the
     `(kind, strength, defeasible)` tuple plus reason buckets per benchmark — the
     engine keeps no benchmark semantics.
-11. **Negation / polarity robustness in extraction.** The one strict N=1 ProofWriter
-    miss was an extractor polarity error: "does not see" became a positive `see` and
-    a rule consequent "are not big" lost `negated`. Strict N=3 scored 45/45, so this
-    is variance-sensitive, but a deterministic polarity check (complementary axioms
-    from one extraction, negated consequent vs positive rule head) or a targeted
-    sampling guard would make it robust.
+11. ~~**Negation / polarity robustness (Phase 0 hardening).**~~ **DONE.** Two
+    deterministic fixes from the ProofWriter runs: `settle_query` drops a condition
+    complementary to the target ("is phi?" extracted as positive `phi` plus a `¬phi`
+    premise is self-contradictory), and `classify` refuses a quote taken from the
+    interrogative span (`_quote_in_question`) so the goal cannot be proved by citing
+    the question. The remaining strict misses are honest `unknown` and C1 variance.
+12. ~~**Answer revisions (non-monotonic answer audit).**~~ **DONE.** Monotonicity is
+    stated for the *base*, not the answer; `Revision` (`wave`, `trigger`,
+    `previous`, `current`, `source_ids`) is recorded whenever the answer changes
+    between waves and attached to `Explanation.revisions`, and
+    `Conflict.source_ids` names the hypotheses behind the competing branches of a
+    specificity conflict. No typed-edge/layer ontology is introduced — a fixed
+    `physical/vital/...` layer enum would trade domain-generality for a
+    hardcoded ontology and is rejected.
+13. ~~**Grounded refutation (abduction guard).**~~ **DONE.** Assuming `P` cannot
+    refute `¬P`: a hypothesis-backed refutation is downgraded to `unsupported`
+    (`hypothetical_refutation:`) and answers `unknown`/`not_proven`, removing the
+    8 hypothetical-refutation misses on ProofWriter abductive mode. See
+    `docs/quality_findings.md` section F.
+14. ~~**Reproducibility plumbing.**~~ **PARTLY DONE.** `ANKYRA_SEED` merges a seed
+    into `ANKYRA_EXTRA_BODY`, and best-of-N extraction samples are issued
+    concurrently (`ANKYRA_EXTRACT_PARALLEL`, default true). Provider support for the
+    seed is unverified (it stays opt-in).
+15. ~~**Question-begging guard.**~~ **DONE.** A non-cited fact hypothesis whose atom
+    unifies the *closed* target is `rejected/question_begging`; cited descriptive
+    facts and open-target bindings are exempt, so Example B is safe. See
+    `docs/quality_findings.md` section F.
+16. ~~**Structural quantifier sort.**~~ **DONE.** Rules carry `forall` (var → sort);
+    `unroll` drops the matching `is_a(?x,sort)` premise as the quantifier's domain,
+    keeping it when it is the variable's only binder. Removes the domain-vs-premise
+    ambiguity (17–18 rules/run). See `quality_findings` B10.
+17. ~~**Canonical property relation + `relation_kind`.**~~ **DONE.**
+    `StructAtom.relation_kind ∈ {ascription, possession, action}`; ascription
+    canonicalizes to `is_a(subject, property)` in every position, possession never
+    does, legacy `predication` is mapped. Fixes the fact-vs-rule encoding mismatch
+    (`quality_findings` B11).
+18. **Conjunct-loss red flag — CLOSED (not reproduced).** Measured on 11 saved runs
+    (~45 structures each): with `Slot.set` (AND) counted correctly the detector fires
+    0/249 rules; the suspected "dropped conjunct" was a display artifact (`object.id`
+    read while `object.set` held the items). A token-coverage variant false-fires
+    ~37% on verb morphology (`need` vs "needs"), i.e. it would need lemmatisation and
+    is not worth it. Not implemented.
+19. ~~**Conditional-quote guard.**~~ **DONE.** A quote occurring in the source only
+    inside a rule's sentence cannot license an axiom (`quote_only_in_conditional`;
+    `quote_conditional` rejection, repairable `conditional_quote:` gap). Removed two
+    strict false proofs; strict is 45/45. See `quality_findings` B12.

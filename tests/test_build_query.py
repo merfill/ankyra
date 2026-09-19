@@ -38,6 +38,26 @@ def test_settle_keeps_an_unused_premise_but_drops_the_goal_echo():
     assert verify(theory, settled).status == "insufficient"
 
 
+def test_settle_drops_a_condition_complementary_to_the_target():
+    theory = Theory(
+        morphisms=[Morphism(predicate="p", subject="a")],
+        rules=[
+            Rule(
+                conditions=[Morphism(predicate="p", subject="?x")],
+                consequence=Morphism(predicate="r", subject="?x"),
+            )
+        ],
+    )
+    query = Query(
+        conditions=[Morphism(predicate="r", subject="a", negated=True)],
+        target=Morphism(predicate="r", subject="a"),
+    )
+    settled = settle_query(query)
+    assert settled.conditions == []
+    verdict = verify(theory, settled)
+    assert verdict.status == "supported"
+
+
 def test_phase0_open_question_with_variable_labels_binds_the_unknown():
     theory = Theory(
         morphisms=[Morphism(predicate="has_engine", subject="vehicle_x")],

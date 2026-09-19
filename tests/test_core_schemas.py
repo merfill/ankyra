@@ -50,6 +50,16 @@ def test_struct_rule_wraps_antecedent_and_coerces_kind():
     assert rule.kind == "exception"
 
 
+def test_struct_rule_coerces_forall_from_dict_and_list():
+    from_dict = StructRule.model_validate({"forall": {"?x": "person"}})
+    assert from_dict.forall == {"x": "person"}
+    from_list = StructRule.model_validate(
+        {"forall": [{"variable": "?x", "sort": "person"}]}
+    )
+    assert from_list.forall == {"x": "person"}
+    assert StructRule().forall == {}
+
+
 def test_problem_structure_coerces_objects_and_references():
     structure = ProblemStructure.model_validate(
         {
@@ -103,6 +113,23 @@ def test_struct_atom_predication_defaults_to_verb_and_coerces():
         {"predicate": "cold", "subject": "gary", "predication": "is"}
     )
     assert junk.predication == "verb"
+
+
+def test_struct_atom_relation_kind_inferred_and_coerced():
+    assert StructAtom.model_validate({"predicate": "p"}).relation_kind == "action"
+    legacy_copula = StructAtom.model_validate(
+        {"predicate": "cold", "subject": "gary", "predication": "copula"}
+    )
+    assert legacy_copula.relation_kind == "ascription"
+    explicit = StructAtom.model_validate(
+        {"predicate": "has_engine", "subject": "x", "relation_kind": "Has"}
+    )
+    assert explicit.relation_kind == "possession"
+    # possession wins over a stray legacy copula hint
+    possession = StructAtom.model_validate(
+        {"predicate": "has_engine", "subject": "x", "predication": "copula", "relation_kind": "possession"}
+    )
+    assert possession.relation_kind == "possession"
 
 
 def test_llm_json_schema_is_valid_json_with_field_descriptions():

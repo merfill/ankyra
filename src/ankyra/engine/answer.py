@@ -65,6 +65,27 @@ def render_answer(answer: Answer, language: str | None = None) -> str:
     return f"{labels['label']}: {text}"
 
 
+def refutation_is_hypothetical(
+    theory: Theory, query: Query, ledger: HypothesisLedger
+) -> bool:
+    """True when the target's refutation rests on a hypothesis, not grounded facts.
+
+    A hypothesis is an assumption: assuming ``P`` does not establish that ``¬P`` is
+    false. In an open-world setting the absence of a grounded counter-proof is
+    ``unknown``, so a hypothetical counter-derivation must not be reported as a
+    refutation (and thus as a definite "no"). Strict deduction is unaffected: with
+    no hypotheses the ledger attributes nothing and this returns ``False``.
+    """
+    if query.target is None:
+        return False
+    negated_goal = query.target.model_copy(update={"negated": not query.target.negated})
+    proof = winning_proof(theory, query, goal=negated_goal)
+    if proof is None:
+        return False
+    store, proof_keys = proof
+    return bool(ledger.used(store, proof_keys))
+
+
 def _uses_defeasible(theory: Theory, store, proof_keys: frozenset[FactKey]) -> bool:
     """True when any fact in the proof was derived by a defeasible rule."""
     for key in proof_keys:

@@ -198,25 +198,39 @@ def _defeasible_enabled() -> bool:
     return bool(settings.get("DEFEASIBLE", False))
 
 
+def _candidate_keys(candidates) -> frozenset[FactKey]:
+    """Every provenance key a set of rule applications rests on."""
+    keys: set[FactKey] = set()
+    for candidate in candidates:
+        keys.add(candidate.head.key)
+        keys.update(candidate.head.used)
+        for fact in candidate.body_facts:
+            keys.add(fact.key)
+            keys.update(fact.used)
+    return frozenset(keys)
+
+
 def _attach_resolved_conflict(
-    theory: Theory, query: Query, explanation: Explanation, goal
+    theory: Theory, query: Query, explanation: Explanation, goal, ledger: HypothesisLedger
 ) -> Explanation:
     """Record which more specific rule won, when the defeasible layer decided it."""
     if not explanation.steps or not _defeasible_enabled():
         return explanation
-    conflict = _resolved_conflict(theory, query, goal)
+    conflict = _resolved_conflict(theory, query, goal, ledger)
     if conflict is None:
         return explanation
     return explanation.model_copy(update={"conflict": conflict})
 
 
-def _undecided_conflict(theory: Theory, query: Query) -> Explanation | None:
+def _undecided_conflict(
+    theory: Theory, query: Query, ledger: HypothesisLedger
+) -> Explanation | None:
     """Both competing rule applications for an undecided defeasible conflict."""
     from ankyra.engine.defeasible import effective_closure
 
     ctx = build_context(theory)
     negated_target = query.target.model_copy(update={"negated": not query.target.negated})
-    _, unresolved, _ = effective_closure(theory, query.conditions)
+    store, unresolved, _ = effective_closure(theory, query.conditions)
     supporting = []
     attacking = []
     reason = ""
@@ -245,11 +259,14 @@ def _undecided_conflict(theory: Theory, query: Query) -> Explanation | None:
             defeated="none",
             reason=reason or "specificity does not decide between the competing defaults",
             note="undecided: neither default is more specific",
+            source_ids=ledger.used(store, _candidate_keys([*supporting, *attacking])),
         ),
     )
 
 
-def _resolved_conflict(theory: Theory, query: Query, goal) -> Conflict | None:
+def _resolved_conflict(
+    theory: Theory, query: Query, goal, ledger: HypothesisLedger
+) -> Conflict | None:
     """The defeat that decided ``goal``, with the ``is_a`` witness as the reason."""
     if goal is None:
         return None
@@ -257,7 +274,7 @@ def _resolved_conflict(theory: Theory, query: Query, goal) -> Conflict | None:
 
     ctx = build_context(theory)
     negated_goal = goal.model_copy(update={"negated": not goal.negated})
-    _, _, defeats = effective_closure(theory, query.conditions)
+    store, _, defeats = effective_closure(theory, query.conditions)
     for defeat in defeats:
         winner, loser = defeat.winner.head, defeat.loser.head
         if not _key_matches(goal, winner.key, ctx):
@@ -272,6 +289,9 @@ def _resolved_conflict(theory: Theory, query: Query, goal) -> Conflict | None:
             defeated="attacking",
             reason=defeat.reason,
             note="the more specific default wins",
+            source_ids=ledger.used(
+                store, _candidate_keys([defeat.winner, defeat.loser])
+            ),
         )
     return None
 
@@ -291,17 +311,17 @@ def build_explanation(
         return Explanation()
     if verdict.status == "supported":
         explanation = _single(theory, query, verdict, ledger, query.target)
-        return _attach_resolved_conflict(theory, query, explanation, query.target)
+        return _attach_resolved_conflict(theory, query, explanation, query.target, ledger)
     if verdict.status == "refuted" and any(
         gap.startswith("target_refuted:") for gap in verdict.gaps
     ):
         negated = query.target.model_copy(update={"negated": not query.target.negated})
         explanation = _single(theory, query, verdict, ledger, negated)
-        return _attach_resolved_conflict(theory, query, explanation, negated)
+        return _attach_resolved_conflict(theory, query, explanation, negated, ledger)
     if verdict.status == "contradiction":
         return _conflict(theory, query, verdict, ledger)
     if any(gap.startswith("undecided_conflict:") for gap in verdict.gaps):
-        conflict = _undecided_conflict(theory, query)
+        conflict = _undecided_conflict(theory, query, ledger)
         if conflict is not None:
             return conflict
     return Explanation()

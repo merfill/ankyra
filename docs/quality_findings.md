@@ -54,6 +54,13 @@ The last run has no expectation misses (every soft metric passes) and
   then legitimate. That residual is C1 (compliance/variance), not an engine bug.
 - **A5. Code semantic guessing removed (FIXED).** `is`→`is_a`, `has`→`has_feature`,
   `isNot`→`is_a` deleted from the engine (`R5`); these are now prompt conventions.
+- **A6. Dropped conjunction (NOT REPRODUCED — closed).** A suspected extraction loss
+  of a coordinated modifier ("Furry, young people are smart") was checked on 11 saved
+  runs: the model encodes comma lists as `Slot.set` (AND), which expands to one
+  condition per item, so a count-based detector fires 0/249 rules. The earlier alarm
+  was a reporting bug (reading `object.id` while `object.set` held the items). A
+  token-coverage detector false-fires ~37% on verb morphology (`need`/`needs`) and
+  would need lemmatisation; not worth it. No detector added.
 
 ## B. Engine / semantics
 
@@ -99,18 +106,60 @@ The last run has no expectation misses (every soft metric passes) and
   (`wave, category, action, reason`), so a `missing_payload` or `quote_reused`
   rejection is visible and the next proposal can correct the field/action instead
   of repeating it (`engine/proposal.py`, `WaveContext.history`).
+- **B10. Structural quantifier sort (DONE).** The dominant extraction defect was
+  domain-vs-premise: "All furry people are smart" was encoded with
+  `is_a(?x,person)` as a *premise* and `domain=[]`, so the rule was inert without a
+  fact asserting anyone is a person (17–18 rules/run in the strict traces). A rule
+  now carries `forall` (variable → sort) structurally, and `unroll` drops the
+  matching `is_a(?x,sort)` premise as the quantifier's domain — but keeps it when it
+  is the variable's only binder, so the rule stays range-restricted. `Rule.forall`
+  records the sort for audit; the engine ignores it. Proper-subset conditions
+  (`is_a(?x,young)`) are untouched. See `docs/task.md` §0.3.
+- **B11. Canonical property relation (DONE).** The same lexeme could be encoded as
+  an `is_a` class in a fact and as a unary predicate in a rule (`is_a(gary,blue)` vs
+  `blue(?x)`), which never unifies; measured on 3 of 405 structures (e.g.
+  `AttNeg-OWA-D1-10`). `StructAtom.relation_kind ∈ {ascription,possession,action}`
+  makes the logical role explicit: ascription canonicalizes to
+  `is_a(subject, property)` in every position, possession ("has …") stays a binary
+  predicate, action is unchanged. The legacy `predication` is still accepted and a
+  copula implies ascription. This removes reliance on the model's surface label.
+- **B12. Conditional-quote guard (DONE).** A strict false proof came from a fact
+  grounded only on a conditional phrase: `is_a(harry,red)` cited "Harry is red" from
+  inside "If Harry is red then Harry is furry", and `see(rabbit,rabbit)` cited a rule
+  sentence. `classify` already had `_quote_in_use`, but it ignored rule atom quotes.
+  `symbolic.quote_only_in_conditional` now rejects a proposal whose quote occurs in
+  the source only inside a rule's sentence (`quote_conditional` when hypotheses are
+  forbidden; a repairable `conditional_quote:` gap on the extraction path). A quote
+  that also occurs standalone stays usable. The two proofs became honest `unknown`;
+  strict N=3 is 45/45 again.
 
 ## C. Reproducibility
 
-- **C1. LLM variance (MITIGATED, provider-level residual).** The same problem gives
-  different outcomes across runs (`chain`: `extraction_error` then `supported`;
-  `contradiction`: "no" then `refuted`). The provider routes to subcontractors, so
-  pinning a model is not possible. Mitigations: `ANKYRA_EXTRACT_SAMPLES` best-of-N
-  with a deterministic pick (`symbolic.quality_key`: repairable gaps → source
-  coverage → compactness), `ANKYRA_EXTRACT_REPAIRS` bounded repair over repairable
-  gaps, and the extraction guard `enforce_grounded` (an atom/rule without a valid
-  source quote is dropped, enforcing the core invariant). Prompt stability and a
-  provider seed remain open.
+- **C1. LLM variance (provider-level; selection hardened).** The same problem gives
+  different outcomes across runs. Measured on one ProofWriter problem (5 extractions
+  each): `T=0.1` → 2 distinct structures; `T=0` → 2 distinct; `T=0` + seed → 2
+  distinct. So the router is nondeterministic even at `T=0`, and the seed does not
+  fix it (sometimes it looks worse), confirming that a model can not be pinned.
+  What the engine *can* control:
+  - `ANKYRA_EXTRACT_SAMPLES` best-of-N (`symbolic.quality_key`: repairable gaps →
+    source coverage → compactness). `quality_key` is a syntax/grounding metric and
+    **frequently ties on logically different structures** (measured: 5 samples of
+    one problem split 4:1 yet all scored `(0, -220, 10)`). Ties are now broken by a
+    canonical structural fingerprint (`extract._rank_key`), so the pick no longer
+    depends on thread/arrival order — the previous nondeterminism was partly
+    self-inflicted by concurrent sampling.
+  - `ANKYRA_EXTRACT_PARALLEL` issues samples concurrently; each worker runs in a
+    copied context, so the LLM trace records every sample again (it silently lost
+    all `extract_problem`/`extract_question` calls before).
+  - `ANKYRA_EXTRACT_REPAIRS` bounded repair over repairable gaps, and
+    `enforce_grounded` (an atom/rule without a valid source quote is dropped).
+  - per-role `ANKYRA_EXTRACT_TEMPERATURE=0` is now honoured (was ignored because
+    `0` is falsy in the old `or` fallback).
+  Provider-level determinism is accepted as **external and out of scope**: the
+  router is not ours to fix, and residual run-to-run variation does not change the
+  project's guarantees (strict answers stay `proven`, hypothetical ones stay
+  labelled). Optional robustness remains: self-consistency selection and prompt
+  stability; see `implementation_plan.md` item 4.
 
 ## D. Explanation / narration
 
@@ -118,6 +167,12 @@ The last run has no expectation misses (every soft metric passes) and
   (default `en`); Russian narration verified faithful to the steps.
 - **D2. Degenerate traces (FIXED).** Trivial successful cases name the rule again
   (`rain`) — consequence of B2.
+- **D3. Answer revisions (DONE).** The answer can change between waves (unknown
+  becomes bound, hypothesis accounting changes); `Revision` records each such
+  change with its trigger and the accepted hypotheses, and `Explanation.revisions`
+  carries them in wave order. `Conflict.source_ids` names the hypotheses behind the
+  competing branches of a specificity conflict, so a defeasible shift is
+  attributable. The base is untouched, keeping D3 monotone.
 
 ## E. External benchmark — ProofWriter (Tier A)
 
@@ -128,27 +183,35 @@ open-world synthetic core, depth 0/1/2/3/5; built by
 negated statements (0 flips observed). No training, no benchmark semantics in the
 engine.
 
-Ankyra results (strict deduction is the default):
+Ankyra results (strict deduction is the default; `ANKYRA_EXTRACT_SAMPLES=3`,
+several runs — LLM variance is visible run to run, see C1):
 
-| mode | kind accuracy | determinate (True/False) | Unknown | false positives |
+| mode | kind accuracy | determinate (True/False) | Unknown | grounded false positives |
 |---|---|---|---|---|
-| strict (`allow_hypotheses=False`) | 45/45 (100%) | 30/30, all `proven` | 15/15 | 0 |
-| abductive (`--hypotheses`) | 37/45 (82%) | 30/30 (29 proven, 1 proven_under) | 7/15 | 8 |
+| strict (`allow_hypotheses=False`) | 43–45/45 | 29–30/30 | 14–15/15 | 0 |
+| abductive (`--hypotheses`) | 43–44/45 | 30/30 | 12–14/15 | 0 |
 
-Hypotheses let the wave abduce the missing links and "prove" statements the
-benchmark marks Unknown, so strict is the default and the abductive row is a
-diagnostic. The strict gaps were closed by two Phase 0 formalization rules (see
-`docs/task.md` §0.3): a one-place copula becomes `is_a(subject, complement)` (via
-`StructAtom.predication`), and a rule premise that only restricts a variable to a
-declared `ProblemStructure.domain` sort is dropped as the quantifier's domain
-rather than treated as an inert `is_a(?x, person)` condition. Both are
-deterministic builder rules; the model only reports the surface construction and
-the universe sort. The remaining abductive misses are Unknown problems where an
-unconstrained hypothesis still proves a statement the benchmark leaves open.
+After B10 (per-rule quantifier sort) a strict N=3 run scored **45/45** (30/30
+determinate, all `proven`; 15/15 Unknown), every mismatch shape `match`; the earlier
+misses came from the domain-vs-premise ambiguity. Before B10 the misses were honest
+`unknown` (`unsupported` / `no_progress` / one `contradiction`) — extraction failed
+to supply a rule or a fact, so the engine never turned a miss into a definite
+"yes"/"no". The strict gaps that were
+closed (see `docs/task.md` §0.3): a one-place copula becomes
+`is_a(subject, complement)` (via `StructAtom.predication`), and a rule premise
+that only restricts a variable to a declared `ProblemStructure.domain` sort is
+dropped as the quantifier's domain rather than treated as an inert
+`is_a(?x, person)` condition. Both are deterministic builder rules.
 
-One caveat: `domain` is a formalization assumption authored by the extractor. An
-over-declared domain drops a real condition, so it must stay auditable (it is
-carried on `Theory.domain` and the trace); a dedicated invariant is still pending.
+The abductive misses are all hypothetical decisions (`proven_under`), never
+grounded; they are analyzed in section F, and the hypothetical-refutation class
+has been removed by a guard.
+
+One caveat: the quantifier sort is a formalization assumption authored by the
+extractor. An over-declared sort drops a real condition, so it must stay auditable:
+it is carried per rule on `Rule.forall` (and the legacy global `Theory.domain`) and
+shown in the trace. B10 makes it per-rule rather than global, so one over-declared
+sort no longer cuts conditions in unrelated rules.
 
 External reference (Tafjord et al., "ProofWriter", arXiv:2012.13048; fine-tuned
 T5-11B, templated IID D5-test, ~70k training examples — NOT apples-to-apples):
@@ -166,10 +229,89 @@ zero-shot setting. Our subset is 45 vs their ~12k, and our proof is mechanical
 provenance (their metric is exact-match proof graphs), so only answer accuracy is
 comparable.
 
+## F. Abduction — false proofs are hypothetical decisions
+
+Harness: `evals/proofwriter.py --hypotheses`, `ANKYRA_EXTRACT_SAMPLES=3`; every run
+also records the committed `/tmp`-independent traces under `evals/out/pw_*` (ignored
+by git). `score_record` now tags each mismatch with a `shape`
+(`mismatch_shape`): `grounded_mismatch`, `hypothetical_decision`,
+`question_begging`, `undecided_mismatch`, or `match`.
+
+**Before the refutation guard** the 8 abductive misses shared one shape: every one
+was a *negated* Unknown target, answered `refuted` / `proven_under` / `no`. The
+wave abduced the missing body literal of a rule whose head is the complement of
+the target, and the derived complement "refuted" the negation:
+
+| id | missing literal abduced | rule head |
+|---|---|---|
+| AttNoneg-OWA-D0-101 | `is_a(erin,green)` | `is_a(erin,round)` |
+| AttNeg-OWA-D2-1020 | `is_a(gary,rough)` | `is_a(gary,furry)` |
+| AttNoneg-OWA-D2-1021 | `is_a(harry,red)` | `is_a(harry,green)` |
+| AttNoneg-OWA-D5-1022 | `is_a(gary,cold)` + `is_a(gary,green)` | `is_a(gary,rough)` |
+| RelNoneg-OWA-D0-1011 | `like(cow,bear)` | `need(cow,bald_eagle)` |
+| RelNeg-OWA-D2-1012 | `is_a(bear,rough)`, `NOT chase(cow,bear)` | `visit(cow,bear)` |
+| RelNeg-OWA-D3-1062 | `see(rabbit,rabbit)` | `is_a(rabbit,young)` |
+| RelNoneg-OWA-D3-1033 | `is_a(cow,cold)` | `visit(rabbit,rabbit)` |
+
+This is sound but not grounded: the answers were already labeled `proven_under(H)`,
+so it is an *abduction semantics* artifact, not a soundness bug. **Guard (added):**
+assuming `P` cannot refute `¬P`; `verify_node` downgrades a hypothesis-backed
+refutation to `unsupported` with gap `hypothetical_refutation:` and answers
+`unknown`/`not_proven` (`engine/answer.refutation_is_hypothetical`). Unit tests
+cover a hypothetical refutation (→ `unknown`) and a hypothetical positive support
+(→ unchanged `proven_under`, so Example B is untouched). After the guard no
+hypothetical refutation remains in any abductive run.
+
+**Question-begging fact hypothesis (fixed).** The wave could assert the closed
+target itself as a fact hypothesis (`RelNoneg-OWA-D1-1009` proposed
+`NOT eat(bear,bear)`) and then "derive" the goal from it as `proven_under(H)`.
+Now a non-cited fact hypothesis whose atom unifies the *closed* target is
+`rejected/question_begging` (`classify._asserts_closed_target`); the guard runs only
+where a hypothesis would be created, so a cited descriptive fact that states the
+target stays `cited`, and open targets are exempt (a hypothesis may still supply
+the binding — Example B is untouched). Live re-check: the problem now returns
+`unknown`/`no_progress`.
+
+**Remaining abductive misses.** Extraction contradictions / `no_progress`: honest
+`unknown`; C1.
+
+**Two deterministic Phase 0 hardening fixes** came out of these runs (both
+unit-tested):
+
+- `settle_query` drops a condition complementary to the target: "is phi?"
+  extracted as positive `phi` plus a `¬phi` premise is self-contradictory and made
+  the engine report `contradiction`.
+- `classify` refuses a quote taken from the interrogative span
+  (`_quote_in_question`): one abductive run proved the goal by citing the question
+  sentence itself. This enforces "the question is never asserted as a fact" against
+  the proposal path, not just extraction.
+
 ## Priority
 
-1. **C1** variance mitigations (sampling + prompt stability), including the
-   model-side A4 residual.
-2. **Extraction generalization** seen on ProofWriter (generic nouns, modifier
+1. **Extraction generalization** seen on ProofWriter (generic nouns, modifier
    retention): the wave may repair it via ledgered hypotheses, and strict mode
    surfaces the assumption instead of hiding it.
+2. **Optional: self-consistency selection** (cluster best-of-N extraction samples,
+   take the modal structure) — robustness against an unlucky sample, not
+   determinism. Provider-level variance itself (C1) is accepted as external and not
+   pursued.
+
+## Results summary
+
+State after the extraction-canonicalization and soundness-guard work (N=3,
+`ANKYRA_EXTRACT_SAMPLES=3`):
+
+- **Strict ProofWriter: 45/45**, 30/30 determinate all `proven`, 15/15 Unknown, 0
+  grounded false positives; every mismatch shape `match`.
+- **Abductive mode:** hypothetical refutations are removed (B, guard); the remaining
+  misses are hypothetical decisions/question-begging, both explicitly guarded and
+  labelled `proven_under`; no grounded false proof.
+- **Soundness guards added:** a hypothesis cannot refute (A/B), a non-cited fact
+  hypothesis cannot assert the closed target (B), a quote from the question or from
+  only inside a conditional cannot license an axiom (B12).
+- **Extraction canonicalization:** `relation_kind` ascription/possession/action
+  (A, B11); per-rule quantifier sort `forall` (B, B10).
+- **Reproducibility:** provider nondeterminism accepted as external; deterministic
+  tie-break by structural fingerprint; parallel samples keep the LLM trace.
+- **Closed without implementation:** dropped-conjunct detector (A6, not reproduced).
+- Tests: `262 passed, 16 skipped`.

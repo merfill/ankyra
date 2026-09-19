@@ -226,6 +226,91 @@ def test_an_unused_premise_is_a_terminal_insufficient():
     assert result.history == []
 
 
+def _hypothetical_counter_theory() -> tuple[Theory, Rule]:
+    theory = Theory(
+        morphisms=[Morphism(predicate="is_a", subject="gary", object="smart")],
+        rules=[
+            Rule(
+                conditions=[
+                    Morphism(predicate="is_a", subject="?x", object="rough"),
+                    Morphism(predicate="is_a", subject="?x", object="smart"),
+                ],
+                consequence=Morphism(predicate="is_a", subject="?x", object="furry"),
+            )
+        ],
+    )
+    missing = ProposalDraft(
+        action="assert_cited_fact",
+        fact=Morphism(predicate="is_a", subject="gary", object="rough"),
+    )
+    return theory, missing
+
+
+def test_a_hypothetical_refutation_is_reported_unknown():
+    theory, missing = _hypothetical_counter_theory()
+    query = Query(target=Morphism(predicate="is_a", subject="gary", object="furry", negated=True))
+    proposals = iter([missing])
+    result = run_cycle(lambda _ctx: next(proposals), theory, query, max_waves=3)
+
+    assert result.verdict.status == "unsupported"
+    assert "hypothetical_refutation:is_a" in result.verdict.gaps
+    assert result.status == "unsupported"
+    assert result.answer.kind == "unknown"
+    assert result.answer.strength == "not_proven"
+
+
+def test_a_hypothesis_that_supports_a_positive_target_still_counts():
+    theory, missing = _hypothetical_counter_theory()
+    query = Query(target=Morphism(predicate="is_a", subject="gary", object="furry"))
+    proposals = iter([missing])
+    result = run_cycle(lambda _ctx: next(proposals), theory, query, max_waves=3)
+
+    assert result.status == "supported"
+    assert result.answer.strength == "proven_under"
+    assert result.answer.hypotheses_used == ["H1"]
+
+
+def test_a_hypothesis_that_answers_records_a_revision():
+    theory = Theory(
+        objects=[Object(id="x")],
+        morphisms=[Morphism(predicate="has_engine", subject="x")],
+        source_text="X has an engine.",
+    )
+    query = Query(target=Morphism(predicate="is_a", subject="x", object="car"))
+    rule = Rule(
+        conditions=[Morphism(predicate="has_engine", subject="?x")],
+        consequence=Morphism(predicate="is_a", subject="?x", object="car"),
+    )
+    proposals = iter([ProposalDraft(action="propose_rule", rule=rule)])
+    result = run_cycle(lambda _ctx: next(proposals), theory, query, max_waves=3)
+
+    assert len(result.revisions) == 1
+    revision = result.revisions[0]
+    assert revision.trigger == "new_hypothesis"
+    assert revision.wave == 0
+    assert revision.source_ids == ["H1"]
+    assert revision.previous is not None
+    assert revision.previous.strength == "not_proven"
+    assert revision.current.strength == "proven_under"
+    assert result.explanation.revisions == result.revisions
+
+
+def test_a_deterministic_answer_is_not_a_revision():
+    theory = Theory(
+        objects=[Object(id="ground")],
+        morphisms=[Morphism(predicate="raining")],
+        rules=[
+            Rule(
+                conditions=[Morphism(predicate="raining")],
+                consequence=Morphism(predicate="is_wet", object="ground"),
+            )
+        ],
+    )
+    query = Query(target=Morphism(predicate="is_wet", object="ground"))
+    result = run_cycle(_never, theory, query)
+    assert result.revisions == []
+
+
 @pytest.mark.live
 @live
 def test_live_example_b_full_pipeline_smoke():

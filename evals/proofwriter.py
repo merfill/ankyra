@@ -103,6 +103,31 @@ def score_record(record: dict, result: object) -> dict:
     }
 
 
+def mismatch_shape(score: dict, trace: dict) -> str:
+    """Classify an answer mismatch so the abductive report is not a flat list.
+
+    ``grounded_mismatch`` is the serious one (a strict proof against the label);
+    ``hypothetical_decision`` means abduction supplied a hypothesis to decide an
+    Unknown; ``question_begging`` means a hypothesis restates the target itself.
+    """
+    if score.get("kind_match"):
+        return "match"
+    if score.get("strength") == "proven":
+        return "grounded_mismatch"
+    if score.get("strength") != "proven_under":
+        return "undecided_mismatch"
+    target = (trace.get("query") or {}).get("target") or {}
+    for hypothesis in trace.get("hypotheses") or []:
+        payload = hypothesis.get("payload") or {}
+        if (
+            payload.get("predicate") == target.get("predicate")
+            and payload.get("subject") == target.get("subject")
+            and payload.get("object") == target.get("object")
+        ):
+            return "question_begging"
+    return "hypothetical_decision"
+
+
 def _to_problem(record: dict, *, allow_hypotheses: bool) -> dict:
     return {
         "id": record["id"],
@@ -142,6 +167,7 @@ def _report(scores: list[dict], records: dict[str, dict]) -> None:
     print(f"polarity flips: {len(flips)}")
     print(f"statuses: {dict(Counter(s['status'] for s in scores).most_common())}")
     print(f"strengths: {dict(Counter(s['strength'] for s in scores).most_common())}")
+    print(f"shapes: {dict(Counter(s.get('shape') for s in scores).most_common())}")
     determinate = [s for s in known if s["expected_label"] in {"True", "False"}]
     matched = [s for s in determinate if s["kind_match"]]
     proven = sum(1 for s in matched if s["strength"] == "proven")
@@ -161,7 +187,8 @@ def _report(scores: list[dict], records: dict[str, dict]) -> None:
             record = records[s["id"]]
             print(
                 f"    {s['id']:28} {record['config']:9} want {s['expected_label']:8} "
-                f"-> {s['expected_kind']:7} got {s['actual_kind']:7} ({s['status']})"
+                f"-> {s['expected_kind']:7} got {s['actual_kind']:7} ({s['status']}) "
+                f"[{s.get('shape')}]"
             )
 
 
@@ -190,6 +217,7 @@ def main(argv: list[str] | None = None) -> int:
     for record in records:
         trace, result = run_one(_to_problem(record, allow_hypotheses=allow_hypotheses))
         score = score_record(record, result)
+        score["shape"] = mismatch_shape(score, trace)
         scores.append(score)
         if not args.no_write:
             (out_dir / f"{record['id']}.json").write_text(

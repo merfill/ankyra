@@ -67,6 +67,7 @@ def run_one(problem: dict) -> tuple[dict, object]:
         "explanation": result.explanation.model_dump() if result.explanation else None,
         "waves": [w.model_dump() for w in result.history],
         "hypotheses": [h.model_dump() for h in result.hypotheses],
+        "revisions": [r.model_dump() for r in result.revisions],
         "llm_calls": [asdict(call) for call in llm_trace.calls],
         "duration_ms": duration_ms,
     }

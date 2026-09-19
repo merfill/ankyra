@@ -15,6 +15,7 @@ from ankyra.core.models import (
     Explanation,
     Hypothesis,
     Query,
+    Revision,
     Theory,
     Verdict,
     WaveRecord,
@@ -40,6 +41,7 @@ class CycleResult:
     query: Query
     history: list[WaveRecord] = field(default_factory=list)
     hypotheses: list[Hypothesis] = field(default_factory=list)
+    revisions: list[Revision] = field(default_factory=list)
 
 
 def _unused(*_args, **_kwargs):
@@ -86,4 +88,5 @@ def run_cycle(
         query=state["query"],
         history=list(state.get("history") or []),
         hypotheses=list(state.get("hypotheses") or []),
+        revisions=list(state.get("revisions") or []),
     )

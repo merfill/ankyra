@@ -27,11 +27,12 @@ and a question, and return a STRUCTURAL decomposition for a deterministic builde
 You do NOT write the final theory, and you do NOT assert the question as a fact.
 
 Return valid JSON matching the ProblemStructure schema: objects, facts, rules,
-variants, references, question.
+variants, references, question. A rule may carry "forall" (variable -> sort), the
+quantifier's domain, so it is not written as an is_a body condition.
 
 ATOM GRAMMAR — every fact, rule condition, rule consequent and ask is one atom:
   {"predicate": "<snake_case>", "subject": <slot>, "object": <slot>,
-   "predication": "copula|verb",
+   "relation_kind": "ascription|possession|action",
    "modality": "neutral|permit|obligation|forbidden", "negated": false, "quote": "..."}
 The relation name ALWAYS goes in "predicate" — never in "id" or "name". A slot is a
 bare id string, {"set": [...]} (AND), {"variants": [...]} (OR), or
@@ -42,21 +43,29 @@ RESERVED CONVENTIONS:
   (e.g. {"predicate":"is_a","subject":"poodle","object":"dog"}). Never invent
   "instance", "subclass_of", "type_of", "is".
 - A universal statement ("all / every / any X ...") is a rule quantified over an
-  individual VARIABLE "?x", never over the class noun: "All people need sleep" →
-  is_a(?x, person) => need(?x, sleep). The class noun appears only as the object of is_a.
-- "domain" lists the universe sort(s) that EVERY named individual in the problem
-  belongs to, when the text uses them only as the generic subject of quantified rules
-  and never as a proper subset. A rule condition that restricts the variable to a
-  domain sort is the quantifier's domain, not a premise; the builder drops it. Put a
-  sort in "domain" only if it covers ALL named individuals; a proper subset is an
-  ordinary class condition, not a domain.
+  individual VARIABLE "?x", never over the class noun. When the generic noun is the
+  quantifier's UNIVERSE SORT, record it in the rule's "forall": {"x": "person"}. If
+  another antecedent atom already binds ?x ("All furry people are smart" ->
+  antecedent furry(?x)), do NOT add is_a(?x,person). If the sort is the ONLY thing
+  restricting ?x ("All people need sleep"), KEEP is_a(?x,person) as an antecedent
+  atom — never leave the antecedent empty and never repeat the conclusion in the
+  antecedent. Use "forall" only for a sort that covers ALL named individuals; a
+  PROPER subset ("All young birds ...") stays an ordinary is_a(?x,sort) condition.
+- "domain" is the legacy global form of the same idea; leave it empty when rules
+  carry "forall".
 - Denial is the SAME predicate with "negated": true; never a twin predicate.
-- "predication" records the surface construction of a one-place atom: "copula" for a
-  predicative "is / are / am / was / were". For a copula put the COMPLEMENT in
-  "predicate", the subject in "subject", and omit "object" ("Gary is cold" ->
-  {"predicate":"cold","subject":"gary","predication":"copula"}); the builder converts
-  it to is_a(subject, complement). "verb" for every other one-place predication
-  ("X has an engine"). A relational atom with an object may leave it "verb".
+- "relation_kind" records the atom's logical role, and MUST be used consistently in
+  facts AND in rule conditions/conclusions so they unify:
+  - "ascription": the subject has a property/class — predicative "is/are" AND
+    attributive modifiers alike. Put the PROPERTY/CLASS in "predicate", the subject
+    in "subject", omit "object" ("Gary is blue", "blue people", "they are not blue"
+    -> {"predicate":"blue","subject":"gary","relation_kind":"ascription"}); the
+    builder emits is_a(subject, property). Never leave an in-place property as a
+    plain verb predicate.
+  - "possession": the subject has an object/part ("X has an engine", "four wheels").
+    Keep it a binary predicate with "object"; it is NEVER is_a.
+  - "action": any other verb/relation ("the bird sings", "X sees Y").
+  ("predication" is a legacy surface hint; relation_kind takes precedence.)
 - Modality is the "modality" field, never a prefix in the predicate name.
 - Predicate ids: lowercase snake_case, no function words (a, the, and, or, of, by, to,
   for, with, from, in, on, as, when). Object ids: lowercase English head nouns; reuse
@@ -87,6 +96,13 @@ EXAMPLES (shape only; do not reuse the content):
    rules = [{"antecedent":[{"predicate":"is_a","subject":"?x","object":"dog","quote":"all dogs"}],
              "consequent":{"predicate":"is_a","subject":"?x","object":"mammal","quote":"are mammals"},
              "quote":"All dogs are mammals"}]
+5) "All furry people are smart. Gary is furry."
+   facts = [{"predicate":"furry","subject":"gary","relation_kind":"ascription","quote":"Gary is furry"}]
+   rules = [{"forall":{"x":"person"},
+             "antecedent":[{"predicate":"furry","subject":"?x","relation_kind":"ascription","quote":"furry people"}],
+             "consequent":{"predicate":"smart","subject":"?x","relation_kind":"ascription","quote":"are smart"},
+             "quote":"All furry people are smart"}]
+   (No is_a(?x,person) condition: "person" is in "forall", the quantifier's domain.)
 Return ONLY valid JSON, no markdown fences."""
 
 PROBLEM_HUMAN = """Problem:
@@ -99,13 +115,14 @@ A deterministic expander turns your structure into conditions and a target. Retu
 valid JSON matching the QuestionStructure schema: facts, rules, ask, variables.
 
 ATOM GRAMMAR — same shape as the theory: {"predicate": "...", "subject": <slot>,
-"object": <slot>, "predication": "copula|verb",
+"object": <slot>, "relation_kind": "ascription|possession|action",
 "modality": "neutral|permit|obligation|forbidden", "negated": false,
 "quote": "..."}. The relation name ALWAYS goes in "predicate". Class membership uses
-predicate "is_a". A relation with no stated argument omits that slot. "predication" is
-"copula" for a predicative "is/are" (put the COMPLEMENT in "predicate", the subject in
-"subject", omit "object"; the builder makes is_a(subject, complement)), "verb"
-otherwise.
+predicate "is_a". A relation with no stated argument omits that slot. "relation_kind"
+"ascription" means the subject has a property/class (predicative "is/are" or an
+attributive modifier): put the PROPERTY in "predicate", the subject in "subject",
+omit "object"; the builder makes is_a(subject, property). Use "possession" for "has"
+and "action" otherwise.
 
 The theory below (Objects, Predicates, Morphisms, Rules) is the vocabulary for the
 FACTS and RULES of the question: reuse its predicates and object ids exactly when the
@@ -199,29 +216,84 @@ def _repair_count(repairs: int | None) -> int:
     return max(0, int(value))
 
 
+def _parallel_enabled() -> bool:
+    return bool(settings.get("EXTRACT_PARALLEL", True))
+
+
+def _rank_key(candidate, score) -> tuple:
+    """Score plus a canonical fingerprint, so ties never depend on arrival order.
+
+    ``quality_key`` is a syntax/grounding metric and frequently ties on logically
+    different structures; the canonical JSON makes best-of-N reproducible for a
+    fixed multiset of samples even when they finish concurrently.
+    """
+    try:
+        fingerprint = candidate.model_dump_json()
+    except AttributeError:
+        fingerprint = repr(candidate)
+    return (*score(candidate), fingerprint)
+
+
+def _best_of(candidates, errors, score):
+    """Pick the min candidate by ``_rank_key``; raise the first error if none."""
+    best = None
+    best_key = None
+    for candidate in candidates:
+        if candidate is None:
+            continue
+        key = _rank_key(candidate, score)
+        if best_key is None or key < best_key:
+            best, best_key = candidate, key
+    if best is None:
+        first_error = next((error for error in errors if error is not None), None)
+        raise first_error if first_error is not None else RuntimeError("no extraction candidate")
+    return best
+
+
 def _pick_best(make_candidate, score, samples: int):
     """Sample ``samples`` candidates and keep the best by ``score``.
 
     A failing sample is skipped when another succeeds; if every sample fails, the
-    first error propagates, so N=1 keeps the previous behaviour exactly. Ties keep
-    the earliest candidate, so selection is deterministic for a fixed sample set.
+    first error (in sample order) propagates, so N=1 keeps the previous behaviour
+    exactly. Ties are broken by the candidate's canonical fingerprint, so the
+    choice is independent of arrival order. With N>1 the samples are issued
+    concurrently (``ANKYRA_EXTRACT_PARALLEL=false`` forces sequential); the chosen
+    candidate is the same for a fixed multiset of outputs.
     """
-    best = None
-    best_key = None
-    first_error: Exception | None = None
-    for _ in range(samples):
+    if samples > 1 and _parallel_enabled():
+        return _pick_best_parallel(make_candidate, score, samples)
+    candidates: list = [None] * samples
+    errors: list[Exception | None] = [None] * samples
+    for index in range(samples):
         try:
-            candidate = make_candidate()
-        except Exception as exc:  # noqa: BLE001 - re-raised below
-            if first_error is None:
-                first_error = exc
-            continue
-        key = score(candidate)
-        if best_key is None or key < best_key:
-            best, best_key = candidate, key
-    if best is None:
-        raise first_error if first_error is not None else RuntimeError("no extraction candidate")
-    return best
+            candidates[index] = make_candidate()
+        except Exception as exc:  # noqa: BLE001 - re-raised below if all fail
+            errors[index] = exc
+    return _best_of(candidates, errors, score)
+
+
+def _pick_best_parallel(make_candidate, score, samples: int):
+    """Concurrent ``_pick_best``: issue N calls at once, then rank deterministically.
+
+    Each worker runs with a copy of the caller's context so the LLM trace
+    (a ``ContextVar``) still records extraction calls made off the main thread.
+    """
+    from concurrent.futures import ThreadPoolExecutor
+    from contextvars import copy_context
+
+    results: list = [None] * samples
+    errors: list[Exception | None] = [None] * samples
+    with ThreadPoolExecutor(max_workers=samples) as pool:
+        futures = [
+            (index, pool.submit(copy_context().run, make_candidate))
+            for index in range(samples)
+        ]
+        for index, future in futures:
+            try:
+                results[index] = future.result()
+            except Exception as exc:  # noqa: BLE001 - re-raised below if all fail
+                errors[index] = exc
+    return _best_of(results, errors, score)
 
 
 QUESTION_HUMAN = """Question:

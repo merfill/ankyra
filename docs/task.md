@@ -58,9 +58,12 @@ states `no_progress | budget`.
 1. **No LLM-owned facts.** Nothing enters the theory without either a valid quote
    (`cited`) or an explicit hypothesis tag (`hypothesis`). The legacy "add
    predicates" loop is rejected outright.
-2. **Monotonicity (enabled now, policy-switchable later).** The theory only
+2. **Monotonicity (enabled now, policy-switchable later).** The *theory* only
    grows: axioms are added, hypotheses are added to the ledger, the target is
-   never weakened, no premise is deleted.
+   never weakened, no premise is deleted. Monotonicity constrains the base, not
+   the answer: under defeasible semantics a new fact can shift the answer, which
+   is recorded as a `Revision` (see §4 and §8). Strict deduction stays monotone
+   in the answer as well.
 3. **Freedom in proposal, determinism in classification.** The LLM may name
    predicates and propose rules freely; the classification of a proposal is
    always deterministic.
@@ -69,6 +72,14 @@ states `no_progress | budget`.
 5. **Every step is verifiable.** An explanation step corresponds to a real
    derivation edge in the provenance graph, or to an identified hypothesis.
 6. **Answer strength is explicit.** `proven`, `proven_under(H)`, or `not_proven`.
+7. **Grounded refutation; the question is never a source.** A refutation must rest
+   on grounded facts, not on a hypothesis: assuming `P` does not establish that
+   `¬P` is false, so a hypothetical counter-proof reports `unknown`, not a definite
+   "no". Likewise a quote drawn from the interrogative span cannot license an
+   axiom, a quote that occurs only inside a conditional cannot assert a fact, and a
+   non-cited fact hypothesis may not assert the closed target — so the goal can
+   never be proved by citing or assuming the goal itself, nor by treating a
+   conditional premise as an asserted fact.
 
 ## 4. Data Model
 
@@ -91,20 +102,27 @@ All models are Pydantic.
 - `WaveRecord` — `wave`, `proposal`, `category`, `reason`, `verdict_after`.
 - `Answer` — `value`, `strength ∈ {proven, proven_under, not_proven}`,
   `hypotheses_used`.
+- `Revision` — an auditable answer change across waves: `wave`,
+  `trigger ∈ {new_cited_fact, new_hypothesis, answer_change}`, `previous`,
+  `current`, `source_ids` (the hypotheses accepted in the triggering wave).
 
 Structure-extraction models (what the LLM actually authors; the ontology itself
 is assembled deterministically):
 
 - `Slot` — a role filler: `id` | `set` (AND) | `variants` (OR) | `exclude`.
 - `StructAtom` — `predicate` (no modality prefix), `subject: Slot`, `object: Slot`,
-  `predication ∈ {copula, verb}`, `modality ∈ {permit, obligation, forbidden,
-  neutral}`, `negated`, `quote`. `copula` marks a predicative "is/are" (complement
-  in `predicate`); the builder turns it into `is_a(subject, predicate)`. `verb` is
-  any other one-place predication (e.g. "X has an engine"), kept as a unary atom.
+  `relation_kind ∈ {ascription, possession, action}` (legacy `predication`
+  `copula|verb` still accepted and mapped), `modality ∈ {permit, obligation,
+  forbidden, neutral}`, `negated`, `quote`. `ascription` means the subject has a
+  property/class (predicative "is/are" AND attributive modifiers); the builder emits
+  `is_a(subject, property)` consistently in facts and rule atoms. `possession`
+  ("X has an engine") stays a binary predicate and is never `is_a`; `action` is any
+  other verb/relation.
 - `StructRule` — `antecedent: list[StructAtom]`, `consequent: StructAtom`,
-  `kind ∈ {implication, exception}`, `quote`.
+  `kind ∈ {implication, exception}`, `forall` (variable → universe sort; the
+  quantifier's domain, recorded instead of an `is_a(?x,sort)` premise), `quote`.
 - `ProblemStructure` — `objects`, `facts`, `rules`, `variants`, `references`,
-  `domain` (universe sort(s) every individual belongs to; membership is vacuous).
+  `domain` (legacy global form of `forall`; membership is vacuous).
 - `QuestionStructure` — `facts`, `ask` (single target, may be null), `rules`,
   `variables`.
 
@@ -130,11 +148,12 @@ quote.
   baked into the predicate name); optionally lower modality to prefixes
   (`obligation → must_`, `forbidden → must_not_`, `permit → may_`) when
   `ANKYRA_DEONTIC_PREFIXES` is on; assemble `Rule`s (`exception` flips the
-  consequence's `negated`). No LLM.
+  consequence's `negated`); drop a rule premise `is_a(?x, sort)` that is exactly the
+  rule's `forall` sort (the quantifier's domain, not a premise) — unless it is the
+  variable's only binder, which would leave the rule unsafe. No LLM.
 - `enrich` — canonicalize polarity (`isNot → is_a + negated`), dedupe, drop a rule
-  premise that only restricts a variable to a declared `domain` sort (the quantifier's
-  domain, not a premise), materialize trivia, heal contradictions and dangling ends.
-  No LLM.
+  premise restricted to the legacy global `domain` sort, materialize trivia, heal
+  contradictions and dangling ends. No LLM.
 - `symbolic_check` — verify that every quote is a real substring of the source,
   that names are canonical, and that the structure is well-formed. No LLM.
 - When multiple samples are extracted, pick the best by a deterministic score:
@@ -170,6 +189,9 @@ and slim unused premises (re-verifying after each drop). No LLM.
   - nothing matched → `unsupported`.
   Structured gaps use codes: `target_unmatched:`, `condition_unmatched:`,
   `unused_premise:`, `contradiction:`.
+- **Hypothetical refutation (policy).** When the refuting branch rests on a
+  hypothesis, the cycle reports `unsupported` with a `hypothetical_refutation:`
+  gap instead of `refuted` (see §3.7); the answer is the honest `unknown`.
 - **Builtins:** v0 ships with none. Comparison predicates are an explicit,
   deferred extension (see D1); the interface exposes a single
   `evaluate(builtin_atom, subst)` hook.
@@ -215,7 +237,12 @@ The reasoning trace is built **mechanically** from provenance: starting from the
 winning goal binding, walk the `used` facts and `rule_index` edges of the proof
 to produce an ordered list of steps, each naming the rule, the bindings, and the
 quote or hypothesis that licenses it. The LLM may only paraphrase this finished
-derivation; it may not introduce facts.
+derivation; it may not introduce facts. When the answer changes between waves,
+the explanation carries the `Revision` events in wave order, so non-monotonic
+answer movement is visible in the trace rather than hidden. Resolved and
+undecided defeasible conflicts also name the hypotheses behind the competing
+branches (`Conflict.source_ids`), i.e. which assumption introduced the `is_a`
+edge that decided specificity.
 
 ## 9. Orchestration (LangGraph)
 

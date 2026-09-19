@@ -11,18 +11,34 @@ from ankyra.config.settings import settings
 
 
 def _extra_body() -> dict[str, Any] | None:
+    """Provider body from ``ANKYRA_EXTRA_BODY`` plus an optional ``ANKYRA_SEED``.
+
+    The seed is a reproducibility hint only; a provider that does not support it
+    may ignore (or reject) the field, so it stays opt-in.
+    """
     raw = settings.get("EXTRA_BODY")
     if not raw:
-        return None
-    if isinstance(raw, str):
-        return json.loads(raw)
-    return dict(raw)
+        body: dict[str, Any] = {}
+    elif isinstance(raw, str):
+        body = json.loads(raw)
+    else:
+        body = dict(raw)
+    seed = settings.get("SEED")
+    if seed is not None and str(seed).strip():
+        body.setdefault("seed", int(seed))
+    return body or None
 
 
 def _temperature(*, role: str) -> float:
-    """Extract/critic stay low; other roles follow TEMPERATURE (default 0.1)."""
+    """Extract/critic stay low; other roles follow TEMPERATURE (default 0.1).
+
+    An explicit per-role ``0`` must win over the global default, so the unset case
+    is checked with ``is None`` rather than a falsy ``or``.
+    """
     if role in {"extract", "critic"}:
-        raw = settings.get(f"{role.upper()}_TEMPERATURE") or settings.get("TEMPERATURE", 0.1)
+        raw = settings.get(f"{role.upper()}_TEMPERATURE")
+        if raw is None:
+            raw = settings.get("TEMPERATURE", 0.1)
     else:
         raw = settings.get("TEMPERATURE", 0.1)
     try:

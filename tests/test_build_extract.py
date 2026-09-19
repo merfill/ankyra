@@ -166,3 +166,42 @@ def test_question_extraction_picks_the_more_grounded_sample(monkeypatch):
         object(), question=question, theory=Theory(), source_text=question, samples=2, repairs=0
     )
     assert chosen is good
+
+
+def _factory(sequence):
+    iterator = iter(sequence)
+    return lambda: next(iterator)
+
+
+def test_best_of_breaks_ties_independently_of_order(monkeypatch):
+    a = _problem_structure("x", facts=[{"predicate": "p", "subject": "a", "quote": "x"}])
+    b = _problem_structure("x", facts=[{"predicate": "p", "subject": "b", "quote": "x"}])
+    score = lambda _candidate: (0, 0, 0)  # noqa: E731 - deliberate tie
+
+    monkeypatch.setattr(extract_mod, "_parallel_enabled", lambda: False)
+    sequential = {
+        extract_mod._pick_best(_factory([a, b]), score, 2).model_dump_json(),
+        extract_mod._pick_best(_factory([b, a]), score, 2).model_dump_json(),
+    }
+    monkeypatch.setattr(extract_mod, "_parallel_enabled", lambda: True)
+    parallel = {
+        extract_mod._pick_best(_factory([a, b]), score, 2).model_dump_json(),
+        extract_mod._pick_best(_factory([b, a]), score, 2).model_dump_json(),
+    }
+    assert len(sequential) == 1
+    assert sequential == parallel
+
+
+def test_parallel_samples_keep_the_llm_trace(monkeypatch):
+    from ankyra.llm import trace as llm_trace
+
+    def make_candidate():
+        current = llm_trace.current_trace()
+        if current is not None:
+            current.record(llm_trace.LLMCall(label="probe", messages=[]))
+        return _problem_structure("x")
+
+    monkeypatch.setattr(extract_mod, "_parallel_enabled", lambda: True)
+    with llm_trace.tracing() as active:
+        extract_mod._pick_best(make_candidate, lambda _candidate: (0, 0, 0), 3)
+    assert len(active.calls) == 3

@@ -110,6 +110,11 @@ class Rule(BaseModel):
     conditions: list[Morphism] = Field(default_factory=list)
     consequence: Morphism = Field(description="Conclusion; never a plain string.")
     kind: RuleKind = Field(default="implication")
+    forall: dict[str, str] = Field(
+        default_factory=dict,
+        description="Audit only: the quantifier's sorted domain (var -> sort), carried from "
+        "Phase 0. The engine ignores it; the sort was already used to drop the domain premise.",
+    )
     source: str = Field(
         default="quote",
         description="'quote' when grounded in the text, else 'hypothesis:<id>'.",
@@ -263,6 +268,28 @@ class Answer(BaseModel):
     )
 
 
+RevisionTrigger = Literal["new_cited_fact", "new_hypothesis", "answer_change"]
+
+
+class Revision(BaseModel):
+    """A wave at which the answer changed, with the proposal that caused it.
+
+    Monotonicity constrains the theory, not the answer: the base only grows, but
+    the answer can move from unknown to bound and its hypothesis accounting can
+    change. A revision is the auditable record of such a change, kept in wave
+    order alongside the ``WaveRecord`` history.
+    """
+
+    wave: int
+    trigger: RevisionTrigger
+    previous: Answer | None = Field(default=None, description="Answer before the wave, if any.")
+    current: Answer = Field(description="Answer after the wave.")
+    source_ids: list[str] = Field(
+        default_factory=list,
+        description="Hypothesis ids accepted in the triggering wave.",
+    )
+
+
 ExplanationKind = Literal["axiom", "assumption", "rule", "is_a", "hypothesis"]
 
 
@@ -300,6 +327,10 @@ class Conflict(BaseModel):
     defeated: ConflictDefeated = "none"
     reason: str = Field(default="", description="Why the engine chose a side, or why it could not.")
     note: str = ""
+    source_ids: list[str] = Field(
+        default_factory=list,
+        description="Hypothesis ids feeding the competing branches (specificity provenance).",
+    )
 
 
 class Explanation(BaseModel):
@@ -310,3 +341,6 @@ class Explanation(BaseModel):
     hypotheses_used: list[str] = Field(default_factory=list)
     steps: list[ExplanationStep] = Field(default_factory=list)
     conflict: Conflict | None = Field(default=None, description="Both branches when the goal is contradicted.")
+    revisions: list[Revision] = Field(
+        default_factory=list, description="Answer changes across waves, in wave order."
+    )

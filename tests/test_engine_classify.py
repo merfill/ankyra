@@ -8,7 +8,7 @@ from ankyra.engine.ledger import HypothesisLedger
 from ankyra.engine.proposal import ProposalDraft
 
 
-def _classify(draft, theory, query, *, allow_hypotheses=True, wave=0):
+def _classify(draft, theory, query, *, allow_hypotheses=True, wave=0, question_text=""):
     return classify(
         draft,
         theory,
@@ -17,6 +17,7 @@ def _classify(draft, theory, query, *, allow_hypotheses=True, wave=0):
         source_text=theory.source_text,
         allow_hypotheses=allow_hypotheses,
         wave=wave,
+        question_text=question_text,
     )
 
 
@@ -42,6 +43,119 @@ def test_valid_quote_is_cited():
     result = _classify(draft, theory, query)
     assert result.category == "cited"
     assert Morphism(predicate="is_wet", object="ground", quote="the ground is wet") in result.theory.morphisms
+
+
+def test_a_quote_from_the_question_is_not_cited():
+    theory = Theory(
+        morphisms=[Morphism(predicate="raining")],
+        source_text="It is raining. Is the ground wet?",
+    )
+    query = Query(target=Morphism(predicate="is_wet", object="ground"))
+    draft = ProposalDraft(
+        action="assert_cited_fact",
+        fact=Morphism(predicate="is_wet", object="ground", quote="the ground wet"),
+    )
+    assert _classify(draft, theory, query).category == "cited"
+    guarded = _classify(draft, theory, query, question_text="Is the ground wet?")
+    assert guarded.category == "rejected"
+    assert guarded.reason == "question_begging"
+    refused = _classify(
+        draft, theory, query, allow_hypotheses=False, question_text="Is the ground wet?"
+    )
+    assert refused.category == "rejected"
+    assert refused.reason == "hypotheses_forbidden"
+
+
+def test_a_fact_hypothesis_asserting_the_closed_target_is_rejected():
+    theory = Theory(
+        morphisms=[Morphism(predicate="is_a", subject="earin", object="smart")],
+        source_text="Earin is smart.",
+    )
+    query = Query(target=Morphism(predicate="is_a", subject="earin", object="big", negated=True))
+    draft = ProposalDraft(
+        action="assert_cited_fact",
+        fact=Morphism(predicate="is_a", subject="earin", object="big", negated=True),
+    )
+    result = _classify(draft, theory, query)
+    assert result.category == "rejected"
+    assert result.reason == "question_begging"
+    assert result.theory == theory
+
+
+def test_an_open_target_may_be_bound_by_a_fact_hypothesis():
+    theory = Theory(morphisms=[Morphism(predicate="has_engine", subject="x")])
+    query = Query(target=Morphism(predicate="is_a", subject="x", object="?c"), answer_type="open")
+    draft = ProposalDraft(
+        action="assert_cited_fact",
+        fact=Morphism(predicate="is_a", subject="x", object="car"),
+    )
+    result = _classify(draft, theory, query)
+    assert result.category == "hypothesis"
+
+
+def test_a_cited_fact_may_state_the_target():
+    theory = Theory(
+        morphisms=[Morphism(predicate="raining")],
+        source_text="It is raining and the ground is wet.",
+    )
+    query = Query(target=Morphism(predicate="is_wet", object="ground"))
+    draft = ProposalDraft(
+        action="assert_cited_fact",
+        fact=Morphism(predicate="is_wet", object="ground", quote="the ground is wet"),
+    )
+    result = _classify(draft, theory, query)
+    assert result.category == "cited"
+
+
+def test_a_fact_grounded_only_on_a_conditional_is_not_cited():
+    theory = Theory(
+        morphisms=[Morphism(predicate="is_a", subject="harry", object="blue")],
+        rules=[
+            Rule(
+                conditions=[
+                    Morphism(predicate="is_a", subject="harry", object="red", quote="Harry is red")
+                ],
+                consequence=Morphism(
+                    predicate="is_a", subject="harry", object="furry", quote="Harry is furry"
+                ),
+                quote="If Harry is red then Harry is furry",
+            )
+        ],
+        source_text="Harry is blue. If Harry is red then Harry is furry.",
+    )
+    query = Query(target=Morphism(predicate="is_a", subject="harry", object="green"))
+    draft = ProposalDraft(
+        action="assert_cited_fact",
+        fact=Morphism(
+            predicate="is_a", subject="harry", object="red", quote="Harry is red"
+        ),
+    )
+    result = _classify(draft, theory, query, allow_hypotheses=False)
+    assert result.category == "rejected"
+    assert result.reason == "quote_conditional"
+
+
+def test_a_standalone_fact_quote_is_still_cited():
+    theory = Theory(
+        morphisms=[Morphism(predicate="sunny")],
+        rules=[
+            Rule(
+                conditions=[Morphism(predicate="raining", quote="it rains")],
+                consequence=Morphism(
+                    predicate="is_wet", object="ground", quote="the ground is wet"
+                ),
+                quote="If it rains, the ground is wet",
+            )
+        ],
+        source_text="It is sunny. The ground is wet. If it rains, the ground is wet.",
+    )
+    query = Query(target=Morphism(predicate="slippery", object="road"))
+    draft = ProposalDraft(
+        action="assert_cited_fact",
+        fact=Morphism(predicate="is_wet", object="ground", quote="The ground is wet"),
+    )
+    result = _classify(draft, theory, query)
+    assert result.category == "cited"
 
 
 def test_fresh_quote_rule_is_cited():
@@ -244,7 +358,7 @@ def test_a_mislabeled_fact_action_is_decided_by_its_payload():
         morphisms=[Morphism(predicate="nice", subject="fiona")],
         source_text="Fiona is nice.",
     )
-    query = Query(target=Morphism(predicate="young", subject="fiona"))
+    query = Query(target=Morphism(predicate="old", subject="fiona"))
     draft = ProposalDraft(
         action="propose_rule", fact=Morphism(predicate="young", subject="fiona")
     )

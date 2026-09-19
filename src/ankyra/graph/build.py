@@ -19,6 +19,7 @@ from ankyra.core.models import (
     Explanation,
     Hypothesis,
     Query,
+    Revision,
     Theory,
     Verdict,
     WaveRecord,
@@ -90,6 +91,7 @@ class ProblemResult:
     status: str
     history: list[WaveRecord]
     hypotheses: list[Hypothesis]
+    revisions: list[Revision]
 
 
 def run_problem(
@@ -134,4 +136,5 @@ def run_problem(
         status=final.get("status", ""),
         history=list(final.get("history") or []),
         hypotheses=list(final.get("hypotheses") or []),
+        revisions=list(final.get("revisions") or []),
     )

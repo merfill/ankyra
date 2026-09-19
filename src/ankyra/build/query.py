@@ -32,11 +32,33 @@ def _same_atom(left: Morphism, right: Morphism) -> bool:
     )
 
 
+def _complement_atom(left: Morphism, right: Morphism) -> bool:
+    """Same triple and modality, opposite polarity."""
+    return (
+        left.predicate == right.predicate
+        and left.subject == right.subject
+        and left.object == right.object
+        and left.negated != right.negated
+        and left.modality == right.modality
+    )
+
+
 def _drop_goal_echo(query: Query) -> Query:
-    """A question never asserts its own target as a premise."""
+    """A question never asserts its own target as a premise, nor its complement.
+
+    A target and its negation cannot both be premises: extracting "is phi?" as a
+    positive target with a ``¬phi`` condition is the question restated with the
+    polarity on the wrong side, and would make the query self-contradictory. The
+    condition is the echo, so it is dropped; genuine presuppositions name other
+    atoms and are kept.
+    """
     if query.target is None:
         return query
-    kept = [cond for cond in query.conditions if not _same_atom(cond, query.target)]
+    kept = [
+        cond
+        for cond in query.conditions
+        if not _same_atom(cond, query.target) and not _complement_atom(cond, query.target)
+    ]
     if len(kept) == len(query.conditions):
         return query
     return query.model_copy(update={"conditions": kept})

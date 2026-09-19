@@ -59,6 +59,9 @@ class Slot(BaseModel):
         return value
 
 
+RelationKind = Literal["ascription", "possession", "action"]
+
+
 class StructAtom(BaseModel):
     """One structured relation/obligation, with set/variant slots instead of triples."""
 
@@ -69,14 +72,18 @@ class StructAtom(BaseModel):
     )
     subject: Slot = Field(default_factory=Slot)
     object: Slot = Field(default_factory=Slot)
+    relation_kind: RelationKind = Field(
+        default="action",
+        description='Logical role of the atom: "ascription" when the subject has a '
+        'property/class ("Gary is blue", "blue people", "they are not blue"; the '
+        'builder emits is_a(subject, property)); "possession" when the subject has an '
+        'object/part ("X has an engine") and must stay a binary predicate, never '
+        'is_a; "action" for any other verb/relation.',
+    )
     predication: Literal["copula", "verb"] = Field(
         default="verb",
-        description='Surface construction of a one-place atom. "copula" for a '
-        'predicative "is / are / am / was / were" whose complement is a class, '
-        'property or attribute ("Gary is cold", "a poodle is a dog"); "verb" for any '
-        'other one-place predication ("X has an engine", "the bird sings"). The '
-        'builder turns a copula atom into is_a(subject, predicate); an atom with an '
-        'object is relational and may leave it "verb".',
+        description="Legacy surface hint; relation_kind takes precedence. A copula "
+        "without an explicit relation_kind is inferred as ascription.",
     )
     modality: Modality = Field(default="neutral", description="permit | obligation | forbidden | neutral.")
     negated: bool = Field(default=False, description="True if the connection is explicitly denied.")
@@ -86,6 +93,15 @@ class StructAtom(BaseModel):
     @classmethod
     def _coerce_missing_slot(cls, value: Any) -> Any:
         return {} if value is None else value
+
+    @field_validator("relation_kind", mode="before")
+    @classmethod
+    def _coerce_relation_kind(cls, value: Any) -> Any:
+        text = str(value or "").strip().lower()
+        aliases = {"attribute": "ascription", "predicate": "ascription", "state": "ascription",
+                   "has": "possession", "part": "possession", "verb": "action"}
+        text = aliases.get(text, text)
+        return text if text in {"ascription", "possession", "action"} else "action"
 
     @field_validator("predication", mode="before")
     @classmethod
@@ -98,6 +114,13 @@ class StructAtom(BaseModel):
     def _coerce_modality(cls, value: Any) -> Any:
         return normalize_modality(value)
 
+    @model_validator(mode="after")
+    def _infer_ascription(self) -> "StructAtom":
+        """A legacy copula without an explicit relation_kind is an ascription."""
+        if self.relation_kind == "action" and self.predication == "copula":
+            self.relation_kind = "ascription"
+        return self
+
 
 class StructRule(BaseModel):
     """A real conditional: IF antecedent (AND) => consequent."""
@@ -105,7 +128,39 @@ class StructRule(BaseModel):
     antecedent: list[StructAtom] = Field(default_factory=list)
     consequent: StructAtom = Field(default_factory=StructAtom)
     kind: RuleKind = Field(default="implication", description="exception negates the consequent.")
+    forall: dict[str, str] = Field(
+        default_factory=dict,
+        description='Sorted quantifier domain: variable name (no "?") -> universe sort. '
+        'For "All X people ..." write {"forall": {"x": "person"}} and do NOT add '
+        "is_a(?x,person) when another antecedent atom binds x; when the sort is the "
+        "only binder (\"All people need sleep\") keep is_a(?x,person) as an antecedent "
+        "atom. The builder treats the sort as the quantifier's domain, not a premise, "
+        "and synthesizes the binder if it is missing. A sort restricting a PROPER "
+        "subset stays an ordinary is_a condition.",
+    )
     quote: str = Field(default="", description="Minimal verbatim span supporting the rule.")
+
+    @field_validator("forall", mode="before")
+    @classmethod
+    def _coerce_forall(cls, value: Any) -> Any:
+        """Accept {"x": "person"}, [{"var": "x", "sort": "person"}], or None."""
+        if not value:
+            return {}
+        out: dict[str, str] = {}
+        items = value.items() if isinstance(value, dict) else []
+        for key, item in items:
+            name = str(key).lstrip("?")
+            if name and item is not None and str(item).strip():
+                out[name] = str(item).strip()
+        if isinstance(value, list):
+            for item in value:
+                if not isinstance(item, dict):
+                    continue
+                name = str(item.get("var") or item.get("variable") or "").lstrip("?")
+                sort = item.get("sort") or item.get("domain") or item.get("type")
+                if name and sort is not None and str(sort).strip():
+                    out[name] = str(sort).strip()
+        return out
 
     @field_validator("antecedent", mode="before")
     @classmethod

@@ -18,6 +18,7 @@ from ankyra.core.models import (
     Proposal,
     ProposalCategory,
     Query,
+    Revision,
     Theory,
     Verdict,
     WaveRecord,
@@ -74,9 +75,11 @@ class ReasoningState(TypedDict, total=False):
     error: str | None
     answer: Answer | None
     explanation: Explanation | None
+    last_answer: Answer | None
     halt: bool
     history: Annotated[list[WaveRecord], operator.add]
     hypotheses: Annotated[list[Hypothesis], operator.add]
+    revisions: Annotated[list[Revision], operator.add]
 
 
 def initial_state(
@@ -108,9 +111,11 @@ def initial_state(
         "error": None,
         "answer": None,
         "explanation": None,
+        "last_answer": None,
         "halt": False,
         "history": [],
         "hypotheses": [],
+        "revisions": [],
     }
 
 
@@ -118,7 +123,7 @@ def merge_state(state: ReasoningState, update: dict) -> ReasoningState:
     """Apply a node update with the same reducer semantics as the LangGraph state."""
     merged: ReasoningState = dict(state)  # type: ignore[assignment]
     for key, value in update.items():
-        if key in {"history", "hypotheses"}:
+        if key in {"history", "hypotheses", "revisions"}:
             merged[key] = [*(state.get(key) or []), *value]  # type: ignore[literal-required]
         else:
             merged[key] = value  # type: ignore[literal-required]
