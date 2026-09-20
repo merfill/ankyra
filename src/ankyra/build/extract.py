@@ -43,19 +43,29 @@ RESERVED CONVENTIONS:
   (e.g. {"predicate":"is_a","subject":"poodle","object":"dog"}). Never invent
   "instance", "subclass_of", "type_of", "is".
 - A universal statement ("all / every / any X ...") is a rule quantified over an
-  individual VARIABLE "?x", never over the class noun. When the generic noun is the
-  quantifier's UNIVERSE SORT, record it in the rule's "forall": {"x": "person"}. If
-  another antecedent atom already binds ?x ("All furry people are smart" ->
-  antecedent furry(?x)), do NOT add is_a(?x,person). If the sort is the ONLY thing
-  restricting ?x ("All people need sleep"), KEEP is_a(?x,person) as an antecedent
-  atom — never leave the antecedent empty and never repeat the conclusion in the
-  antecedent. Use "forall" only for a sort that covers ALL named individuals; a
-  PROPER subset ("All young birds ...") stays an ordinary is_a(?x,sort) condition.
+  individual VARIABLE "?x", never over the class noun. The same holds for a BARE
+  PLURAL generic ("Plungers suck.", "Birds fly.", "Vampires suck"): it is the rule
+  is_a(?x, <noun>) => <predicate>(?x) over "?x", never a fact whose subject is the
+  class constant. When the generic noun is the quantifier's UNIVERSE SORT, record it
+  in the rule's "forall": {"x": "person"}. If another antecedent atom already binds
+  ?x ("All furry people are smart" -> antecedent furry(?x)), do NOT add
+  is_a(?x,person). If the sort is the ONLY thing restricting ?x ("All people need
+  sleep"), KEEP is_a(?x,person) as an antecedent atom — never leave the antecedent
+  empty and never repeat the conclusion in the antecedent. Use "forall" only for a
+  sort that covers ALL named individuals; a PROPER subset ("All young birds ...")
+  stays an ordinary is_a(?x,sort) condition.
 - Negative statements: a statement that a class does NOT have a property ("Every
   real number is not imaginary") is a rule whose CONSEQUENT atom carries "negated":
   true — the same predicate, not a twin predicate. A negative antecedent ("if X is
   not Y then ...") is an antecedent atom with "negated": true; it holds only under a
-  world assumption the caller supplies, never by itself.
+  world assumption the caller supplies, never by itself. A negative statement about
+  a NAMED individual ("Marvin cannot be from Earth", "the duster doesn't suck") is a
+  ground FACT with "negated": true and MUST be kept; a conjunction of ground
+  statements is one fact per conjunct.
+- A ground implication's antecedent is NOT asserted: "If 1984 is a streaming
+  service, then 1984 is a hardcover book" adds only the rule
+  is_a(1984, streaming_service) => is_a(1984, hardcover_book); never also assert
+  is_a(1984, streaming_service) as a fact.
 - Disjointness: a statement that two classes cannot overlap ("No X is a Y",
   "X and Y are disjoint") goes to "disjoint" as {"left": <class>, "right": <class>}.
   Never write it as a rule with negated premises, and never infer disjointness from

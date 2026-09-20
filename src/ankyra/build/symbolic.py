@@ -58,6 +58,19 @@ def normalize_quote(quote: str | None) -> str:
     return _norm(quote)
 
 
+_EDGE_PUNCTUATION = ".,;:!?\"'()[]{} "
+
+
+def _core(quote: str | None) -> str:
+    """The quote without surrounding sentence punctuation.
+
+    A rule's stored quote and the quote an LLM proposes for a fact frequently differ
+    only by a trailing period (``"... book"`` vs ``"... book."``). Comparing cores
+    keeps the conditional-quote guard from being defeated by punctuation.
+    """
+    return normalize_quote(quote).strip(_EDGE_PUNCTUATION)
+
+
 def quote_in_source(quote: str | None, source: str | None) -> bool:
     """True when the quote is a real (normalized) substring of the source."""
     normalized = normalize_quote(quote)
@@ -80,11 +93,11 @@ def _quote_occurrences(needle: str, haystack: str) -> list[tuple[int, int]]:
 
 
 def _conditional_spans(theory: Theory) -> list[tuple[int, int]]:
-    """Source spans of each rule's conditional sentence."""
+    """Source spans of each rule's conditional sentence (punctuation-insensitive)."""
     source = normalize_quote(theory.source_text)
     spans: list[tuple[int, int]] = []
     for rule in theory.rules:
-        normalized = normalize_quote(rule.quote)
+        normalized = _core(rule.quote)
         if normalized:
             spans.extend(_quote_occurrences(normalized, source))
     return spans
@@ -96,9 +109,10 @@ def quote_only_in_conditional(quote: str | None, theory: Theory) -> bool:
     A conditional premise ("If Harry is red then ...") cannot assert the same
     phrase as a fact; asserting it is a fabricated axiom. If the phrase also occurs
     standalone in the source, at least one occurrence is outside the rule spans and
-    the quote stays usable.
+    the quote stays usable. Punctuation at the span edges is ignored, so a rule
+    quote without a trailing period still covers the sentence that has one.
     """
-    normalized = normalize_quote(quote)
+    normalized = _core(quote)
     if not normalized:
         return False
     source = normalize_quote(theory.source_text)

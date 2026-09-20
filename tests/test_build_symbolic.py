@@ -11,6 +11,7 @@ from ankyra.build.symbolic import (
     enforce_grounded,
     quality_key,
     quote_in_source,
+    quote_only_in_conditional,
     symbolic_check,
 )
 from ankyra.core.models import Morphism, Object, Rule, Theory
@@ -171,3 +172,37 @@ def test_quality_key_does_not_penalize_a_legitimate_exception_rule():
     )
     hard = quality_key(theory)[0]
     assert hard == 0
+
+
+def _conditional_theory() -> Theory:
+    return Theory(
+        source_text=(
+            "If 1984 is a streaming service, then 1984 is a hardcover book. "
+            "It is raining. If it is raining, the ground is wet."
+        ),
+        rules=[
+            Rule(
+                conditions=[Morphism(predicate="is_a", subject="1984", object="streaming_service")],
+                consequence=Morphism(predicate="is_a", subject="1984", object="hardcover_book"),
+                quote="If 1984 is a streaming service, then 1984 is a hardcover book",
+            ),
+            Rule(
+                conditions=[Morphism(predicate="raining")],
+                consequence=Morphism(predicate="is_wet", subject="ground"),
+                quote="If it is raining, the ground is wet",
+            ),
+        ],
+    )
+
+
+def test_conditional_quote_guard_survives_a_trailing_period():
+    theory = _conditional_theory()
+    assert quote_only_in_conditional(
+        "If 1984 is a streaming service, then 1984 is a hardcover book.", theory
+    )
+
+
+def test_conditional_quote_guard_allows_a_standalone_occurrence():
+    theory = _conditional_theory()
+    # "it is raining" is a substring of the conditional but also occurs standalone.
+    assert not quote_only_in_conditional("It is raining.", theory)

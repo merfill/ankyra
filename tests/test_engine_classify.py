@@ -135,6 +135,40 @@ def test_a_fact_grounded_only_on_a_conditional_is_not_cited():
     assert result.reason == "quote_conditional"
 
 
+def test_a_conditional_quote_with_a_trailing_period_is_still_rejected():
+    theory = Theory(
+        morphisms=[],
+        rules=[
+            Rule(
+                conditions=[
+                    Morphism(
+                        predicate="is_a",
+                        subject="1984",
+                        object="streaming_service",
+                        quote="1984 is a streaming service",
+                    )
+                ],
+                consequence=Morphism(predicate="is_a", subject="1984", object="hardcover_book"),
+                quote="If 1984 is a streaming service, then 1984 is a hardcover book",
+            )
+        ],
+        source_text="If 1984 is a streaming service, then 1984 is a hardcover book.",
+    )
+    query = Query(target=Morphism(predicate="is_a", subject="1984", object="streaming_service"))
+    draft = ProposalDraft(
+        action="assert_cited_fact",
+        fact=Morphism(
+            predicate="is_a",
+            subject="1984",
+            object="streaming_service",
+            quote="If 1984 is a streaming service, then 1984 is a hardcover book.",
+        ),
+    )
+    result = _classify(draft, theory, query, allow_hypotheses=False)
+    assert result.category == "rejected"
+    assert result.reason == "quote_conditional"
+
+
 def test_a_standalone_fact_quote_is_still_cited():
     theory = Theory(
         morphisms=[Morphism(predicate="sunny")],

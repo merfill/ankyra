@@ -145,6 +145,19 @@ The last run has no expectation misses (every soft metric passes) and
   that also occurs standalone stays usable. The two proofs became honest `unknown`;
   strict N=3 is 45/45 again.
 
+- **B13. Conditional-quote guard defeated by edge punctuation (DONE, soundness).**
+  Found on FOLIO `folio-validation-0050`: the LLM proposed `is_a(1984,
+  streaming_service)` as an `assert_cited_fact` with the full conditional sentence
+  `"If 1984 is a streaming service, then 1984 is a hardcover book."` as the quote.
+  `quote_only_in_conditional` (B12) missed it because the rule's stored quote had no
+  trailing period, so the proposed span extended one character past the rule span.
+  The fact was cited, and the target became `supported` — a false proof against the
+  benchmark label. `symbolic._core` now strips edge punctuation before the span
+  comparison, so a quote whose only occurrence is the conditional (with or without a
+  trailing period) is rejected again. Reproduced in `test_build_symbolic` and
+  `test_engine_classify`; the example is now `unknown` and FOLIO has no
+  `grounded_mismatch`.
+
 ## C. Reproducibility
 
 - **C1. LLM variance (provider-level; selection hardened).** The same problem gives

@@ -271,10 +271,11 @@ conflicts. Separate harness and flag (`ANKYRA_DEFEASIBLE`), same gate shape.
 7. ~~Defeasible synthetic collection + runner (`defeasible_synthetic`); D gate.~~
    **DONE — 8/8 green.**
 8. ~~FOLIO negation subset (budgeted) as the real-data cross-check.~~ **DONE
-   (offline: 13 in-fragment examples).** Live run on the 23-example pre-filter sample
-   scored 9/23; the two `grounded_mismatch` cases were universally quantified
-   conclusions (L2), now excluded by the ground-conclusion filter. Re-run pending
-   budget; no engine unsoundness.
+   (offline: 13 in-fragment examples).** Pre-filter 23 → 9/23; filtered 13 → **7/13**
+   (all `Uncertain` correct, no grounded mismatch). Gold-FOL diagnostic: text-fed =
+   gold-fed open = 7/13, i.e. the remaining gap is the L2 fragment boundary, not
+   extraction. Extraction fixes landed: bare-plural generics quantified, ground
+   negatives kept, a conditional-quote soundness hole closed (finding B13).
 9. ~~Extraction support for negated consequents / antecedents and disjointness
    (`build/extract.py`).~~ **DONE.**
 10. Documentation and status updates. **IN PROGRESS.**
@@ -287,8 +288,9 @@ per-query closed-world assumption are implemented and covered by the synthetic g
 (`evals.l1_synthetic` 40/40, `evals.defeasible_synthetic` 8/8, both LLM-free). The
 ProntoQA L0/L1 live gates are green (tier a 48/48, tier b 160/160, all `proven`, 0
 grounded false proofs). The FOLIO negation subset is built (13 in-fragment) and run
-(6/13); its mismatches were quantified conclusions, a ground-conditional extraction
-error, and real-text extraction failures, not engine unsoundness.
+(7/13, all `Uncertain` correct, no grounded mismatch); the gold-FOL diagnostic shows
+text-fed = gold-fed open, so the remaining gap is the L2 fragment boundary, not
+extraction.
 
 ## 17. Budget
 

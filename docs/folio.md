@@ -165,19 +165,24 @@ biconditional/multi-variable quantification). `evals.build_folio_sample` commits
 as `evals/data/folio_negation_tier_a.jsonl` and `evals.folio` is the polarity-aware
 adapter (label `True/False/Uncertain` → yes/no/unknown, open world).
 
-**Live runs.** Pre-filter 23-example sample: 9/23. Filtered 13-example sample: **6/13**
-(all 4 `Uncertain` correct; 1 grounded mismatch). The grounded mismatch
-(`folio-validation-0050`) is **extraction**, not engine unsoundness: a ground
-conditional about a named individual (`StreamingService(y1984) →
-HardcoverBook(y1984)`) was mis-formalized so that `StreamingService(y1984)` became a
-fact, and the target was then provably supported; the label `False` in fact needs a
-**reductio** (`StreamingService → Digital` and `StreamingService → … → Analog`, with
-`Digital → ¬Analog`), which is L2, not L1. The engine reported the inconsistency
-(`inconsistent_theory:`) honestly. The rest are real-text extraction failures
-(`no_progress`/`unsupported`).
+**Live runs.** Pre-filter 23-example sample: 9/23. Filtered 13-example sample: **7/13**
+(all 4 `Uncertain` correct; **no grounded mismatch**). Two defects found here were
+fixed:
 
-All `Uncertain` labels were correctly left unknown. No engine unsoundness was
-observed; the mismatches are formalization and fragment boundaries.
+- a `grounded_mismatch` was an unsound **classification hole**, not extraction: the
+  LLM cited the full conditional (`"If 1984 is a streaming service, then …"`) to
+  assert `is_a(1984, streaming_service)`, and the conditional-quote guard missed it
+  because of a trailing period (finding B13 in `docs/quality_findings.md`). Fixed; the
+  example is now `unknown`.
+- `Plungers suck.` was formalized as the constant fact `suck(plunger)` instead of the
+  rule `is_a(?x,plunger) → suck(?x)`; the extraction prompt now quantifies bare
+  plurals, and the example is correct.
+
+The remaining mismatches are `undecided_mismatch` (the gold formalization also fails
+in the open world — reducible to L2), not extraction.
+
+All `Uncertain` labels were correctly left unknown. No engine unsoundness remains
+observed.
 
 **Gold-fed diagnostic (decisive).** `evals.analyze_folio` parses the annotated FOL
 directly (`evals.folio_fol`, the FOL-fed mode of §6) and separates **fragment** from
@@ -186,18 +191,17 @@ extraction. On the 13-example sample:
 
 | verdict source | correct |
 |---|---|
-| text-fed (LLM extraction) | 6/13 |
+| text-fed (LLM extraction) | 7/13 |
 | gold-fed, open world | 7/13 |
 | gold-fed, closed world | 8/13 |
 
 Categorization: **ok 6** (4 `Uncertain` + 2 ground facts), **semantics/reductio 5**
-(gold-fed succeeds only under a closed world), **fragment 1**, **extraction 1**. So
-the low score is dominated by the fragment boundary, not extraction: most `False`
-labels and the negated `True` labels need **reductio/contrapositive** (L2) or a
-closed-world step, while `Uncertain` needs the **open** world — no single world
-assumption fits. The one clear extraction bug is a generic plural ("Plungers suck")
-formalized as a constant fact `suck(plunger)` instead of a rule `is_a(?x,plunger) →
-suck(?x)`; a ground conditional mis-formalized likewise (`0050`).
+(gold-fed succeeds only under a closed world), **fragment 1**, **extraction 1**
+(question-stage predicate drift, provider variance). So the low score is dominated by
+the fragment boundary, not extraction: most `False` labels and the negated `True`
+labels need **reductio/contrapositive** (L2) or a closed-world step, while `Uncertain`
+needs the **open** world — no single world assumption fits. text-fed now matches
+gold-fed (both 7/13), i.e. the remaining gap is the logic, not the extractor.
 
 Conclusion: FOLIO's in-fragment L1 slice is genuinely tiny and still needs L2; it is
 correctly the **L2 gate**, not an L1 gate. Higher yield needs L2 (reductio) and/or

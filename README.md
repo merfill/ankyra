@@ -136,8 +136,10 @@ uv run python -m evals.defeasible_synthetic  # defeasible synthetic gate (offlin
 uv run python -m evals.analyze_folio         # FOLIO fragment-vs-extraction diagnostic
 ```
 
-FOLIO is the planned **L2** gate (`docs/folio.md`); its L1 slice is small and mostly
-needs proof by contradiction.
+FOLIO is the planned **L2** gate (`docs/folio.md`); its L1 negation slice is small and
+mostly needs proof by contradiction. The negation-subset run scores 7/13, and the
+gold-FOL diagnostic (`evals.analyze_folio`) shows text-fed equals gold-fed, i.e. the
+remaining gap is the L2 fragment, not extraction.
 
 ## Documentation
 
