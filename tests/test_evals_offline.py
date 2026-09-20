@@ -8,7 +8,7 @@ from types import SimpleNamespace
 import pytest
 
 from ankyra.build.pipeline import build_theory
-from ankyra.config.settings import settings
+from ankyra.config.settings import get_setting, setting_overrides, settings
 from ankyra.core.models import (
     Conflict,
     Explanation,
@@ -45,7 +45,7 @@ def _reset_flags(previous: dict) -> None:
         settings.set(name, value)
 
 
-def test_run_one_applies_and_restores_per_problem_flags(monkeypatch):
+def test_run_one_applies_per_problem_flags_as_context_overrides(monkeypatch):
     previous = {
         "BUILTINS": settings.get("BUILTINS", False),
         "DEFEASIBLE": settings.get("DEFEASIBLE", False),
@@ -55,8 +55,8 @@ def test_run_one_applies_and_restores_per_problem_flags(monkeypatch):
     seen = {}
 
     def fake_run_problem(text, *, allow_hypotheses, max_waves, world_assumption=None):
-        seen["builtins"] = settings.get("BUILTINS")
-        seen["defeasible"] = settings.get("DEFEASIBLE")
+        seen["builtins"] = get_setting("BUILTINS")
+        seen["defeasible"] = get_setting("DEFEASIBLE")
         return _FakeResult()
 
     monkeypatch.setattr(run_mod, "run_problem", fake_run_problem)
@@ -72,7 +72,7 @@ def test_run_one_applies_and_restores_per_problem_flags(monkeypatch):
         _reset_flags(previous)
 
 
-def test_run_one_restores_flags_when_the_run_raises(monkeypatch):
+def test_run_one_clears_overrides_when_the_run_raises(monkeypatch):
     previous = {
         "BUILTINS": settings.get("BUILTINS", False),
         "DEFEASIBLE": settings.get("DEFEASIBLE", False),
@@ -87,10 +87,42 @@ def test_run_one_restores_flags_when_the_run_raises(monkeypatch):
     try:
         with pytest.raises(RuntimeError):
             run_mod.run_one({"id": "p1", "text": "x", "builtins": True, "defeasible": True})
-        assert settings.get("BUILTINS") is False
-        assert settings.get("DEFEASIBLE") is False
+        assert get_setting("BUILTINS") is False
+        assert get_setting("DEFEASIBLE") is False
     finally:
         _reset_flags(previous)
+
+
+def test_setting_overrides_apply_and_restore():
+    settings.set("BUILTINS", False)
+    assert get_setting("BUILTINS") is False
+    with setting_overrides(BUILTINS=True):
+        assert get_setting("BUILTINS") is True
+    assert get_setting("BUILTINS") is False
+
+
+def test_iter_run_many_processes_every_item_once(monkeypatch):
+    seen: list[str] = []
+
+    def fake_run_one(problem):
+        seen.append(problem["id"])
+        return {"id": problem["id"]}, None
+
+    monkeypatch.setattr(run_mod, "run_one", fake_run_one)
+    problems = [{"id": f"p{index}"} for index in range(6)]
+    results = list(run_mod.iter_run_many(problems, jobs=3))
+    assert sorted(index for index, _trace, _result in results) == list(range(6))
+    assert sorted(seen) == [f"p{index}" for index in range(6)]
+    assert {trace["id"] for _index, trace, _result in results} == {
+        f"p{index}" for index in range(6)
+    }
+
+
+def test_iter_run_many_sequential_preserves_order(monkeypatch):
+    monkeypatch.setattr(run_mod, "run_one", lambda problem: ({"id": problem["id"]}, None))
+    problems = [{"id": f"p{index}"} for index in range(4)]
+    results = list(run_mod.iter_run_many(problems, jobs=1))
+    assert [index for index, _trace, _result in results] == [0, 1, 2, 3]
 
 
 def _vocabulary_result(condition: Morphism) -> SimpleNamespace:

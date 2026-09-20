@@ -19,6 +19,7 @@ tokens.
 
 Usage:
     uv run python -m evals.folio [--ids a,b] [--limit N] [--no-write] [--hypotheses]
+        [--jobs N]
 """
 
 from __future__ import annotations
@@ -29,7 +30,7 @@ from collections import Counter, defaultdict
 from pathlib import Path
 
 from ankyra.core.models import Query
-from evals.run import run_one
+from evals.run import iter_run_many
 
 ROOT = Path(__file__).resolve().parent
 SAMPLE = ROOT / "data" / "folio_negation_tier_a.jsonl"
@@ -152,6 +153,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--out", default=str(OUT), help="Directory for per-problem traces.")
     parser.add_argument("--no-write", action="store_true", help="Do not write trace files.")
     parser.add_argument("--hypotheses", action="store_true", help="Abductive mode: allow hypotheses.")
+    parser.add_argument("--jobs", type=int, default=1, help="Run up to N problems concurrently (default: 1).")
     args = parser.parse_args(argv)
 
     wanted = {item.strip() for item in args.ids.split(",") if item.strip()}
@@ -162,12 +164,13 @@ def main(argv: list[str] | None = None) -> int:
     if not args.no_write:
         out_dir.mkdir(parents=True, exist_ok=True)
 
-    scores: list[dict] = []
-    for record in records:
-        trace, result = run_one(_to_problem(record, allow_hypotheses=args.hypotheses))
+    problems = [_to_problem(record, allow_hypotheses=args.hypotheses) for record in records]
+    scores: list[dict | None] = [None] * len(records)
+    for index, trace, result in iter_run_many(problems, jobs=args.jobs):
+        record = records[index]
         score = score_record(record, result)
         score["shape"] = mismatch_shape(score, trace)
-        scores.append(score)
+        scores[index] = score
         if not args.no_write:
             (out_dir / f"{record['id']}.json").write_text(
                 json.dumps({"record": record, "score": score, "trace": trace}, ensure_ascii=False, indent=2),

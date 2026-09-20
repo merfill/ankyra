@@ -529,9 +529,9 @@ def derive_closure(
     ``winning_store_hit`` and ``frontier`` so the engine and the explanation never
     disagree on the store.
     """
-    from ankyra.config.settings import settings
+    from ankyra.config.settings import get_setting
 
-    if bool(settings.get("DEFEASIBLE", False)):
+    if bool(get_setting("DEFEASIBLE", False)):
         from ankyra.engine.defeasible import effective_closure
 
         return effective_closure(

@@ -2,7 +2,7 @@
 
 Usage (from the repo root, real LLM calls):
     ANKYRA_LIVE=1 uv run python -m evals.run
-    uv run python -m evals.run --ids rain,chain
+    uv run python -m evals.run --ids rain,chain [--jobs N]
 """
 
 from __future__ import annotations
@@ -10,11 +10,13 @@ from __future__ import annotations
 import argparse
 import json
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import asdict
 from pathlib import Path
+from typing import Iterator
 
 from ankyra.build.symbolic import symbolic_check
-from ankyra.config.settings import settings
+from ankyra.config.settings import setting_overrides
 from ankyra.graph.build import run_problem
 from ankyra.llm.trace import tracing
 
@@ -35,23 +37,22 @@ def load_problems(path: Path = PROBLEMS) -> list[dict]:
 
 
 def run_one(problem: dict) -> tuple[dict, object]:
-    """Run one problem with LLM tracing, returning its trace dict and result."""
-    previous_builtins = settings.get("BUILTINS", False)
-    previous_defeasible = settings.get("DEFEASIBLE", False)
-    settings.set("BUILTINS", bool(problem.get("builtins", False)))
-    settings.set("DEFEASIBLE", bool(problem.get("defeasible", False)))
+    """Run one problem with LLM tracing, returning its trace dict and result.
+
+    Per-problem flags (``BUILTINS``/``DEFEASIBLE``) go through a ``ContextVar``
+    override, not the global singleton, so runs may execute on threads.
+    """
     started = time.perf_counter()
-    try:
-        with tracing() as llm_trace:
-            result = run_problem(
-                problem["text"],
-                allow_hypotheses=problem.get("allow_hypotheses", True),
-                max_waves=problem.get("max_waves", 6),
-                world_assumption=problem.get("world_assumption"),
-            )
-    finally:
-        settings.set("BUILTINS", previous_builtins)
-        settings.set("DEFEASIBLE", previous_defeasible)
+    with setting_overrides(
+        BUILTINS=bool(problem.get("builtins", False)),
+        DEFEASIBLE=bool(problem.get("defeasible", False)),
+    ), tracing() as llm_trace:
+        result = run_problem(
+            problem["text"],
+            allow_hypotheses=problem.get("allow_hypotheses", True),
+            max_waves=problem.get("max_waves", 6),
+            world_assumption=problem.get("world_assumption"),
+        )
     duration_ms = round((time.perf_counter() - started) * 1000, 1)
 
     trace = {
@@ -81,6 +82,29 @@ def run_one(problem: dict) -> tuple[dict, object]:
     return trace, result
 
 
+def iter_run_many(problems: list[dict], *, jobs: int = 1) -> Iterator[tuple[int, dict, object]]:
+    """Run problems, yielding ``(index, trace, result)`` as each one completes.
+
+    ``jobs <= 1`` runs in order on the caller's thread; otherwise up to ``jobs``
+    problems run concurrently on a thread pool. Items arrive in completion order,
+    so each carries its input ``index`` for the caller to restore any ordering it
+    needs. Threads are safe because ``run_one`` keeps per-problem flags in a
+    ``ContextVar`` rather than mutating the global settings singleton.
+    """
+    if jobs <= 1:
+        for index, problem in enumerate(problems):
+            trace, result = run_one(problem)
+            yield index, trace, result
+        return
+    with ThreadPoolExecutor(max_workers=jobs) as pool:
+        futures = {
+            pool.submit(run_one, problem): index for index, problem in enumerate(problems)
+        }
+        for future in as_completed(futures):
+            trace, result = future.result()
+            yield futures[future], trace, result
+
+
 def _summary(traces: list[dict]) -> str:
     total = len(traces)
     supported = sum(1 for t in traces if t["status"] == "supported")
@@ -107,6 +131,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--ids", default="", help="Comma-separated problem ids (default: all).")
     parser.add_argument("--out", default=str(OUT), help="Directory for trace JSON files.")
     parser.add_argument("--no-write", action="store_true", help="Do not write trace files.")
+    parser.add_argument("--jobs", type=int, default=1, help="Run up to N problems concurrently (default: 1).")
     args = parser.parse_args(argv)
 
     wanted = {item.strip() for item in args.ids.split(",") if item.strip()}
@@ -116,8 +141,8 @@ def main(argv: list[str] | None = None) -> int:
         out_dir.mkdir(parents=True, exist_ok=True)
 
     traces = []
-    for problem in problems:
-        trace, _ = run_one(problem)
+    for index, trace, _ in iter_run_many(problems, jobs=args.jobs):
+        problem = problems[index]
         traces.append(trace)
         if not args.no_write:
             (out_dir / f"{problem['id']}.json").write_text(

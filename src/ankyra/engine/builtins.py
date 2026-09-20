@@ -10,7 +10,7 @@ earlier positive relational atom of the same rule body.
 from __future__ import annotations
 
 from ankyra.build.normalize import is_var
-from ankyra.config.settings import settings
+from ankyra.config.settings import get_setting
 from ankyra.core.models import Morphism, Rule
 
 Subst = dict[str, str]
@@ -20,7 +20,7 @@ _CANONICAL = frozenset({"eq", "neq", "lt", "lte", "gt", "gte"})
 
 
 def builtins_enabled() -> bool:
-    return bool(settings.get("BUILTINS", False))
+    return bool(get_setting("BUILTINS", False))
 
 
 def canonical_builtin(name: str) -> str | None:

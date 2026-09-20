@@ -16,7 +16,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from ankyra.build.pipeline import build_theory
 from ankyra.build.symbolic import GapClass, classify_gap, quality_key, symbolic_check
 from ankyra.build.unroll import unroll_query_structure
-from ankyra.config.settings import settings
+from ankyra.config.settings import get_setting, settings
 from ankyra.core.models import Theory
 from ankyra.core.schemas import ProblemStructure, QuestionStructure
 from ankyra.llm.client import extract_max_tokens, with_max_tokens
@@ -211,7 +211,7 @@ as a new object id such as "at_least_50"."""
 
 
 def builtins_block() -> str:
-    return BUILTINS_BLOCK if settings.get("BUILTINS", False) else ""
+    return BUILTINS_BLOCK if get_setting("BUILTINS", False) else ""
 
 
 REPAIR_BLOCK = """The previous decomposition below was rejected by a deterministic

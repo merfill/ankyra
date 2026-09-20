@@ -212,9 +212,9 @@ def _rule_steps(theory: Theory, candidates) -> list[ExplanationStep]:
 
 
 def _defeasible_enabled() -> bool:
-    from ankyra.config.settings import settings
+    from ankyra.config.settings import get_setting
 
-    return bool(settings.get("DEFEASIBLE", False))
+    return bool(get_setting("DEFEASIBLE", False))
 
 
 def _candidate_keys(candidates) -> frozenset[FactKey]:
