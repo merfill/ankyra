@@ -121,6 +121,32 @@ def test_score_record_uncertain_stays_unknown():
     assert score["kind_match"]
 
 
+def test_score_open_existential_binding_counts_as_yes():
+    record = {"id": "o", "label": "True", "statement_negative": False}
+    query = Query(target=Morphism(predicate="is_a", subject="?x", object="animal"), answer_type="open")
+    result = SimpleNamespace(
+        query=query,
+        answer=Answer(value="?x=sk0", kind="binding", strength="proven"),
+        status="supported",
+    )
+    score = folio.score_record(record, result)
+    assert score["compound"] and score["kind_match"] and score["actual_kind"] == "yes"
+
+
+def test_score_compound_uncertain_conclusion_uses_the_label():
+    record = {"id": "m", "label": "Uncertain", "statement_negative": True}
+    negated = Morphism(predicate="is_a", subject="pet", object="cat", negated=True)
+    query = Query(target=negated, goals=[negated], goal_mode="all", answer_type="yes_no")
+    result = SimpleNamespace(
+        query=query,
+        answer=Answer(value="yes", kind="yes", strength="proven"),
+        status="supported",
+    )
+    score = folio.score_record(record, result)
+    assert score["compound"] and not score["kind_match"]
+    assert score["expected_kind"] == "unknown"
+
+
 def test_problem_text_and_open_world():
     record = folio.load_sample()[0]
     text = folio.problem_text(record)

@@ -392,6 +392,11 @@ Recon (§6) показывает, что доминирующие не-Horn фо
   `out_of_fragment`.
 - Гейт: 0 grounded false proofs; determinate все `proven`; точность по kind ≥95% во
   фрагменте.
+- **Живой результат (тир a, `--jobs 5`): ЗЕЛЁНЫЙ.** 42 оценки: **41/42 (97.6%)**,
+  **0 grounded false proofs**, все supported/refuted `proven`; 2 без цели (unknown) и
+  1 честное `contradiction` (противоречивая извлечённая теория). Два дефекта
+  исправлены: `verify` больше не понижает доказанную цель при таймауте её дополнения,
+  а адаптер оценивает составную цель по всему утверждению.
 
 ### 12.3 FOLIO — второй живой гейт
 
@@ -411,8 +416,6 @@ Recon (§6) показывает, что доминирующие не-Horn фо
 
 ## 14. Тесты
 
-- `tests/test_core_clause.py`: клаузификация, Skolemization, понижение к CNF и
-  обратная ссылка `Rule`→клауза.
 - `tests/test_core_clause.py`: клаузальный IR (`Rule.alternatives`/`head`/`is_horn`,
   `Query.goals`/`goal_mode`).
 - `tests/test_build_disjunction.py`: понижение дизъюнктивных голов, тел,
@@ -461,16 +464,17 @@ Recon (§6) показывает, что доминирующие не-Horn фо
    (`evals/build_l2_synthetic.py`, `evals/l2_synthetic.py`,
    `tests/test_evals_l2_synthetic.py`).
 6. Builder + адаптер ProntoQA-OOD compositional; бюджетируемый живой гейт.
-   **Harness СДЕЛАН** (LLM-free: `evals/build_prontoqa_ood_sample.py`,
-   `evals/prontoqa_ood.py`, тир a на 44 задачи, `tests/test_evals_prontoqa_ood.py`);
-   **живой гейт ждёт отдельного решения по бюджету** и milestone 9 для извлечения
-   составных целей.
+   **СДЕЛАНО** — harness (LLM-free: `evals/build_prontoqa_ood_sample.py`,
+   `evals/prontoqa_ood.py`, тир a на 44 задачи, `tests/test_evals_prontoqa_ood.py`) и
+   **живой тир a ЗЕЛЁНЫЙ** (**41/42 (97.6%), 0 grounded false proofs**).
 7. Builder + адаптер FOLIO L2 среза; бюджетируемый живой гейт (gold-fed
    диагностика). **Harness СДЕЛАН** (LLM-free: `evals/build_folio_sample.py --subset
    l2` коммитит `folio_l2_tier_a.jsonl` — 45 задач, 15/метку; `evals/folio.py`
-   получил `--subset`/logic; `tests/test_evals_folio.py`); **живой гейт ждёт
-   бюджета**. Парсер gold-fed диагностики пока только L1 (расширение на `∨`/`∃` —
-   follow-up).
+   получил `--subset`/logic; `tests/test_evals_folio.py`). **Живой гейт (тир a)**:
+   26/44, ограничен извлечением (6 `out_of_fragment`, 9 без цели, 12
+   `insufficient`), **несостоятельности движка нет** — proven-но-неверные случаи это
+   свёртки извлечения (универсальные/условные заключения как ground-атомы). Парсер
+   gold-fed диагностики пока только L1 (расширение на `∨`/`∃` — follow-up).
 8. Первопорядковый слой: кванторы, унификация, свидетели экзистенциальных целей;
    расширение синтетического гейта. **Гейтится FOLIO** (`∃`), не ProntoQA-OOD (§6).
    **СДЕЛАНО (конечно-доменная форма).** Кванторы обрабатываются клаузификацией и

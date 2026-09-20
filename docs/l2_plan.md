@@ -379,6 +379,11 @@ a contradiction shows both branches. `answer` is unchanged (`refuted` now carrie
   `out_of_fragment` bucket.
 - Gate: 0 grounded false proofs; determinate all `proven`; kind accuracy ≥95% in
   fragment.
+- **Live result (tier a, `--jobs 5`): GREEN.** 42 scored targets: **41/42 (97.6%)**,
+  **0 grounded false proofs**, every supported/refuted answer `proven`; 2 no-target
+  (unknown) and 1 honest `contradiction` (an inconsistent extracted theory). Two
+  defects were fixed to get there: `verify` no longer downgrades a proved goal when
+  its complement times out, and the adapter scores compound goals by the whole claim.
 
 ### 12.3 FOLIO — second live gate
 
@@ -397,8 +402,6 @@ a contradiction shows both branches. `answer` is unchanged (`refuted` now carrie
 
 ## 14. Tests
 
-- `tests/test_core_clause.py`: clausification, Skolemization, CNF lowering, and the
-  `Rule`→clause back-reference.
 - `tests/test_core_clause.py`: the clause IR (`Rule.alternatives`/`head`/`is_horn`,
   `Query.goals`/`goal_mode`).
 - `tests/test_build_disjunction.py`: lowering of disjunctive heads, disjunctive
@@ -443,15 +446,18 @@ a contradiction shows both branches. `answer` is unchanged (`refuted` now carrie
    **DONE — green** (19/19 initially; extended to **23/23** by M8/M9)
    (`evals/build_l2_synthetic.py`, `evals/l2_synthetic.py`,
    `tests/test_evals_l2_synthetic.py`).
-6. ProntoQA-OOD compositional builder + adapter; budgeted live gate. **Harness DONE**
-   (LLM-free: `evals/build_prontoqa_ood_sample.py`, `evals/prontoqa_ood.py`,
-   44-problem tier a, `tests/test_evals_prontoqa_ood.py`); **live gate pending a
-   separate budget decision** and milestone 9 for compound-goal extraction.
+6. ProntoQA-OOD compositional builder + adapter; budgeted live gate. **DONE** —
+   harness (LLM-free: `evals/build_prontoqa_ood_sample.py`, `evals/prontoqa_ood.py`,
+   44-problem tier a, `tests/test_evals_prontoqa_ood.py`) and **live tier a GREEN**
+   (**41/42 (97.6%), 0 grounded false proofs**).
 7. FOLIO L2 slice builder + adapter; budgeted live gate (gold-fed diagnostic).
    **Harness DONE** (LLM-free: `evals/build_folio_sample.py --subset l2` commits
    `folio_l2_tier_a.jsonl` — 45 problems, 15/label; `evals/folio.py` gained
-   `--subset`/logic; `tests/test_evals_folio.py`); **live gate pending budget**. The
-   gold-fed diagnostic parser is still L1-only (extending it to `∨`/`∃` is a follow-up).
+   `--subset`/logic; `tests/test_evals_folio.py`). **Live gate (tier a)**: 26/44
+   scored, extraction-bound (6 `out_of_fragment`, 9 no target, 12 `insufficient`),
+   **no engine unsoundness** — the proven-but-wrong cases are extraction collapses
+   (universal/conditional conclusions as ground atoms). The gold-fed diagnostic parser
+   is still L1-only (extending it to `∨`/`∃` is a follow-up).
 8. First-order layer: quantifiers, unification, existential goal witnesses; extend
    the synthetic gate. **Gated by FOLIO** (`∃`), not by ProntoQA-OOD (§6).
    **DONE (finite-domain form).** Quantifiers are handled by clausification plus

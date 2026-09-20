@@ -152,13 +152,14 @@ uv run python -m evals.analyze_folio         # FOLIO fragment-vs-extraction diag
 ```
 
 **L2** (disjunction, case split, finite-domain quantifiers) is implemented behind
-`ANKYRA_LOGIC` (default `off`) and gated by the LLM-free synthetic collection
-**23/23**, 0 grounded false proofs (`docs/l2_plan.md`). The ProntoQA-OOD and FOLIO L2
-harnesses are built with committed samples (`evals.prontoqa_ood`, `evals.folio
---subset l2`) and their **live gates are pending a separate budget decision**. The
-earlier FOLIO L1 negation slice scored 7/13, and the gold-FOL diagnostic
-(`evals.analyze_folio`) showed text-fed equals gold-fed — the remaining gap is the L2
-fragment, not extraction.
+`ANKYRA_LOGIC` (default `off`). It is gated LLM-free by the synthetic collection
+**23/23** (0 grounded false proofs), and its first live gate — **ProntoQA-OOD tier a —
+is green: 41/42 (97.6%), 0 grounded false proofs** (`evals.prontoqa_ood`). FOLIO's L2
+live gate (45 problems) is **extraction-bound: 26/44**, with no engine unsoundness —
+the misses are no-target/`out_of_fragment` or a universal/conditional conclusion
+collapsed to a ground atom. The earlier FOLIO L1 negation slice scored 7/13, and the
+gold-FOL diagnostic (`evals.analyze_folio`) showed text-fed equals gold-fed, i.e. the
+gap is logic/extraction, not the engine core.
 
 ## Documentation
 
@@ -186,7 +187,8 @@ false proofs; the ProntoQA-OOD and FOLIO L2 harnesses are built with live gates
 pending a separate budget decision. The defeasible layer (D) is implemented behind
 `ANKYRA_DEFEASIBLE`.
 
-Known open items: live L2 gates (ProntoQA-OOD, FOLIO) pending budget; the gold-fed L2
-diagnostic parser (`∨`/`∃`); full first-order unification (deferred — grounding is
-sound and terminating on the committed finite domains); extraction robustness on real
-text (`docs/folio.md` §9); and the items in `docs/quality_findings.md`.
+Known open items: FOLIO L2 extraction (universal/conditional conclusions collapsing to
+ground atoms) and its `out_of_fragment` constructs; the gold-fed L2 diagnostic parser
+(`∨`/`∃`); full first-order unification (deferred — grounding is sound and terminating
+on the committed finite domains); extraction robustness on real text (`docs/folio.md`
+§9); and the items in `docs/quality_findings.md`.

@@ -298,19 +298,27 @@ def _l2_outcome(clausification, goal: Morphism) -> tuple[str, object, object]:
     """The L2 outcome of one ground goal and its proof results.
 
     ``supported`` (goal entailed), ``refuted`` (its negation entailed),
-    ``contradiction`` (both), ``budget`` (exhausted), else ``unknown``.
+    ``contradiction`` (both), ``budget`` (exhausted), else ``unknown``. A proved goal
+    is never downgraded by a timeout on its complement: the complement is only
+    consulted for a refutation when the goal itself is not entailed, or — bounded —
+    for a contradiction report when it is.
     """
     budget = _logic_budget()
     target = refute(clausification, literal_of(goal), budget=budget)
-    complement = refute(clausification, negate(literal_of(goal)), budget=budget)
-    if target.status == "budget" or complement.status == "budget":
-        return "budget", target, complement
-    if target.status == "entailed" and complement.status == "entailed":
-        return "contradiction", target, complement
     if target.status == "entailed":
+        complement = refute(
+            clausification, negate(literal_of(goal)), budget=min(budget, _CONTRADICTION_BUDGET)
+        )
+        if complement.status == "entailed":
+            return "contradiction", target, complement
         return "supported", target, complement
+    if target.status == "budget":
+        return "budget", target, None
+    complement = refute(clausification, negate(literal_of(goal)), budget=budget)
     if complement.status == "entailed":
         return "refuted", target, complement
+    if complement.status == "budget":
+        return "budget", target, complement
     return "unknown", target, complement
 
 
@@ -408,6 +416,10 @@ _SHELVES = {
     "unsupported": "refused",
     "out_of_fragment": "refused",
 }
+
+# A proved goal is enough for ``supported``; the complement is consulted only to
+# *upgrade* the report to ``contradiction``, so it runs under a smaller cap.
+_CONTRADICTION_BUDGET = 2000
 
 
 def _verify_l2(theory: Theory, query: Query, ctx) -> Verdict:

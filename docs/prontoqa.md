@@ -268,3 +268,12 @@ The **live** run invokes the paid extractor and is deferred to a separate budget
 decision. One dependency: compound cases (`ask_all`/`ask_any`) need the extraction
 prompt support of L2 plan milestone 9 before they can be scored on kind; until then
 they report no target and are counted, not failed.
+
+**Live gate (tier a, `--jobs 5`).** 42 scored targets: **41/42 (97.6%)**, **0 grounded
+false proofs**, every determinate answer `proven`. Two problems yielded no extracted
+target (unknown); one `Composed` case surfaced an inconsistent extracted theory and was
+reported `contradiction` honestly. Two defects were found and fixed: `verify` no longer
+downgrades a *proved* goal when its complement times out (contradiction detection now
+runs under a smaller cap), and the adapter scores a compound goal by the whole claim
+(not its first, possibly negated, conjunct). Without those fixes the same run read 40%,
+i.e. the low score was a harness/priority artifact, not unsoundness.

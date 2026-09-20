@@ -233,3 +233,12 @@ existential, no equality/XOR/biconditional/multi-variable quantification).
 `tests/test_evals_folio.py`. The gold-fed diagnostic (`evals/folio_fol.py`) still
 parses only the L1 negation shape; extending its parser to `∨`/`∃` (to separate
 fragment from extraction on the L2 slice) is a follow-up.
+
+**Live gate (L2 tier a, `--jobs 5`).** 45 problems: **26/44 scored targets** after the
+compound/open scoring fix. 6 are `out_of_fragment` (functions/equality/multi-variable
+quantification), 9 had no extracted target, 12 `insufficient` (budget/complex goals);
+**no engine unsoundness was observed**. The proven-but-wrong cases are **extraction
+collapses** — a universal or conditional conclusion formalized as a ground atom (e.g.
+"No pets are cats" → `¬is_a(pet,cat)`, whose refutation in that formalization is
+genuinely valid), so the score stays extraction-bound, consistent with the gold-fed
+diagnostic above. FOLIO remains a hard extraction gate, not an engine gap.

@@ -58,11 +58,23 @@ def problem_text(record: dict) -> str:
 
 
 def score_record(record: dict, result: object) -> dict:
-    """Detailed per-problem score; ``result`` is a ``run_problem`` result."""
+    """Detailed per-problem score; ``result`` is a ``run_problem`` result.
+
+    A ``Prove: <statement>`` query asserts its statement is true. For a single atom
+    the extracted positive ask inverts when the statement is negative (as for
+    ProntoQA v1). For a compound goal (``ask_all``/``ask_any``) the polarity of an
+    individual conjunct/disjunct is not the statement's polarity, so the whole
+    statement is simply expected to hold (``yes``).
+    """
     query: Query | None = getattr(result, "query", None)
     target = query.target if query is not None else None
+    compound = query is not None and query.goal_mode != "single"
     statement_negative = bool(record["statement_negative"])
-    if target is not None:
+    if target is not None and compound:
+        polarity_known = True
+        flipped = None
+        expected = "yes"
+    elif target is not None:
         polarity_known = True
         flipped = statement_negative != bool(target.negated)
         expected = expected_kind(record["answer"], flipped)
@@ -77,6 +89,7 @@ def score_record(record: dict, result: object) -> dict:
         "id": record["id"],
         "rule_type": record["rule_type"],
         "class": record["class"],
+        "compound": compound,
         "expected_kind": expected,
         "actual_kind": actual,
         "kind_match": polarity_known and expected == actual,

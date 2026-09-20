@@ -54,6 +54,26 @@ def test_score_without_a_target_is_not_scored():
     assert not score["kind_match"]
 
 
+def test_score_compound_goal_expects_yes_regardless_of_a_negated_conjunct():
+    record = {"id": "c", "rule_type": "Composed", "class": "l2_decomp", "statement_negative": True, "answer": "A"}
+    query = Query(
+        target=Morphism(predicate="is_a", subject="wren", object="yumpus"),
+        goals=[
+            Morphism(predicate="is_a", subject="wren", object="yumpus"),
+            Morphism(predicate="is_a", subject="wren", object="shumpus", negated=True),
+        ],
+        goal_mode="all",
+        answer_type="yes_no",
+    )
+    result = SimpleNamespace(
+        query=query,
+        answer=Answer(value="yes", kind="yes", strength="proven"),
+        status="supported",
+    )
+    score = prontoqa_ood.score_record(record, result)
+    assert score["compound"] and score["kind_match"] and score["expected_kind"] == "yes"
+
+
 def test_out_of_fragment_is_counted():
     record = {"id": "w", "rule_type": "Composed", "class": "l2_reductio", "statement_negative": False, "answer": "A"}
     score = prontoqa_ood.score_record(record, _result(None, "unknown", strength="not_proven", status="out_of_fragment"))

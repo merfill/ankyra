@@ -29,6 +29,7 @@ import json
 from collections import Counter, defaultdict
 from pathlib import Path
 
+from ankyra.build.normalize import is_var
 from ankyra.core.models import Query
 from evals.run import iter_run_many
 
@@ -66,10 +67,25 @@ def expected_kind(label: str, flipped: bool) -> str:
 
 
 def score_record(record: dict, result: object) -> dict:
+    """Detailed per-problem score; ``result`` is a ``run_problem`` result.
+
+    FOLIO labels are three-way with an open-world ``Uncertain``. For a single ground
+    target the extracted positive ask inverts when the conclusion is negative. For a
+    compound or open (``∃``) conclusion the target is a whole claim, so the label's
+    kind is expected directly; a proven ``binding`` (a witnessed existential) counts
+    as ``yes``.
+    """
     query: Query | None = getattr(result, "query", None)
     target = query.target if query is not None else None
+    goals = list(query.goals) if query is not None else []
+    open_target = target is not None and (is_var(target.subject) or is_var(target.object))
+    compound = bool(goals) or open_target
     statement_negative = bool(record["statement_negative"])
-    if target is not None:
+    if target is not None and compound:
+        polarity_known = True
+        flipped = None
+        expected = _LABEL_TO_KIND[record["label"]]
+    elif target is not None:
         polarity_known = True
         flipped = statement_negative != bool(target.negated)
         expected = expected_kind(record["label"], flipped)
@@ -79,9 +95,12 @@ def score_record(record: dict, result: object) -> dict:
         expected = _LABEL_TO_KIND[record["label"]]
     answer = getattr(result, "answer", None)
     actual = answer.kind if answer is not None else None
+    if compound and actual == "binding" and answer is not None and answer.strength == "proven":
+        actual = "yes"
     return {
         "id": record["id"],
         "label": record["label"],
+        "compound": compound,
         "expected_kind": expected,
         "actual_kind": actual,
         "kind_match": polarity_known and expected == actual,
