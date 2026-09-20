@@ -124,6 +124,9 @@ def check_quote_witnesses(theory: Theory) -> list[str]:
     for i, rule in enumerate(theory.rules, 1):
         if not quote_in_source(rule.quote, theory.source_text):
             gaps.append(f"missing_quote:rule:{i}")
+    for i, constraint in enumerate(theory.constraints, 1):
+        if not quote_in_source(constraint.quote, theory.source_text):
+            gaps.append(f"missing_quote:constraint:{i}")
     return gaps
 
 
@@ -233,9 +236,16 @@ def enforce_grounded(theory: Theory) -> Theory:
         return theory
     morphisms = [m for m in theory.morphisms if quote_in_source(m.quote, source)]
     rules = [r for r in theory.rules if quote_in_source(r.quote, source)]
-    if len(morphisms) == len(theory.morphisms) and len(rules) == len(theory.rules):
+    constraints = [c for c in theory.constraints if quote_in_source(c.quote, source)]
+    if (
+        len(morphisms) == len(theory.morphisms)
+        and len(rules) == len(theory.rules)
+        and len(constraints) == len(theory.constraints)
+    ):
         return theory
-    return theory.model_copy(update={"morphisms": morphisms, "rules": rules})
+    return theory.model_copy(
+        update={"morphisms": morphisms, "rules": rules, "constraints": constraints}
+    )
 
 
 def source_coverage(quotes, source: str | None) -> int:

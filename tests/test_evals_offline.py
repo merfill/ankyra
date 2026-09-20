@@ -54,7 +54,7 @@ def test_run_one_applies_and_restores_per_problem_flags(monkeypatch):
     settings.set("DEFEASIBLE", False)
     seen = {}
 
-    def fake_run_problem(text, *, allow_hypotheses, max_waves):
+    def fake_run_problem(text, *, allow_hypotheses, max_waves, world_assumption=None):
         seen["builtins"] = settings.get("BUILTINS")
         seen["defeasible"] = settings.get("DEFEASIBLE")
         return _FakeResult()

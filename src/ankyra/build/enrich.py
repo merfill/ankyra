@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from ankyra.build.normalize import predicate_polarity
-from ankyra.core.models import Morphism, Object, Rule, Theory
+from ankyra.core.models import Constraint, Morphism, Object, Rule, Theory
 
 
 def _key(morphism: Morphism) -> tuple:
@@ -123,6 +123,31 @@ def strip_domain_conditions(rules: list[Rule], domain: list[str]) -> list[Rule]:
     return out
 
 
+def _rewrite_constraint(constraint: Constraint) -> Constraint:
+    return constraint.model_copy(
+        update={
+            "left": predicate_polarity(constraint.left, False)[0],
+            "right": predicate_polarity(constraint.right, False)[0],
+        }
+    )
+
+
+def _valid_constraint(constraint: Constraint) -> bool:
+    return bool(constraint.left.strip()) and bool(constraint.right.strip())
+
+
+def _dedupe_constraints(constraints: list[Constraint]) -> list[Constraint]:
+    seen: set[frozenset] = set()
+    out: list[Constraint] = []
+    for constraint in constraints:
+        signature = frozenset({constraint.left, constraint.right})
+        if len(signature) < 2 or signature in seen:
+            continue
+        seen.add(signature)
+        out.append(constraint)
+    return out
+
+
 def enrich_theory(theory: Theory) -> Theory:
     """Normalize polarity, dedupe, and hygienically clean rules — no LLM.
 
@@ -137,17 +162,25 @@ def enrich_theory(theory: Theory) -> Theory:
     rules = _dedupe_rules([r for r in rewritten_rules if _valid_rule(r)])
     rules = heal_structural(rules)
     rules = strip_domain_conditions(rules, theory.domain)
+    constraints = _dedupe_constraints(
+        [_rewrite_constraint(c) for c in theory.constraints if _valid_constraint(c)]
+    )
 
     for morphism in [*morphisms, *_iter_rule_morphisms(rules)]:
         if morphism.subject and morphism.subject not in ids:
             ids.append(morphism.subject)
         if morphism.object and morphism.object not in ids:
             ids.append(morphism.object)
+    for constraint in constraints:
+        for class_id in (constraint.left, constraint.right):
+            if class_id and class_id not in ids:
+                ids.append(class_id)
 
     return theory.model_copy(
         update={
             "objects": [Object(id=oid) for oid in ids],
             "morphisms": morphisms,
             "rules": rules,
+            "constraints": constraints,
         }
     )

@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from ankyra.build.normalize import canonicalize_predicate, is_var
 from ankyra.build.query import derive_answer_type
-from ankyra.core.models import Morphism, Object, Query, Rule, Theory
+from ankyra.core.models import Constraint, Morphism, Object, Query, Rule, Theory, WorldAssumption
 from ankyra.core.schemas import ProblemStructure, QuestionStructure, Slot, StructAtom
 
 
@@ -202,17 +202,38 @@ def unroll_problem_structure(
         objects=_ordered_objects(structure),
         morphisms=morphisms,
         rules=rules,
+        constraints=_unroll_constraints(structure),
         source_text=structure.source_text,
         domain=list(structure.domain),
     )
+
+
+def _unroll_constraints(structure: ProblemStructure) -> list[Constraint]:
+    """Compile disjointness statements into strict ``Constraint`` axioms.
+
+    The two sides are class ids; a statement with a missing side is dropped, like
+    any malformed atom elsewhere in the builder.
+    """
+    constraints: list[Constraint] = []
+    for item in structure.disjoint:
+        left, right = canonicalize_predicate(item.left), canonicalize_predicate(item.right)
+        if not left or not right:
+            continue
+        constraints.append(Constraint(left=left, right=right, quote=item.quote or None))
+    return constraints
 
 
 def unroll_query_structure(
     structure: QuestionStructure,
     *,
     deontic_prefixes: bool = False,
+    world_assumption: WorldAssumption = "open",
 ) -> Query:
-    """Facts -> conditions (Gamma), ask -> target (phi); variables carried over."""
+    """Facts -> conditions (Gamma), ask -> target (phi); variables carried over.
+
+    ``world_assumption`` is supplied by the caller (config/harness), never read
+    from the question structure.
+    """
     conditions: list[Morphism] = []
     for atom in structure.presuppositions:
         conditions.extend(atom_to_morphisms(atom, deontic_prefixes=deontic_prefixes))
@@ -237,4 +258,5 @@ def unroll_query_structure(
         target=target,
         variables=variables,
         answer_type=derive_answer_type(target, variables),
+        world_assumption=world_assumption,
     )

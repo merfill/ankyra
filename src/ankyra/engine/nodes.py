@@ -65,7 +65,13 @@ def extract_question_node(state: ReasoningState, deps: GraphDeps) -> dict:
 
 def build_query_node(state: ReasoningState, deps: GraphDeps) -> dict:
     theory = state.get("theory")
-    return {"query": build_query(state["question"], domain=theory.domain if theory else None)}
+    return {
+        "query": build_query(
+            state["question"],
+            domain=theory.domain if theory else None,
+            world_assumption=state.get("world_assumption", "open"),
+        )
+    }
 
 
 _REVISION_TRIGGERS: dict[str, RevisionTrigger] = {
@@ -127,7 +133,7 @@ def verify_node(state: ReasoningState, deps: GraphDeps) -> dict:
         update["pending"] = None
     update["wave"] = wave
 
-    if verdict.status in {"supported", "refuted", "contradiction", "insufficient"}:
+    if verdict.status in {"supported", "refuted", "contradiction", "insufficient", "out_of_fragment"}:
         status = verdict.status
     elif any(gap.startswith("undecided_conflict:") for gap in verdict.gaps):
         # A conflict specificity cannot decide is a definitive answer (unknown),

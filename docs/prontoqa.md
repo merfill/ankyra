@@ -2,7 +2,8 @@
 
 Operating notes for a synthetic deductive benchmark, planned as the **L1 gate** of
 `docs/reasoning_roadmap.md`. Russian mirror: `docs/prontoqa_ru.md`. Related:
-`docs/reasoning_roadmap.md`, `docs/proofwriter.md`, `docs/task.md` §3.8.
+`docs/reasoning_roadmap.md`, `docs/l1_plan.md` (L1 implementation plan),
+`docs/proofwriter.md`, `docs/task.md` §3.8.
 
 Sources: Saparov & He, *Language Models Are Greedy Reasoners: A Systematic Formal
 Analysis of Chain-of-Thought* (ICLR 2023, arXiv:2210.01240) and
@@ -132,7 +133,57 @@ reported as `out_of_fragment` and is not a failure.
 4. **L1 stage:** enable stratified negation for the disjointness/negation subset,
    with its own gate and its own report line.
 
-## 8. Status
+## 8. Status and recon results
 
-Not implemented. First task is the LLM-free recon in step 0; the adapter is then a
-small variant of the ProofWriter harness. See `docs/reasoning_roadmap.md` L1.
+**Recon done (LLM-free).** Two sources were tallied:
+
+- `smoorsmith/prontoqa` (Logic-LLM mirror of ProntoQA v1; 500 rows each in
+  train/val/test, 1500 total);
+- the official generator `asaparov/prontoqa` v1 (`run_experiment.py --model-name
+  json`, seed 7, 180 rows), as a cross-check.
+
+Findings:
+
+- **L0 / L1 split.** 760/1500 rows are positive `ModusPonens` subsumption chains
+  (L0); 740/1500 conclude via an **explicit negated-property rule** of the form
+  `Every X is not Y` (L1).
+- **No disjointness, no composition.** The surface context contains **no**
+  disjointness sentence ("No X is a Y") and no proof uses disjointness; there is no
+  `And`/`Or`/`ProofByContra` in this release (those are the OOD release
+  `tasksource/prontoqa`, i.e. L2).
+- The official generator behaves the same: negation is always rendered as an
+  explicit negated-property rule. Disjointness formulas exist only in the
+  generator's **formal ontology** (`get_disjointness_formulas`), never in the
+  surface context — so they are not extractable from text (this is the plan §6
+  question; `docs/l1_plan.md` D-L1-1(a) applies if such questions are ever used).
+- **The existing engine already solves the explicit-negation subset.** A rule with
+  a negative consequent plus a positive target is `refuted` with strength `proven`
+  (checked offline: `is_a(real)->¬is_a(imaginary)` refutes `imaginary(a)`);
+  `supported` still works for the positive chain.
+
+**Implication.** ProntoQA v1 gates **L0 + explicit negation (negative rule
+consequents), which is already engine-supported**; the new L1 machinery (constraints,
+NAF, CWA) is **not exercised** by this collection. Scope is therefore an open
+decision (`docs/l1_plan.md` D-L1-5).
+
+**Harness implemented.** `evals.build_prontoqa_sample` commits
+`evals/data/prontoqa_tier_a.jsonl` (48) and `prontoqa_tier_b.jsonl` (160), stratified
+by proof shape × statement polarity; `evals.prontoqa --tier a|b` is the polarity-aware
+adapter (mirrors the ProofWriter harness, sets `world_assumption="open"`). The
+LLM-free primary L1 gate is `evals.l1_synthetic`.
+
+**Gate report (strict deduction, `ANKYRA_EXTRACT_SAMPLES=1`).**
+
+| Tier | Problems | Positive | Negation | Kind accuracy | Strength | Grounded false proofs |
+|---|---|---|---|---|---|---|
+| a | 48 | 24/24 | 24/24 | **48/48 (100%)** | all `proven` | 0 |
+| b | 160 | 80/80 | 80/80 | **160/160 (100%)** | all `proven` | 0 |
+
+Both gates pass with 0 grounded false proofs and every determinate answer `proven`;
+all 208 problems answered in wave 0 (deterministic closure, no hypotheses/proposals).
+One-sided 95% Clopper–Pearson lower bound on the per-problem accuracy: 94.0% (tier a,
+n=48) and **98.1%** (tier b, n=160), so tier b supports the "≥95%" claim
+statistically. Caveat: ProntoQA v1 is uniformly 10-hop, so the sample measures
+extraction robustness rather than reasoning depth (depth is covered by the
+ProofWriter Tier D 296/300). See `docs/reasoning_roadmap.md` L1 and
+`docs/l1_plan.md`.

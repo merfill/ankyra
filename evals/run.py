@@ -47,6 +47,7 @@ def run_one(problem: dict) -> tuple[dict, object]:
                 problem["text"],
                 allow_hypotheses=problem.get("allow_hypotheses", True),
                 max_waves=problem.get("max_waves", 6),
+                world_assumption=problem.get("world_assumption"),
             )
     finally:
         settings.set("BUILTINS", previous_builtins)

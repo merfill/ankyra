@@ -39,6 +39,16 @@ def render_rule(rule) -> str:
     return f"IF {conditions} => {render_atom(rule.consequence)} [{label}]"
 
 
+def _constraint_quote(theory: Theory, witness: str) -> str | None:
+    """The quote of the disjointness axiom behind a ``disjoint:left|right`` witness."""
+    _, _, pair = witness.partition(":")
+    left, _, right = pair.partition("|")
+    for constraint in theory.constraints:
+        if {constraint.left, constraint.right} == {left, right}:
+            return constraint.quote
+    return None
+
+
 def _classify_fact(
     fact: Fact,
     theory: Theory,
@@ -54,6 +64,11 @@ def _classify_fact(
     if fact.rule_index is not None:
         rule = theory.rules[fact.rule_index - 1]
         return "rule", rule.source, rule.quote, rule.source_hypothesis_id, fact.rule_index
+    if fact.witness.startswith("disjoint:"):
+        constraint_quote = _constraint_quote(theory, fact.witness)
+        return "constraint", "quote" if constraint_quote else None, constraint_quote, None, None
+    if fact.witness.startswith("naf:"):
+        return "naf", "naf", None, None, None
     if fact.witness.startswith("is_a:"):
         return "is_a", None, None, None, None
     # A non-axiom, non-derived, non-hypothesis fact is a question condition (Gamma);
@@ -315,13 +330,48 @@ def build_explanation(
         return Explanation()
     if verdict.status == "supported":
         explanation = _single(theory, query, verdict, ledger, query.target)
+        if not explanation.steps and query.world_assumption == "closed" and query.target.negated:
+            # Supported by failure: the positive atom is unprovable (closed world).
+            positive = query.target.model_copy(update={"negated": False})
+            return Explanation(
+                goal=render_atom(query.target),
+                binding=dict(verdict.bindings),
+                steps=[
+                    ExplanationStep(
+                        index=0,
+                        kind="naf",
+                        statement=render_atom(query.target),
+                        premises=[],
+                        source="naf",
+                    )
+                ],
+            )
         return _attach_resolved_conflict(theory, query, explanation, query.target, ledger)
     if verdict.status == "refuted" and any(
         gap.startswith("target_refuted:") for gap in verdict.gaps
     ):
         negated = query.target.model_copy(update={"negated": not query.target.negated})
         explanation = _single(theory, query, verdict, ledger, negated)
-        return _attach_resolved_conflict(theory, query, explanation, negated, ledger)
+        if explanation.steps:
+            return _attach_resolved_conflict(theory, query, explanation, negated, ledger)
+        if query.world_assumption == "closed" and any(
+            gap.startswith("target_refuted:") for gap in verdict.gaps
+        ):
+            # The target was refuted by failure (closed world), not by a fact.
+            return Explanation(
+                goal=render_atom(negated),
+                binding=dict(verdict.bindings),
+                steps=[
+                    ExplanationStep(
+                        index=0,
+                        kind="naf",
+                        statement=render_atom(negated),
+                        premises=[],
+                        source="naf",
+                    )
+                ],
+            )
+        return explanation
     if verdict.status == "contradiction":
         return _conflict(theory, query, verdict, ledger)
     if any(gap.startswith("undecided_conflict:") for gap in verdict.gaps):

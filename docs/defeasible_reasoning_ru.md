@@ -153,6 +153,14 @@ effective_closure(theory, assumptions):
 6. Eval-кейсы `exception`, `defeasible_reverse`, `diamond`. Сделано.
 7. Все правила — дефолты, строги только asserted-факты; разрешённые поражения несут
    свидетеля `is_a` как причину. Сделано.
+8. **Синтетический гейт.** `evals.build_defeasible_synthetic` коммитит
+   `evals/data/defeasible_synthetic.jsonl` (8 кейсов: разрешённая специфичность в обе
+   полярности, неразрешённый Nixon diamond, строгий факт поверх дефолта, отсутствие
+   конфликта и контроль с выключенным слоем), прогоняется
+   `evals.defeasible_synthetic` с `ANKYRA_DEFEASIBLE` на кейс. **8/8 зелёные
+   (без LLM).** Это закрывает статус «реализовано, но небенчмаркнуто» из
+   `docs/reasoning_roadmap_ru.md` D; коллекция AlphaNLI/defeasible-NLI остаётся
+   будущей перекрёстной проверкой на реальных данных.
 
 ## 10. Открытые вопросы / риски
 

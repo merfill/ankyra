@@ -7,9 +7,10 @@ benchmark, and preserves the design commitment: the LLM proposes, the engine
 decides.
 
 Canonical language: English; Russian mirror: `docs/reasoning_roadmap_ru.md`.
-Related: `docs/logic_layer.md` (the protocol seam), `docs/proofwriter.md`,
-`docs/prontoqa.md`, `docs/folio.md`, `docs/ar_lsat.md`, `docs/gsm8k.md`,
-`docs/defeasible_reasoning.md`, `docs/task.md`, `docs/implementation_plan.md`.
+Related: `docs/logic_layer.md` (the protocol seam), `docs/l1_plan.md` (the L1
+implementation plan), `docs/proofwriter.md`, `docs/prontoqa.md`, `docs/folio.md`,
+`docs/ar_lsat.md`, `docs/gsm8k.md`, `docs/defeasible_reasoning.md`, `docs/task.md`,
+`docs/implementation_plan.md`.
 
 ## 1. Thesis
 
@@ -43,11 +44,11 @@ Every stage is defined by the same six items:
 | Stage | Formalism | Answer semantics | Procedure | Benchmark | Flag | Status |
 |---|---|---|---|---|---|---|
 | **L0** | Definite Horn, `is_a`, complementary-pair negation | `supported / insufficient / unsupported / refuted` (OWA) | semi-naive forward chaining | ProofWriter | — | **done** (Tier D 296/300) |
-| **L1** | Stratified negation / NAF, declared CWA | open/closed world per query; `¬atom` by failure | stratified closure | ProntoQA (negation/disjointness) | `ANKYRA_NEGATION_MODE` | planned |
+| **L1** | Stratified negation / NAF, declared CWA | open/closed world per query; `¬atom` by failure | stratified closure | ProntoQA (negation/disjointness) | `ANKYRA_NEGATION_MODE` | implemented; gates green (synthetic 40/40, ProntoQA 208/208) |
 | **L2** | Positive FOL: disjunction, `∃/∀`, proof by cases | entailment / refutation in a bounded clausal search | bounded resolution | ProntoQA-OOD (compositional), FOLIO | `ANKYRA_LOGIC` | planned |
 | **L3** | Finite-domain constraints (CSP/SAT) | `must` = true in all models, `could` = true in some | SAT/SMT or finite-domain search | AR-LSAT | — | planned (separate engine, low priority) |
 | **L4** | Arithmetic terms and equations | numeric answer, not entailment | evaluation / equation solving | GSM8K | — | low priority (separate engine / tool-use) |
-| **D** | Defaults with specificity via `is_a` | answer plus resolved/undecided conflict | `engine/defeasible.py` | defeasible-NLI / αNLI | `ANKYRA_DEFEASIBLE` | implemented, **unbenchmarked** |
+| **D** | Defaults with specificity via `is_a` | answer plus resolved/undecided conflict | `engine/defeasible.py` | defeasible-NLI / αNLI | `ANKYRA_DEFEASIBLE` | implemented + synthetic gate |
 
 ### L0 — Definite Horn (the current spine)
 
@@ -80,6 +81,14 @@ Every stage is defined by the same six items:
   query/benchmark, never guessed from wording.
 - **Benchmark:** ProntoQA (`docs/prontoqa.md`), negation/disjointness subset; the
   negated-premise subset of **FOLIO** (`docs/folio.md`) is a secondary L1 stress.
+- **Plan:** `docs/l1_plan.md` (working plan; open decisions `D-L1-1`…`D-L1-5`).
+- **Status:** engine implemented (disjointness constraints, stratified NAF, declared
+  CWA) and gated LLM-free by `evals.l1_synthetic` (**40/40**); the ProntoQA L0/L1
+  live gates are green (tier a 48/48, tier b 160/160, all `proven`, 0 grounded false
+  proofs), and the FOLIO negation subset was run as a secondary cross-check (6/13;
+  mismatches are formalization/fragment, not unsoundness). ProntoQA v1 itself
+  exercises only explicit negation, which was already supported (see
+  `docs/prontoqa.md` §8).
 
 ### L2 — Positive FOL: disjunction, quantifiers, proof by cases
 
@@ -138,10 +147,9 @@ Every stage is defined by the same six items:
   specificity via `is_a`.
 - **Procedure:** `engine/defeasible.py` (NFA + specificity), behind
   `ANKYRA_DEFEASIBLE`.
-- **Status:** implemented (`docs/defeasible_reasoning.md`) but **not
-  benchmarked**. A defeasible/NLI collection (αNLI or defeasible-NLI) is cheap and
-  high signal: it tests the layer that actually distinguishes Ankyra from
-  ProofWriter-style deductive harnesses.
+- **Status:** implemented (`docs/defeasible_reasoning.md`) and gated LLM-free by
+  `evals.defeasible_synthetic` (**8/8**); a defeasible/NLI collection (αNLI or
+  defeasible-NLI) remains a cheap real-data cross-check.
 
 ## 4. Budget policy
 
@@ -184,8 +192,8 @@ speculatively.
 | Stage | Benchmark | Committed sample | Gate | Status |
 |---|---|---|---|---|
 | L0 | ProofWriter | Tier D 300 | 0 grounded false proofs; determinate all `proven`; ≥95% | done (296/300) |
-| L1 | ProntoQA (negation), FOLIO negation subset | to build | same + declared CWA | planned |
+| L1 | ProntoQA (negation), FOLIO negation subset | to build | same + declared CWA | implemented (engine) + synthetic gate; public runs pending budget |
 | L2 | ProntoQA-OOD (compositional), then FOLIO | to build | same; FOLIO stratified by construct | planned |
 | L3 | AR-LSAT | to build | per-option solver check | planned (separate engine) |
 | L4 | GSM8K | to build | numeric match | low priority |
-| D | defeasible-NLI | to choose | resolved/undecided conflict reported | unbenchmarked |
+| D | defeasible-NLI | to choose | resolved/undecided conflict reported | implemented + synthetic gate |

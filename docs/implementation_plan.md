@@ -426,6 +426,14 @@ Source: `docs/quality_findings.md`. Ordered by priority.
     incomplete structured output; no guard is added. A bounded retry on an empty
     `question` in `extract_problem_structure` is the fallback if it must be
     mitigated later. See `quality_findings` E.
+24. **L1 engine + synthetic gates — DONE.** Disjointness constraints
+    (`Theory.constraints`), stratified negation-as-failure and the per-query
+    closed-world assumption (`Query.world_assumption`, flag `ANKYRA_NEGATION_MODE`)
+    are implemented; `verify` reports `out_of_fragment` for non-stratified
+    programs. LLM-free gates: `evals.l1_synthetic` (32/32) and
+    `evals.defeasible_synthetic` (8/8). ProntoQA and FOLIO harnesses with committed
+    samples are in place; their live runs invoke the paid extractor and are
+    pending budget. Plan and decisions: `docs/l1_plan.md`.
 
 ## 9. Reasoning roadmap (main axis)
 
@@ -442,7 +450,10 @@ Stages:
   OWA). Benchmark ProofWriter; Tier D 296/300 is the accepted proof of concept.
 - **L1 — stratified negation / negation-as-failure** with a declared world
   assumption, for disjointness and explicit negative knowledge. Benchmark
-  ProntoQA; flag `ANKYRA_NEGATION_MODE`.
+  ProntoQA; flag `ANKYRA_NEGATION_MODE`. **Implemented**: `Constraint` +
+  `Query.world_assumption`, stratified NAF in `engine/horn.py`, CWA in
+  `engine/verify.py`; primary gate `evals.l1_synthetic` (32/32, LLM-free), plus
+  ProntoQA and FOLIO harnesses (`docs/l1_plan.md`; public runs pending budget).
 - **L2 — disjunction / positive FOL / proof by cases**, for compositional chains.
   Benchmark ProntoQA-OOD (compositional); flag `ANKYRA_LOGIC`. Second gate
   **FOLIO** (`docs/folio.md`), stratified by FOL construct (in-fragment scored,
@@ -450,8 +461,9 @@ Stages:
   the search is bounded and exhaustion is an honest `insufficient`.
 - **L3 — finite-domain CSP/SAT, a separate engine.** Benchmark AR-LSAT.
 - **L4 — arithmetic, a separate numeric engine or tool-use.** Benchmark GSM8K.
-- **D — defeasible** (implemented behind `ANKYRA_DEFEASIBLE`, unbenchmarked); a
-  defeasible-NLI set is a cheap, differentiating gate.
+- **D — defeasible** (behind `ANKYRA_DEFEASIBLE`); **implemented + synthetic gate**
+  `evals.defeasible_synthetic` (8/8, LLM-free); a defeasible-NLI set remains a
+  cheap, differentiating real-data gate.
 
 Decisions: L3/L4 are separate engines and low priority; arithmetic is preferably
 tool-use, not an in-repo core. The architecture seam is `docs/logic_layer.md`

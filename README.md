@@ -109,6 +109,36 @@ uv run python -m evals.narrate --lang ru   # read the reasoning
 
 Tests: `uv run pytest` (offline), `ANKYRA_LIVE=1 uv run pytest -m live` (real LLM).
 
+### Staged-formalism gates
+
+Coverage is measured in **named formalisms** (`docs/reasoning_roadmap.md`), not in
+untethered "reasoning". Committed gates:
+
+| Stage | Formalism | Benchmark | Result |
+|---|---|---|---|
+| L0 | definite Horn | ProofWriter Tier D | 296/300 (accepted proof of concept) |
+| L0 | definite Horn | ProofWriter Tier A (strict) | 45/45 |
+| L1 | explicit negation | ProntoQA tier a | 48/48 (100%), all `proven` |
+| L1 | explicit negation | ProntoQA tier b | **160/160 (100%)**, all `proven` |
+| L1 | disjointness, NAF, declared CWA | synthetic (LLM-free) | 40/40 |
+| D | defeasible | synthetic (LLM-free) | 8/8 |
+
+The ProntoQA runs have **0 grounded false proofs** and every determinate answer is
+`proven`; the one-sided 95% Clopper–Pearson lower bound on per-problem accuracy is
+98.1% for tier b (n=160). The synthetic runners build engine models directly (no
+extraction, no LLM), so they gate the semantics with zero provider variance.
+
+```bash
+uv run --with pyarrow python -m evals.build_prontoqa_sample --tier b
+uv run python -m evals.prontoqa --tier b     # live LLM run
+uv run python -m evals.l1_synthetic          # L1 synthetic gate (offline)
+uv run python -m evals.defeasible_synthetic  # defeasible synthetic gate (offline)
+uv run python -m evals.analyze_folio         # FOLIO fragment-vs-extraction diagnostic
+```
+
+FOLIO is the planned **L2** gate (`docs/folio.md`); its L1 slice is small and mostly
+needs proof by contradiction.
+
 ## Documentation
 
 - `ARCHITECTURE.md` — layers, flows, data model, module map.
@@ -119,7 +149,13 @@ Tests: `uv run pytest` (offline), `ANKYRA_LIVE=1 uv run pytest -m live` (real LL
 
 ## Status
 
-Core engine, guided cycle, hypotheses, explanation and builtins are implemented
-and covered by tests. Known open items (see `docs/quality_findings.md`): explanation
-fidelity for refuted goals, rule provenance in traces, question-presupposition
-capture, LLM variance, and non-monotonic exceptions (design note ready).
+Core engine, guided cycle, hypotheses, explanation and builtins are implemented and
+covered by tests. **L1 is implemented and gated**: stratified negation-as-failure,
+disjointness constraints and the per-query declared closed world
+(`ANKYRA_NEGATION_MODE`), with ProntoQA 208/208 (tiers a+b, all `proven`, 0 grounded
+false proofs) and LLM-free synthetic gates 40/40 (L1) and 8/8 (defeasible). The
+defeasible layer (D) is implemented behind `ANKYRA_DEFEASIBLE`.
+
+Known open items: L2 (disjunction/quantifiers/proof by cases; FOLIO,
+ProntoQA-OOD), extraction robustness on real text (`docs/folio.md` §9), and the
+items in `docs/quality_findings.md`.

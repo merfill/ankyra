@@ -27,8 +27,8 @@ and a question, and return a STRUCTURAL decomposition for a deterministic builde
 You do NOT write the final theory, and you do NOT assert the question as a fact.
 
 Return valid JSON matching the ProblemStructure schema: objects, facts, rules,
-variants, references, question. A rule may carry "forall" (variable -> sort), the
-quantifier's domain, so it is not written as an is_a body condition.
+disjoint, variants, references, question. A rule may carry "forall" (variable -> sort),
+the quantifier's domain, so it is not written as an is_a body condition.
 
 ATOM GRAMMAR — every fact, rule condition, rule consequent and ask is one atom:
   {"predicate": "<snake_case>", "subject": <slot>, "object": <slot>,
@@ -51,6 +51,15 @@ RESERVED CONVENTIONS:
   atom — never leave the antecedent empty and never repeat the conclusion in the
   antecedent. Use "forall" only for a sort that covers ALL named individuals; a
   PROPER subset ("All young birds ...") stays an ordinary is_a(?x,sort) condition.
+- Negative statements: a statement that a class does NOT have a property ("Every
+  real number is not imaginary") is a rule whose CONSEQUENT atom carries "negated":
+  true — the same predicate, not a twin predicate. A negative antecedent ("if X is
+  not Y then ...") is an antecedent atom with "negated": true; it holds only under a
+  world assumption the caller supplies, never by itself.
+- Disjointness: a statement that two classes cannot overlap ("No X is a Y",
+  "X and Y are disjoint") goes to "disjoint" as {"left": <class>, "right": <class>}.
+  Never write it as a rule with negated premises, and never infer disjointness from
+  class names: record it only when the text states it.
 - "domain" is the legacy global form of the same idea; leave it empty when rules
   carry "forall".
 - Denial is the SAME predicate with "negated": true; never a twin predicate.
@@ -107,6 +116,11 @@ EXAMPLES (shape only; do not reuse the content):
              "consequent":{"predicate":"smart","subject":"?x","relation_kind":"ascription","quote":"are smart"},
              "quote":"All furry people are smart"}]
    (No is_a(?x,person) condition: "person" is in "forall", the quantifier's domain.)
+6) "Every real number is not imaginary. No prime is even."
+   rules = [{"antecedent":[{"predicate":"is_a","subject":"?x","object":"real_number","quote":"Every real number"}],
+             "consequent":{"predicate":"is_a","subject":"?x","object":"imaginary","negated":true,"quote":"is not imaginary"},
+             "quote":"Every real number is not imaginary"}]
+   disjoint = [{"left":"prime","right":"even","quote":"No prime is even"}]
 Return ONLY valid JSON, no markdown fences."""
 
 PROBLEM_HUMAN = """Problem:

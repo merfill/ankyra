@@ -156,6 +156,13 @@ an atom with several derivations does not hide the class-carrying one.
 6. Eval cases `exception`, `defeasible_reverse`, `diamond`. Done.
 7. All rules are defaults, only asserted facts are strict; resolved defeats carry
    their `is_a` witness as the reason. Done.
+8. **Synthetic gate.** `evals.build_defeasible_synthetic` commits
+   `evals/data/defeasible_synthetic.jsonl` (8 cases: resolved specificity both
+   polarities, undecided Nixon diamond, strict-over-default, no-conflict, and a
+   layer-off control), run by `evals.defeasible_synthetic` with `ANKYRA_DEFEASIBLE`
+   per case. **8/8 green (LLM-free).** This closes the "implemented but
+   unbenchmarked" status from `docs/reasoning_roadmap.md` D; the AlphaNLI/defeasible
+   NLI collection remains a future real-data cross-check.
 
 ## 10. Open questions / risks
 

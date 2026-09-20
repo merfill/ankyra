@@ -64,6 +64,7 @@ class ReasoningState(TypedDict, total=False):
     wave: int
     max_waves: int
     allow_hypotheses: bool
+    world_assumption: str
     ledger: HypothesisLedger
     draft: Any
     pending: PendingWave | None
@@ -89,6 +90,7 @@ def initial_state(
     query: Query | None = None,
     allow_hypotheses: bool = True,
     max_waves: int = 8,
+    world_assumption: str = "open",
 ) -> ReasoningState:
     return {
         "problem_text": problem_text,
@@ -100,6 +102,7 @@ def initial_state(
         "wave": 0,
         "max_waves": max_waves,
         "allow_hypotheses": allow_hypotheses,
+        "world_assumption": world_assumption,
         "ledger": HypothesisLedger(),
         "draft": None,
         "pending": None,

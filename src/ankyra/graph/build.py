@@ -13,6 +13,7 @@ from typing import Any
 from langgraph.graph import END, START, StateGraph
 
 from ankyra.build.extract import extract_problem_structure, extract_question_structure
+from ankyra.build.pipeline import default_world_assumption
 from ankyra.config.settings import settings
 from ankyra.core.models import (
     Answer,
@@ -102,12 +103,15 @@ def run_problem(
     propose_fn: Any = None,
     allow_hypotheses: bool | None = None,
     max_waves: int | None = None,
+    world_assumption: str | None = None,
 ) -> ProblemResult:
     """Run the full pipeline end to end on a natural-language problem."""
     if allow_hypotheses is None:
         allow_hypotheses = bool(settings.get("ALLOW_HYPOTHESES", True))
     if max_waves is None:
         max_waves = int(settings.get("MAX_WAVES", 8))
+    if world_assumption is None:
+        world_assumption = default_world_assumption()
 
     extractor = llm or create_chat_llm(role="extract")
     proposer = llm_propose or llm or create_chat_llm(role="answer")
@@ -124,6 +128,7 @@ def run_problem(
             problem_text=problem_text,
             allow_hypotheses=allow_hypotheses,
             max_waves=max_waves,
+            world_assumption=world_assumption,
         )
     )
     return ProblemResult(

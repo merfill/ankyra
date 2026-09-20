@@ -192,6 +192,32 @@ class StructObject(BaseModel):
     label: str = Field(default="", description="Surface noun phrase (optional).")
 
 
+class StructDisjoint(BaseModel):
+    """A disjointness statement: no individual is both classes (L1).
+
+    Structurally extracted ("No X is a Y", "X and Y are disjoint"). The builder
+    turns it into a strict ``Constraint`` in the theory. It is never expanded into
+    Horn rules (that would be a non-stratified negative cycle).
+    """
+
+    left: str = Field(default="", description="One disjoint class id.")
+    right: str = Field(default="", description="The other disjoint class id.")
+    quote: str = Field(default="", description="Minimal verbatim span supporting the constraint.")
+
+    @field_validator("left", "right", mode="before")
+    @classmethod
+    def _coerce_class(cls, value: Any) -> Any:
+        if isinstance(value, dict):
+            for key in ("object", "predicate", "id", "name"):
+                item = value.get(key)
+                if isinstance(item, str) and item.strip():
+                    return item.strip()
+            return ""
+        if isinstance(value, str):
+            return value.strip()
+        return value
+
+
 class ProblemStructure(BaseModel):
     """Structural decomposition of the descriptive part of a problem."""
 
@@ -204,6 +230,12 @@ class ProblemStructure(BaseModel):
     objects: list[StructObject] = Field(default_factory=list)
     facts: list[StructAtom] = Field(default_factory=list, description="Asserted relations (AND-sets stay one fact).")
     rules: list[StructRule] = Field(default_factory=list, description="Only real conditionals.")
+    disjoint: list[StructDisjoint] = Field(
+        default_factory=list,
+        description="Disjointness statements: no individual is both classes (L1). "
+        "A strict constraint, never a Horn rule. Leave empty when the text does not "
+        "state disjointness — never infer it from class names.",
+    )
     variants: list[StructAtom] = Field(default_factory=list, description="Disjunctive options; never expanded into concurrent facts.")
     references: list[str] = Field(default_factory=list, description="Cross-references; not theory facts.")
     domain: list[str] = Field(

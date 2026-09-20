@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from ankyra.core.models import Fact, FactKey, Query, Theory, Verdict
+from ankyra.build.normalize import is_var
+from ankyra.core.models import Fact, FactKey, Morphism, Query, Theory, Verdict
 from ankyra.engine.horn import (
     AtomStore,
     GoalHit,
@@ -11,9 +12,15 @@ from ankyra.engine.horn import (
     complementary,
     derive_closure,
     derive_store,
+    has_naf,
     match_goal,
+    stratification,
     unify_pattern,
 )
+
+
+def _ground(target: Morphism) -> bool:
+    return not (is_var(target.subject) or is_var(target.object))
 
 
 def _winning_hit(query: Query, store: AtomStore, ctx, goal=None) -> GoalHit | None:
@@ -35,7 +42,9 @@ def winning_store_hit(
 ) -> tuple[AtomStore, GoalHit] | None:
     """Store and winning goal hit (default: the target), else ``None``."""
     ctx = build_context(theory)
-    store = derive_store(theory, query.conditions, ctx=ctx)
+    store = derive_store(
+        theory, query.conditions, ctx=ctx, world_assumption=query.world_assumption
+    )
     hit = _winning_hit(query, store, ctx, goal=goal)
     if hit is None:
         return None
@@ -100,8 +109,20 @@ def verify(theory: Theory, query: Query) -> Verdict:
     gap and does not change the answer.
     """
     ctx = build_context(theory)
+    if query.world_assumption == "closed" and has_naf(theory) and stratification(theory) is None:
+        return Verdict(
+            status="out_of_fragment",
+            bindings=dict(ctx.bindings),
+            gaps=["out_of_fragment:stratification"],
+            shelf="refused",
+        )
     axiom_store = derive_store(theory, [], ctx=ctx)
-    store, unresolved, _ = derive_closure(theory, query.conditions, ctx=ctx)
+    store, unresolved, _ = derive_closure(
+        theory,
+        query.conditions,
+        ctx=ctx,
+        world_assumption=query.world_assumption,
+    )
     bindings = dict(ctx.bindings)
 
     conflicts = _conflicting_pairs(store)
@@ -159,6 +180,26 @@ def verify(theory: Theory, query: Query) -> Verdict:
                 bindings=bindings,
                 gaps=inconsistent_gaps + [f"target_refuted:{query.target.predicate}"],
                 matched=[negative_hit.fact.witness or negative_hit.fact.label()],
+                shelf="refused",
+            )
+        if query.world_assumption == "closed" and _ground(query.target):
+            # Declared closed world: the positive atom is unprovable, so it is false.
+            # A positive target is refuted; a negated target ("not P") is supported.
+            positive = query.target.model_copy(update={"negated": False})
+            witness = f"naf:{positive.predicate}({positive.subject},{positive.object})"
+            if query.target.negated:
+                return Verdict(
+                    status="supported",
+                    bindings=bindings,
+                    gaps=inconsistent_gaps,
+                    matched=[witness],
+                    shelf="proven",
+                )
+            return Verdict(
+                status="refuted",
+                bindings=bindings,
+                gaps=inconsistent_gaps + [f"target_refuted:{query.target.predicate}"],
+                matched=[witness],
                 shelf="refused",
             )
         gaps = inconsistent_gaps + [f"target_unmatched:{query.target.predicate}"]

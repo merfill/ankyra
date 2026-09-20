@@ -136,13 +136,19 @@ def _undecided_reason(group: list[Candidate], opponents: list[Candidate]) -> str
 
 
 def _candidates(
-    rules: list[tuple[int, Rule]], store: AtomStore, ctx: TheoryContext
+    rules: list[tuple[int, Rule]],
+    store: AtomStore,
+    ctx: TheoryContext,
+    *,
+    world_assumption: str = "open",
 ) -> list[Candidate]:
     out: list[Candidate] = []
     for index, rule in rules:
         if not rule.conditions:
             continue
-        for subst, used_facts in _match_conditions(rule.conditions, store.facts, ctx, {}):
+        for subst, used_facts in _match_conditions(
+            rule.conditions, store.facts, ctx, {}, world_assumption=world_assumption
+        ):
             head = instantiate(rule.consequence, ctx, subst)
             if head is None:
                 continue
@@ -222,6 +228,7 @@ def effective_closure(
     assumptions: list[Morphism] | None = None,
     *,
     ctx: TheoryContext | None = None,
+    world_assumption: str = "open",
 ) -> tuple[AtomStore, dict[FactKey, Undecided], list[Defeat]]:
     """Strict closure plus accepted defaults, to a bounded alternating fixpoint.
 
@@ -230,7 +237,9 @@ def effective_closure(
     defeats and the ``is_a`` witness that decided each one.
     """
     ctx = ctx or build_context(theory)
-    strict = saturate(theory, assumptions, ctx=ctx, strengths={"strict"})
+    strict = saturate(
+        theory, assumptions, ctx=ctx, strengths={"strict"}, world_assumption=world_assumption
+    )
     defeasible_rules = [
         (index, rule)
         for index, rule in enumerate(theory.rules, 1)
@@ -245,7 +254,7 @@ def effective_closure(
     for _ in range(_MAX_ITERATIONS):
         base = _with(strict, accepted)
         order = _is_a_order(base)
-        candidates = _candidates(defeasible_rules, base, ctx)
+        candidates = _candidates(defeasible_rules, base, ctx, world_assumption=world_assumption)
         updated, unresolved, defeats = _resolve(candidates, strict, order)
         signature = {key: candidate.rule_index for key, candidate in updated.items()}
         if signature == {key: candidate.rule_index for key, candidate in accepted.items()}:

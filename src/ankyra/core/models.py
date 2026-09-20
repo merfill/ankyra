@@ -14,6 +14,11 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 Modality = Literal["permit", "obligation", "forbidden", "neutral"]
 RuleKind = Literal["implication", "exception"]
 RuleStrength = Literal["strict", "defeasible"]
+# Per-query world assumption (L1). ``closed`` enables negation-as-failure for the
+# query; ``open`` (default) is the usual open-world reading. It is a semantic choice
+# carried by the query, never guessed from wording (docs/l1_plan.md D-L1-4).
+WorldAssumption = Literal["open", "closed"]
+ConstraintKind = Literal["disjoint"]
 HypothesisKind = Literal["rule", "fact"]
 AnswerType = Literal["yes_no", "open", "instruction"]
 AnswerKind = Literal["yes", "no", "unknown", "contradiction", "binding", "instruction"]
@@ -25,6 +30,7 @@ Status = Literal[
     "contradiction",
     "no_progress",
     "budget",
+    "out_of_fragment",
 ]
 AnswerStrength = Literal["proven", "proven_under", "not_proven"]
 ProposalAction = Literal["reformalize_query", "propose_rule", "assert_cited_fact", "select_subgoal"]
@@ -148,6 +154,23 @@ class Rule(BaseModel):
         return None
 
 
+class Constraint(BaseModel):
+    """A negative constraint between two classes: no individual is both.
+
+    ``disjoint`` is the only kind today: ``¬∃x(is_a(x, left) ∧ is_a(x, right))``.
+    The sides are class ids (the ``object`` of an ``is_a`` atom). It is a strict
+    axiom, not a Horn rule, so the engine derives a negative conclusion from one
+    side (``is_a(a, left)`` yields ``¬is_a(a, right)``). It is deliberately not
+    encoded as negation-as-failure: two sibling classes would form a negative cycle
+    and break stratification (docs/l1_plan.md D-L1-2).
+    """
+
+    kind: ConstraintKind = Field(default="disjoint")
+    left: str = Field(description="One disjoint class id.")
+    right: str = Field(description="The other disjoint class id.")
+    quote: str | None = Field(default=None, description="Optional verbatim source span.")
+
+
 class Theory(BaseModel):
     """Objects, asserted axioms (``morphisms``), and Horn ``rules``.
 
@@ -160,6 +183,10 @@ class Theory(BaseModel):
     objects: list[Object] = Field(default_factory=list)
     morphisms: list[Morphism] = Field(default_factory=list)
     rules: list[Rule] = Field(default_factory=list)
+    constraints: list[Constraint] = Field(
+        default_factory=list,
+        description="Negative constraints (L1): disjoint class atoms, strict axioms.",
+    )
     source_text: str = Field(default="", description="Original problem text; injected by Phase 0.")
     domain: list[str] = Field(
         default_factory=list, description="Universe sorts declared by Phase 0; membership is vacuous."
@@ -173,6 +200,10 @@ class Query(BaseModel):
     target: Morphism | None = Field(default=None)
     variables: dict[str, str] = Field(default_factory=dict)
     answer_type: AnswerType = Field(default="yes_no")
+    world_assumption: WorldAssumption = Field(
+        default="open",
+        description="Closed-world enables negation-as-failure for this query (L1).",
+    )
 
 
 class Fact(BaseModel):
@@ -290,7 +321,7 @@ class Revision(BaseModel):
     )
 
 
-ExplanationKind = Literal["axiom", "assumption", "rule", "is_a", "hypothesis"]
+ExplanationKind = Literal["axiom", "assumption", "rule", "is_a", "hypothesis", "constraint", "naf"]
 
 
 class ExplanationStep(BaseModel):

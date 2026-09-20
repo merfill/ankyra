@@ -53,6 +53,10 @@ def _object_pool(theory: Theory) -> set[str]:
             pool.add(m.subject)
         if m.object:
             pool.add(m.object)
+    for constraint in theory.constraints:
+        for class_id in (constraint.left, constraint.right):
+            if class_id:
+                pool.add(class_id)
     return {p for p in pool if p}
 
 
@@ -226,11 +230,33 @@ def _seed_fact(morphism: Morphism, ctx: TheoryContext, *, axiom: bool) -> Fact |
     return fact
 
 
+def _negative_holds(
+    positive: Morphism, facts: list[Fact], ctx: TheoryContext, env: Subst
+) -> bool | None:
+    """NAF check: does ``¬positive`` hold by failure of ``positive``?
+
+    ``None`` means the literal is unsafe (a variable is unbound at this point), so
+    the rule cannot fire. Otherwise the literal holds iff no fact derives the
+    positive atom under ``env`` (closed world only).
+    """
+    pred = resolve_term(positive.predicate, ctx, field="predicate", subst=env)
+    subj = resolve_term(positive.subject, ctx, field="object", subst=env)
+    obj = resolve_term(positive.object, ctx, field="object", subst=env)
+    if is_var(pred) or is_var(subj) or is_var(obj):
+        return None
+    for fact in facts:
+        if unify_pattern(positive, fact, ctx, env) is not None:
+            return False
+    return True
+
+
 def _match_conditions(
     conditions: list[Morphism],
     facts: list[Fact],
     ctx: TheoryContext,
     subst: Subst,
+    *,
+    world_assumption: str = "open",
 ) -> list[tuple[Subst, list[Fact]]]:
     if not conditions:
         return [(dict(subst), [])]
@@ -244,6 +270,13 @@ def _match_conditions(
             if merged is None:
                 return []
             return rec(index + 1, merged, used_facts)
+        if condition.negated and world_assumption == "closed":
+            # Negation-as-failure: `not P` holds iff P is not derivable.
+            positive = condition.model_copy(update={"negated": False})
+            holds = _negative_holds(positive, facts, ctx, env)
+            if not holds:
+                return []  # failure, or unsafe literal
+            return rec(index + 1, env, used_facts)
         out: list[tuple[Subst, list[Fact]]] = []
         for fact in facts:
             merged = unify_pattern(condition, fact, ctx, env)
@@ -255,6 +288,48 @@ def _match_conditions(
     return rec(0, subst, [])
 
 
+def has_naf(theory: Theory) -> bool:
+    """True when a rule body contains a negation-as-failure literal."""
+    return any(
+        condition.negated and not is_builtin(condition.predicate)
+        for rule in theory.rules
+        for condition in rule.conditions
+    )
+
+
+def stratification(theory: Theory) -> dict[str, int] | None:
+    """Stratify predicate symbols for NAF, or ``None`` when not stratifiable.
+
+    A positive body dependency requires ``head >= body``; a negative body literal
+    requires ``head >= body + 1``. A convergent assignment exists iff no cycle
+    contains a negative edge; otherwise the program is outside L1 and the caller
+    reports ``out_of_fragment`` (docs/l1_plan.md D-L1-2).
+    """
+    predicates: set[str] = set()
+    edges: list[tuple[str, str, bool]] = []
+    for rule in theory.rules:
+        head = rule.consequence.predicate
+        if not head:
+            continue
+        predicates.add(head)
+        for condition in rule.conditions:
+            if not condition.predicate or is_builtin(condition.predicate):
+                continue
+            predicates.add(condition.predicate)
+            edges.append((condition.predicate, head, bool(condition.negated)))
+    strata = {name: 0 for name in predicates}
+    for _ in range(len(predicates) + 1):
+        changed = False
+        for body, head, negative in edges:
+            required = strata[body] + (1 if negative else 0)
+            if strata[head] < required:
+                strata[head] = required
+                changed = True
+        if not changed:
+            return strata
+    return None
+
+
 def saturate(
     theory: Theory,
     assumptions: list[Morphism] | None = None,
@@ -262,11 +337,15 @@ def saturate(
     ctx: TheoryContext | None = None,
     max_iterations: int = 64,
     strengths: set[str] | None = None,
+    world_assumption: str = "open",
 ) -> AtomStore:
     """Forward-chain until a fixed point. Axioms, then assumptions, then rules.
 
     ``strengths`` restricts firing to rules of those strengths (``rule_index`` still
     indexes the full ``theory.rules`` list, so provenance stays valid).
+
+    Under a closed world with NAF, rules are evaluated stratum by stratum so a
+    negative literal only sees fully-computed lower strata (stratified negation).
     """
     ctx = ctx or build_context(theory)
     store = AtomStore()
@@ -282,6 +361,37 @@ def saturate(
             continue
         store.add(fact)
 
+    naf = world_assumption == "closed" and has_naf(theory)
+    if naf:
+        strata = stratification(theory) or {}
+        for stratum in sorted(set(strata.values())) or [0]:
+            _fire_rules(
+                store,
+                theory,
+                ctx,
+                max_iterations,
+                strengths,
+                world_assumption,
+                strata,
+                stratum,
+            )
+    else:
+        _fire_rules(
+            store, theory, ctx, max_iterations, strengths, world_assumption, None, None
+        )
+    return store
+
+
+def _fire_rules(
+    store: AtomStore,
+    theory: Theory,
+    ctx: TheoryContext,
+    max_iterations: int,
+    strengths: set[str] | None,
+    world_assumption: str,
+    strata: dict[str, int] | None,
+    allowed_stratum: int | None,
+) -> None:
     for _ in range(max_iterations):
         progressed = False
         snapshot = list(store.facts)
@@ -290,7 +400,13 @@ def saturate(
                 continue
             if strengths is not None and rule.strength not in strengths:
                 continue
-            for subst, used_facts in _match_conditions(rule.conditions, snapshot, ctx, {}):
+            if allowed_stratum is not None and (strata or {}).get(
+                rule.consequence.predicate, 0
+            ) != allowed_stratum:
+                continue
+            for subst, used_facts in _match_conditions(
+                rule.conditions, snapshot, ctx, {}, world_assumption=world_assumption
+            ):
                 derived = instantiate(rule.consequence, ctx, subst)
                 if derived is None:
                     continue
@@ -308,9 +424,53 @@ def saturate(
                     progressed = True
         if _close_is_a(store):
             progressed = True
+        if _apply_constraints(store, theory):
+            progressed = True
         if not progressed:
             break
-    return store
+
+
+def _apply_constraints(store: AtomStore, theory: Theory) -> bool:
+    """Strict disjointness: ``is_a(a, C)`` and ``disjoint(C, D)`` yield ``¬is_a(a, D)``.
+
+    A disjointness axiom is classical (``¬∃x(C(x) ∧ D(x))``), so one side holding
+    entails the negation of the other. Monotone and terminating; if the other side
+    also becomes derivable later, the caller reports a real contradiction.
+    """
+    if not theory.constraints:
+        return False
+    progressed = False
+    for constraint in theory.constraints:
+        left, right = constraint.left.casefold(), constraint.right.casefold()
+        for fact in list(store.facts):
+            if (
+                fact.predicate != "is_a"
+                or fact.negated
+                or fact.modality != "neutral"
+                or not fact.subject
+                or not fact.object
+            ):
+                continue
+            obj = fact.object.casefold()
+            if obj == left:
+                other = constraint.right
+            elif obj == right:
+                other = constraint.left
+            else:
+                continue
+            derived = Fact(
+                predicate="is_a",
+                subject=fact.subject,
+                object=other,
+                negated=True,
+                modality="neutral",
+                used=frozenset(fact.used) | {fact.key},
+                premises=frozenset({fact.key}),
+                witness=f"disjoint:{constraint.left}|{constraint.right}",
+            )
+            if store.add(derived):
+                progressed = True
+    return progressed
 
 
 def _close_is_a(store: AtomStore) -> bool:
@@ -360,6 +520,7 @@ def derive_closure(
     assumptions: list[Morphism] | None = None,
     *,
     ctx: TheoryContext | None = None,
+    world_assumption: str = "open",
 ) -> tuple[AtomStore, dict, list]:
     """Strict closure, or the defeasible effective closure when enabled.
 
@@ -373,8 +534,14 @@ def derive_closure(
     if bool(settings.get("DEFEASIBLE", False)):
         from ankyra.engine.defeasible import effective_closure
 
-        return effective_closure(theory, assumptions, ctx=ctx)
-    return saturate(theory, assumptions, ctx=ctx), {}, []
+        return effective_closure(
+            theory, assumptions, ctx=ctx, world_assumption=world_assumption
+        )
+    return (
+        saturate(theory, assumptions, ctx=ctx, world_assumption=world_assumption),
+        {},
+        [],
+    )
 
 
 def derive_store(
@@ -382,9 +549,12 @@ def derive_store(
     assumptions: list[Morphism] | None = None,
     *,
     ctx: TheoryContext | None = None,
+    world_assumption: str = "open",
 ) -> AtomStore:
     """The store alone (see ``derive_closure``)."""
-    store, _, _ = derive_closure(theory, assumptions, ctx=ctx)
+    store, _, _ = derive_closure(
+        theory, assumptions, ctx=ctx, world_assumption=world_assumption
+    )
     return store
 
 

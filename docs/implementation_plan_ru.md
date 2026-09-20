@@ -417,6 +417,13 @@
     звуковости (0 grounded false proofs). Неполный structured output — ответственность
     провайдера; защиту не добавляем. Если позже понадобится митигировать — bounded
     retry на пустой `question` в `extract_problem_structure`. См. `quality_findings_ru` E.
+24. **Движок L1 + синтетические гейты — СДЕЛАНО.** Ограничения-дизъюнктности
+    (`Theory.constraints`), стратифицированный negation-as-failure и допущение
+    закрытого мира на запрос (`Query.world_assumption`, флаг `ANKYRA_NEGATION_MODE`)
+    реализованы; `verify` репортит `out_of_fragment` для нестратифицируемых программ.
+    LLM-free гейты: `evals.l1_synthetic` (32/32) и `evals.defeasible_synthetic` (8/8).
+    Харнессы ProntoQA и FOLIO с закоммиченными сэмплами готовы; их живые прогоны
+    вызывают платный извлекатель и ждут бюджета. План и решения: `docs/l1_plan_ru.md`.
 
 ## 9. Дорожная карта рассуждений (главная ось)
 
@@ -433,7 +440,10 @@
   Бенчмарк ProofWriter; этап D 296/300 — принятый proof of concept.
 - **L1 — стратифицированное отрицание / negation-as-failure** с объявленным
   допущением о мире, для дизъюнктности и явного отрицательного знания. Бенчмарк
-  ProntoQA; флаг `ANKYRA_NEGATION_MODE`.
+  ProntoQA; флаг `ANKYRA_NEGATION_MODE`. **Реализовано**: `Constraint` +
+  `Query.world_assumption`, стратифицированный NAF в `engine/horn.py`, CWA в
+  `engine/verify.py`; первичный гейт `evals.l1_synthetic` (32/32, без LLM), плюс
+  харнессы ProntoQA и FOLIO (`docs/l1_plan_ru.md`; живые прогоны ждут бюджета).
 - **L2 — дизъюнкция / positive FOL / proof by cases**, для compositional-цепочек.
   Бенчмарк ProntoQA-OOD (compositional); флаг `ANKYRA_LOGIC`. Второй гейт
   **FOLIO** (`docs/folio_ru.md`), стратифицирован по конструкции FOL (in-fragment
@@ -441,8 +451,9 @@
   полуразрешима, поэтому поиск ограничен, а исчерпание — честный `insufficient`.
 - **L3 — конечнодоменные CSP/SAT, отдельный движок.** Бенчмарк AR-LSAT.
 - **L4 — арифметика, отдельный числовой движок или tool-use.** Бенчмарк GSM8K.
-- **D — defeasible** (реализовано за `ANKYRA_DEFEASIBLE`, без бенчмарка);
-  defeasible-NLI — дешёвый дифференцирующий гейт.
+- **D — defeasible** (за `ANKYRA_DEFEASIBLE`); **реализовано + синтетический гейт**
+  `evals.defeasible_synthetic` (8/8, без LLM); defeasible-NLI остаётся дешёвым
+  дифференцирующим гейтом на реальных данных.
 
 Решения: L3/L4 — отдельные движки и низкий приоритет; арифметика предпочтительно
 через tool-use, а не ядро в репозитории. Архитектурный шов — `docs/logic_layer_ru.md`
