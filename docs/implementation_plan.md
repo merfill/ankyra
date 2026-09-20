@@ -465,8 +465,10 @@ Stages:
   resolution (`engine/clause.py`, `engine/resolution.py`), disjunction/case split,
   quantifiers by Skolemization + witness enumeration, compound/open goals, and the
   `Inference` protocol seam (`engine/inference.py`); primary LLM-free gate
-  `evals.l2_synthetic` (**23/23**), ProntoQA-OOD and FOLIO harnesses built with live
-  gates pending budget (`docs/l2_plan.md`). Full first-order unification is deferred.
+  `evals.l2_synthetic` (**23/23**). **ProntoQA-OOD tier-a live gate green** —
+  **41/42 (97.6%), 0 grounded false proofs**; **FOLIO L2 live is extraction-bound**
+  (26/44, no engine unsoundness; backlog G1–G4 in `docs/quality_findings.md` §G).
+  Full first-order unification is deferred (`docs/l2_plan.md`).
 - **L3 — finite-domain CSP/SAT, a separate engine.** Benchmark AR-LSAT.
 - **L4 — arithmetic, a separate numeric engine or tool-use.** Benchmark GSM8K.
 - **D — defeasible** (behind `ANKYRA_DEFEASIBLE`); **implemented + synthetic gate**

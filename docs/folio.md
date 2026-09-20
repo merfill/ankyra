@@ -224,7 +224,7 @@ Key point: FOLIO is where **`∃` is actually exercised** (76 rows, e.g.
 gated by FOLIO, not by the first (ProntoQA-OOD) gate. Function/equality detection
 remains a documented limitation of v0.0 (§9).
 
-**L2 harness implemented (LLM-free); live run pending budget.**
+**L2 harness implemented (LLM-free); live result below.**
 `evals.build_folio_sample --subset l2` commits `evals/data/folio_l2_tier_a.jsonl`
 (45 problems, 15 per label: True/False/Uncertain) — the L2 fragment (disjunction or
 existential, no equality/XOR/biconditional/multi-variable quantification).

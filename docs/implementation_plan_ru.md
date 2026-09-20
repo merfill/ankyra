@@ -455,9 +455,11 @@
   резолюция set-of-support (`engine/clause.py`, `engine/resolution.py`),
   дизъюнкция/разбор случаев, кванторы через Skolemization + перебор свидетелей,
   составные/open-цели и шов протокола `Inference` (`engine/inference.py`);
-  первичный LLM-free гейт `evals.l2_synthetic` (**23/23**), harness'ы ProntoQA-OOD и
-  FOLIO построены, живые гейты ждут бюджета (`docs/l2_plan_ru.md`). Полная
-  первопорядковая унификация отложена.
+  первичный LLM-free гейт `evals.l2_synthetic` (**23/23**). **Живой гейт
+  ProntoQA-OOD тир a зелёный** — **41/42 (97.6%), 0 grounded false proofs**; **FOLIO
+  L2 live ограничен извлечением** (26/44, несостоятельности движка нет; backlog
+  G1–G4 в `docs/quality_findings_ru.md` §G). Полная первопорядковая унификация
+  отложена (`docs/l2_plan_ru.md`).
 - **L3 — конечнодоменные CSP/SAT, отдельный движок.** Бенчмарк AR-LSAT.
 - **L4 — арифметика, отдельный числовой движок или tool-use.** Бенчмарк GSM8K.
 - **D — defeasible** (за `ANKYRA_DEFEASIBLE`); **реализовано + синтетический гейт**

@@ -255,7 +255,7 @@ decomposition, (b) disjunctive **ground facts** with **case split**, and (c)
 This is narrower and more concrete than the roadmap's L2 sketch and is recorded in
 `docs/l2_plan.md` §6/§9.
 
-**L2 harness implemented (LLM-free); live run pending budget.**
+**L2 harness implemented (LLM-free); live result below.**
 `evals.build_prontoqa_ood_sample` commits `evals/data/prontoqa_ood_tier_a.jsonl`
 (44 problems, stratified by rule type × L2 class: `horn`, `l2_decomp`, `l2_reductio`,
 `l2_reductio+decomp`; tier b = 12 per bucket). `evals.prontoqa_ood` is the

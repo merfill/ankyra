@@ -183,9 +183,10 @@ is considered closed) and LLM-free synthetic gates 40/40 (L1) and 8/8 (defeasibl
 **L2 is implemented and gated** behind `ANKYRA_LOGIC`: disjunction and case splits,
 conjunctive/disjunctive and open goals, and finite-domain quantifiers (Skolemization
 plus witness enumeration). The LLM-free synthetic gate is **23/23** with 0 grounded
-false proofs; the ProntoQA-OOD and FOLIO L2 harnesses are built with live gates
-pending a separate budget decision. The defeasible layer (D) is implemented behind
-`ANKYRA_DEFEASIBLE`.
+false proofs, and the **ProntoQA-OOD tier-a live gate is green: 41/42 (97.6%), 0
+grounded false proofs**. FOLIO's L2 live gate is **extraction-bound (26/44)** with no
+engine unsoundness (backlog G1–G4 in `docs/quality_findings.md` §G). The defeasible
+layer (D) is implemented behind `ANKYRA_DEFEASIBLE`.
 
 Known open items: FOLIO L2 formalization (backlog **G1–G4** in
 `docs/quality_findings.md` §G — range-restriction, retained premises, universal/

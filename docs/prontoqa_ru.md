@@ -260,7 +260,7 @@ A, B, or C»), **экзистенциал 0**.
 **reductio/контрапозиция**. Кванторы и Skolem ему **не** нужны. Это уже, чем набросок
 L2 в roadmap, и зафиксировано в `docs/l2_plan_ru.md` §6/§9.
 
-**Harness L2 реализован (LLM-free); живой прогон ждёт бюджета.**
+**Harness L2 реализован (LLM-free); живой результат ниже.**
 `evals.build_prontoqa_ood_sample` коммитит `evals/data/prontoqa_ood_tier_a.jsonl`
 (44 задачи, стратифицировано по типу правила × классу L2: `horn`, `l2_decomp`,
 `l2_reductio`, `l2_reductio+decomp`; тир b = 12 на бакет). `evals.prontoqa_ood` —

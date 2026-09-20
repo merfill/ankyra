@@ -1,14 +1,15 @@
 # L2 Plan — Positive FOL: disjunction, quantifiers, proof by cases
 
-Status: **approved plan** — implementation complete except the budgeted live gates.
-All decisions in §18 (D-L2-1…D-L2-7) are **DECIDED**. **Milestones 1–5, 8, 9 and 10
-are done** (recon; data model + schema + builder plumbing; ground clause IR + bounded
-resolution; verify/answer/explain integration; synthetic gate **23/23**; finite-domain
-quantifiers; extraction support; `Inference` protocol — §6, §7.4, §7.5, §8, §9, §10,
-§11, §12.1); **M6/M7 harnesses are done** with their live gates pending budget; **M11
-(docs)** remains. Recon narrowed the scope and added D-L2-7. This document is the
-working plan for stage **L2** of `docs/reasoning_roadmap.md`; it will be updated as the
-work proceeds.
+Status: **approved plan** — implementation complete. All decisions in §18
+(D-L2-1…D-L2-7) are **DECIDED**. **Milestones 1–11 are done** (recon; data model +
+schema + builder plumbing; ground clause IR + bounded resolution; verify/answer/explain
+integration; synthetic gate **23/23**; finite-domain quantifiers; extraction support;
+`Inference` protocol; docs — §6, §7.4, §7.5, §8, §9, §10, §11, §12.1, §15, §16). The
+**ProntoQA-OOD tier-a live gate is green** (**41/42 (97.6%)**, 0 grounded false proofs);
+the **FOLIO L2 live gate is extraction-bound** (26/44, no engine unsoundness; backlog
+G1–G4 in `docs/quality_findings.md` §G). Recon narrowed the scope and added D-L2-7.
+This document is the working plan for stage **L2** of `docs/reasoning_roadmap.md`; it
+will be updated as the work proceeds.
 
 Canonical language: English; Russian mirror: `docs/l2_plan_ru.md`. Related:
 `docs/reasoning_roadmap.md` (§3 L2, §4–6), `docs/l1_plan.md` (precedent and stage
@@ -480,7 +481,9 @@ a contradiction shows both branches. `answer` is unchanged (`refuted` now carrie
     `engine/inference.py` (`Inference`, `HornInference`, `ClausalInference`,
     `select_inference`); `verify` delegates through it and `classify` uses the Horn
     closure. `docs/logic_layer.md` §10; tests: `tests/test_engine_inference.py`.
-11. Documentation and status updates.
+11. ~~Documentation and status updates.~~ **DONE** — plan, roadmap, implementation
+    plan, collection notes, `quality_findings` §G (FOLIO backlog) and `README` are
+    current.
 
 Each milestone lands reviewable on its own; no milestone starts on a red soundness
 gate. Milestone 5 gates 2–4; milestone 3 (Horn path untouched) can proceed while the
