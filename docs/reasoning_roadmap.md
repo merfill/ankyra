@@ -95,8 +95,13 @@ Every stage is defined by the same six items:
 - **Note:** Phase 0 already exposes `Slot.variants` / `exclude`, but `unroll`
   expands them into **separate morphisms** (alternative fillers), not a logical
   disjunction. L2 is specifically about the latter.
-- **Benchmark:** ProntoQA-OOD compositional subset; then a FOL collection such as
-  FOLIO if warranted.
+- **Benchmark:** the compositional subset of ProntoQA-OOD first; then **FOLIO** as
+  the second L2 gate (`docs/folio.md`). FOLIO's annotations span L1 (negation) and
+  L2 (disjunction, `∃`) and add functions/equality/axiom schemas beyond the
+  committed fragment, so a run must be **stratified by FOL construct**: only the
+  in-fragment subset is scored, the rest is reported `out_of_fragment`. Entailment
+  in full FOL is only semi-decidable — the search stays bounded and exhaustion is
+  the honest `insufficient`.
 - **Risk:** combinatorial blow-up; the budget must be explicit and the answer
   honest when it is exhausted.
 
@@ -178,7 +183,7 @@ speculatively.
 |---|---|---|---|---|
 | L0 | ProofWriter | Tier D 300 | 0 grounded false proofs; determinate all `proven`; ≥95% | done (296/300) |
 | L1 | ProntoQA (negation) | to build | same + declared CWA | planned |
-| L2 | ProntoQA-OOD (compositional) | to build | same | planned |
+| L2 | ProntoQA-OOD (compositional), then FOLIO | to build | same; FOLIO stratified by construct | planned |
 | L3 | AR-LSAT | to build | per-option solver check | planned (separate engine) |
 | L4 | GSM8K | to build | numeric match | low priority |
 | D | defeasible-NLI | to choose | resolved/undecided conflict reported | unbenchmarked |

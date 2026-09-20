@@ -427,7 +427,7 @@ LLM proposes a formalization in a logic `L`, and a sound decision procedure for
 `L` decides it. Coverage is measured in named formalisms, not in untethered
 "reasoning". The full description is `docs/reasoning_roadmap.md`; per-collection
 notes are `docs/proofwriter.md`, `docs/prontoqa.md`, `docs/ar_lsat.md`,
-`docs/gsm8k.md`.
+`docs/gsm8k.md`, `docs/folio.md`.
 
 Stages:
 
@@ -437,7 +437,10 @@ Stages:
   assumption, for disjointness and explicit negative knowledge. Benchmark
   ProntoQA; flag `ANKYRA_NEGATION_MODE`.
 - **L2 — disjunction / positive FOL / proof by cases**, for compositional chains.
-  Benchmark ProntoQA-OOD (compositional); flag `ANKYRA_LOGIC`.
+  Benchmark ProntoQA-OOD (compositional); flag `ANKYRA_LOGIC`. Second gate
+  **FOLIO** (`docs/folio.md`), stratified by FOL construct (in-fragment scored,
+  functions/equality/schemas `out_of_fragment`); full FOL is semi-decidable, so
+  the search is bounded and exhaustion is an honest `insufficient`.
 - **L3 — finite-domain CSP/SAT, a separate engine.** Benchmark AR-LSAT.
 - **L4 — arithmetic, a separate numeric engine or tool-use.** Benchmark GSM8K.
 - **D — defeasible** (implemented behind `ANKYRA_DEFEASIBLE`, unbenchmarked); a

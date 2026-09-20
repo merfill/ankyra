@@ -419,7 +419,7 @@
 Покрытие измеряется в именованных формализмах, а не в неограниченном
 «рассуждении». Полное описание: `docs/reasoning_roadmap_ru.md`; заметки по
 коллекциям: `docs/proofwriter_ru.md`, `docs/prontoqa_ru.md`, `docs/ar_lsat_ru.md`,
-`docs/gsm8k_ru.md`.
+`docs/gsm8k_ru.md`, `docs/folio_ru.md`.
 
 Этапы:
 
@@ -429,7 +429,10 @@
   допущением о мире, для дизъюнктности и явного отрицательного знания. Бенчмарк
   ProntoQA; флаг `ANKYRA_NEGATION_MODE`.
 - **L2 — дизъюнкция / positive FOL / proof by cases**, для compositional-цепочек.
-  Бенчмарк ProntoQA-OOD (compositional); флаг `ANKYRA_LOGIC`.
+  Бенчмарк ProntoQA-OOD (compositional); флаг `ANKYRA_LOGIC`. Второй гейт
+  **FOLIO** (`docs/folio_ru.md`), стратифицирован по конструкции FOL (in-fragment
+  оценивается, функции/равенство/схемы — `out_of_fragment`); полная FOL
+  полуразрешима, поэтому поиск ограничен, а исчерпание — честный `insufficient`.
 - **L3 — конечнодоменные CSP/SAT, отдельный движок.** Бенчмарк AR-LSAT.
 - **L4 — арифметика, отдельный числовой движок или tool-use.** Бенчмарк GSM8K.
 - **D — defeasible** (реализовано за `ANKYRA_DEFEASIBLE`, без бенчмарка);

@@ -58,6 +58,7 @@ language, default `en`).
 - `docs/quality_findings.md` — eval-harness findings.
 - `docs/proofwriter.md` — ProofWriter collection notes (eval harness).
 - `docs/prontoqa.md` — ProntoQA collection notes (planned L1 gate).
+- `docs/folio.md` — FOLIO collection notes (planned L2 gate, FOL with quantifiers).
 - `docs/ar_lsat.md` — AR-LSAT collection notes (planned L3 gate, separate engine).
 - `docs/gsm8k.md` — GSM8K collection notes (planned L4 stage, separate engine).
 - `docs/defeasible_reasoning.md` — non-monotonic exceptions design note.
