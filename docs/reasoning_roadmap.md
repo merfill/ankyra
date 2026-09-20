@@ -8,7 +8,7 @@ decides.
 
 Canonical language: English; Russian mirror: `docs/reasoning_roadmap_ru.md`.
 Related: `docs/logic_layer.md` (the protocol seam), `docs/proofwriter.md`,
-`docs/prontoqa.md`, `docs/ar_lsat.md`, `docs/gsm8k.md`,
+`docs/prontoqa.md`, `docs/folio.md`, `docs/ar_lsat.md`, `docs/gsm8k.md`,
 `docs/defeasible_reasoning.md`, `docs/task.md`, `docs/implementation_plan.md`.
 
 ## 1. Thesis

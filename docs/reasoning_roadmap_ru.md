@@ -7,8 +7,8 @@
 
 Канонический документ: `docs/reasoning_roadmap.md`. Смежное:
 `docs/logic_layer_ru.md` (шов протокола), `docs/proofwriter_ru.md`,
-`docs/prontoqa_ru.md`, `docs/ar_lsat_ru.md`, `docs/gsm8k_ru.md`,
-`docs/defeasible_reasoning_ru.md`, `docs/task_ru.md`,
+`docs/prontoqa_ru.md`, `docs/folio_ru.md`, `docs/ar_lsat_ru.md`,
+`docs/gsm8k_ru.md`, `docs/defeasible_reasoning_ru.md`, `docs/task_ru.md`,
 `docs/implementation_plan_ru.md`.
 
 ## 1. Тезис
