@@ -480,3 +480,40 @@ tool-use, not an in-repo core. The architecture seam is `docs/logic_layer.md`
 (only semantics becomes pluggable). **Prerequisite:** close soundness findings
 21–22 first. **Budget:** each stage enters with a small committed sample (no free
 LLM access); full collections are separately budgeted.
+
+## 10. Gating methodology on composite benchmarks
+
+A collection is a **gate for one stage**, not a headline score, and a benchmark
+whose gold annotation mixes constructs from different stages must be run as an
+**in-fragment slice**. FOLIO (`docs/folio.md`) is the worked case: its gold FOL
+spans constructs that belong to different stages (`∨`/`∃` → L2) and constructs that
+belong to **no** committed stage (equality, function terms, `⊕`, `↔`, axiom schemas,
+multi-variable quantification).
+
+- **Run the slice, once, as a gate.** Select the subset whose annotation stays
+  inside the stage's formalism (`in_l2`, `in_l1_negation`), run it once, record the
+  result and move on; re-run only on a mismatch. The slice is a gate, never a
+  progress number, and must not be tuned against — improvements come from the
+  general extraction contract, not from individual ids (see §G of
+  `docs/quality_findings.md`).
+- **Whole-collection headline waits, but never becomes clean.** Accuracy over all
+  rows is meaningful only once coverage is near-complete; yet the beyond-stage
+  constructs lie outside L0–L4 as committed (L3 = CSP, L4 = numeric, separate
+  engines), so full coverage is unreachable by design. FOLIO stays a composite
+  benchmark, not the final scoreboard.
+- **Two ceilings, named explicitly.** *Coverage* (formalism): how many rows the
+  committed logic can express at all; `out_of_fragment` is an honest abstention
+  that costs recall, never soundness. *Extraction* (model): of the covered rows,
+  how many the LLM translates correctly. Evidence: ProntoQA-OOD — both clear
+  (41/42); FOLIO L1 — coverage-bound (gold-fed 7/13, `docs/folio.md` §9); FOLIO L2
+  — extraction-bound.
+- **Gate ladder.** LLM-free synthetic (pure engine signal) → simple-surface real
+  collection (ProntoQA-OOD) → hard real collection slice (FOLIO). Keep all three;
+  the last is deliberately extraction-heavy.
+- **Gold-fed upper bound is the counterfactual that separates the ceilings.** Feed
+  the engine the gold FOL formulas and measure method-only accuracy on the same
+  slice. It exists for the L1 negation shape but **not yet for L2**:
+  `evals/folio_fol.py` parses only the L1 shape. **Next step before L3:** extend
+  the parser to `∨`/`∃` (one file, LLM-free) so the L2 slice gains its gold-fed
+  bound — if gold-fed ≫ text-fed the limit is language, otherwise method. This
+  settles "model vs method" empirically rather than by intuition.
