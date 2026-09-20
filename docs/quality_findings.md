@@ -279,21 +279,42 @@ errors (`NatLang-10`: `feels blue` kept as a state predicate; `NatLang-114`:
 73/75, `depth-3ext` 149/150), determinate 198/200 all `proven`, 0 hypotheses. Four
 mismatches, triaged by one re-run each: `RelNeg-OWA-D1-1025` and
 `AttNonegNatLang-OWA-107` are provider variance (did not reproduce);
-`AttNoneg-OWA-D0-2873` and `AttNonegNatLang-OWA-114` reproduce. Two open findings,
-no code change yet:
+`AttNoneg-OWA-D0-2873` and `AttNonegNatLang-OWA-114` reproduce. The two findings
+below were closed in code; a clean Tier D re-run is blocked by the provider
+regression in `docs/implementation_plan.md` §8 item 23, so the gate number above
+stands as the last clean run.
 
-- **Gamma injection via `reformalize_query` (soundness hole).** `RelNeg-OWA-D1-1025`
-  ("The lion does not chase the lion", `Unknown`) was refuted by a wave-0
-  `reformalize_query` that added the conditions `is_a(lion,red)` and
-  `NOT like(lion,rabbit)` — neither is in the question. `classify._reformalize`
-  guards only the target (`target_weakened`); conditions are merged ungrounded, so a
-  question's `Gamma` can be fabricated to make the target derivable. Options: reject
-  a condition not already in the query (conservative), or ledger it as a hypothesis.
-- **Named-entity conditional over-generalized (extraction).** `AttNoneg-OWA-D0-2873`
-  ("Gary is not rough", `Unknown`) was refuted because "If Harry is young then Harry
-  is rough" was extracted as the universal `is_a(?x,young) => is_a(?x,rough)`, which
-  fires for Gary. Deterministic code cannot catch this without NL parsing (forbidden);
-  the fix is extraction-prompt hardening (constants for named individuals).
+- **Gamma/target injection via `reformalize_query` (soundness hole) — CLOSED.**
+  `RelNeg-OWA-D1-1025` ("The lion does not chase the lion", `Unknown`) was refuted
+  by a wave-0 `reformalize_query` that added the conditions `is_a(lion,red)` and
+  `NOT like(lion,rabbit)` — neither is in the question. `classify._reformalize` now
+  treats the whole query as fixed by Phase 0: a condition absent from the query is
+  `rejected/fabricated_condition`, a substituted target is
+  `rejected/target_substituted`, and only `variables` may change (the target may
+  still not be dropped, `target_weakened`). Unit tests
+  (`tests/test_engine_classify.py`) cover fabrication, substitution and removal.
+- **Named-entity conditional over-generalized (extraction) — CLOSED.**
+  `AttNoneg-OWA-D0-2873` ("Gary is not rough", `Unknown`) was refuted because "If
+  Harry is young then Harry is rough" was extracted as the universal
+  `is_a(?x,young) => is_a(?x,rough)`, which fires for Gary. Deterministic code
+  cannot catch this without NL parsing (forbidden), so `PROBLEM_SYSTEM` now states
+  that a conditional about a specific named individual keeps its constant and is a
+  ground implication; only a generic statement is quantified over `?x`. Live case
+  `named_conditional` in `evals/problems.jsonl` (see `tests/test_evals_live.py`).
+- **Provider accepts an incomplete tool call — WON'T FIX (by design).** A post-fix
+  Tier D run rejected 182/300 as "no target extracted": the extractor often returns
+  a `ProblemStructure` whose `question` is empty (and `facts` truncated), e.g.
+  `facts=1, question=""`. `ProblemStructure.question` defaults to `""`
+  (`core/schemas.py`) and `structured.py` accepts a function-calling `parsed` when
+  `model_dump()` is non-empty, so the missing field validates silently; the
+  question stage then gets `""`, returns `ask=null` and the query becomes
+  `instruction`. Reproduced with the pre-fix prompt, so it is independent of the
+  two findings above and of the code. This is **not** a soundness hole — every
+  mismatch is `undecided_mismatch`/`instruction` with 0 grounded false proofs — it
+  only degrades coverage. Decision: the provider owns incomplete structured output;
+  no guard is added. If it must be mitigated later, the candidate is a bounded
+  retry on an empty `question` in `extract_problem_structure` (a missing required
+  output, not NL parsing).
 
 ## F. Abduction — false proofs are hypothetical decisions
 

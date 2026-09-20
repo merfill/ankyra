@@ -407,18 +407,25 @@ Source: `docs/quality_findings.md`. Ordered by priority.
     explicit. First concrete step: attribute explanation steps grounded on Gamma as
     `presupposition`, widening `ExplanationStep.source` so `external` is additive
     later. Beyond that first step, deferred — no source framework (cf. item 9).
-21. **Gamma injection via `reformalize_query` — OPEN (accepted for now).**
-    `classify._reformalize` guards the target but merges conditions ungrounded, so a
-    wave can fabricate question conditions (`Gamma`) that make the target derivable
-    (Tier D `RelNeg-OWA-D1-1025`; not reproduced in one re-run). Fix options: reject
-    a condition not already in the query (conservative), or ledger it as a
-    hypothesis. See `quality_findings` E.
-22. **Named-entity conditional over-generalized — OPEN (extraction).** A conditional
-    about a named individual ("If Harry is young then Harry is rough") became a
-    universal rule and refuted an unrelated `Unknown` (Tier D
-    `AttNoneg-OWA-D0-2873`, reproducible). Deterministic code cannot catch it without
-    NL parsing (forbidden); it needs extraction-prompt hardening (constants for
-    named individuals). See `quality_findings` E.
+21. ~~**Gamma/target injection via `reformalize_query`.**~~ **DONE.**
+    `classify._reformalize` now treats the query as fixed by Phase 0: a condition
+    absent from the query is `rejected/fabricated_condition`, a substituted target
+    is `rejected/target_substituted`, and only `variables` may change (the target
+    cannot be dropped). Tier D `RelNeg-OWA-D1-1025`. See `quality_findings` E.
+22. ~~**Named-entity conditional over-generalized (extraction).**~~ **DONE.**
+    `PROBLEM_SYSTEM` now requires a conditional about a named individual to keep its
+    constant (a ground implication); only a generic statement is quantified over
+    `?x`. Live case `named_conditional`. Tier D `AttNoneg-OWA-D0-2873`. See
+    `quality_findings` E.
+23. **Provider accepts an incomplete tool call — WON'T FIX (by design).** A
+    function-calling response with an empty `question` (and truncated `facts`)
+    validates silently (`ProblemStructure.question` defaults to `""`;
+    `structured.py` accepts a non-empty `parsed`), so the question stage gets `""`
+    and the query becomes `instruction` (post-fix Tier D `no target extracted`
+    182/300). Not a soundness hole (0 grounded false proofs). The provider owns
+    incomplete structured output; no guard is added. A bounded retry on an empty
+    `question` in `extract_problem_structure` is the fallback if it must be
+    mitigated later. See `quality_findings` E.
 
 ## 9. Reasoning roadmap (main axis)
 

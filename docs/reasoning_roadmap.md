@@ -78,7 +78,8 @@ Every stage is defined by the same six items:
 - **Risk:** CWA is a *semantic choice*. Applying it silently to an open-world
   benchmark manufactures false refutations. The mode must be attached to the
   query/benchmark, never guessed from wording.
-- **Benchmark:** ProntoQA (`docs/prontoqa.md`), negation/disjointness subset.
+- **Benchmark:** ProntoQA (`docs/prontoqa.md`), negation/disjointness subset; the
+  negated-premise subset of **FOLIO** (`docs/folio.md`) is a secondary L1 stress.
 
 ### L2 — Positive FOL: disjunction, quantifiers, proof by cases
 
@@ -155,9 +156,10 @@ There is no free LLM access; API tokens are paid out of pocket. Therefore:
 
 ## 5. Prerequisites
 
-Open soundness findings 21–22 (`docs/implementation_plan.md` §8) must be closed
-first. A new logic multiplies the ways an unsound proof can hide; adding stages
-on top of a known false-proof hole is not acceptable.
+Findings 21–22 (`docs/implementation_plan.md` §8 — Gamma/target injection and the
+named-entity conditional) are closed, so the prerequisite for L1/L2 is met. A new
+logic multiplies the ways an unsound proof can hide, so soundness findings stay
+gating: do not add a stage on top of a known false-proof hole.
 
 ## 6. Architecture seam
 
@@ -182,7 +184,7 @@ speculatively.
 | Stage | Benchmark | Committed sample | Gate | Status |
 |---|---|---|---|---|
 | L0 | ProofWriter | Tier D 300 | 0 grounded false proofs; determinate all `proven`; ≥95% | done (296/300) |
-| L1 | ProntoQA (negation) | to build | same + declared CWA | planned |
+| L1 | ProntoQA (negation), FOLIO negation subset | to build | same + declared CWA | planned |
 | L2 | ProntoQA-OOD (compositional), then FOLIO | to build | same; FOLIO stratified by construct | planned |
 | L3 | AR-LSAT | to build | per-option solver check | planned (separate engine) |
 | L4 | GSM8K | to build | numeric match | low priority |
