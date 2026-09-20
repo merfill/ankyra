@@ -260,18 +260,19 @@ This bites Example B (`power > 50`, `wheelCount >= 4`).
    Open: whether to keep the premise when the sort is over-declared and never drop the
    sole binder, plus an auditable `over_declared_domain:` gap; reproduce on live
    extraction first (project rule: no speculative machinery).
-9. **Staged ProofWriter expansion (tiers B–D) — DONE; D gate not green, accepted.**
+9. **Staged ProofWriter expansion (tiers B–D) — DONE; D gate green.**
    The committed sample grows along the collection's axes in gated steps, each
    **run once** and re-run only on a mismatch (cost-aware;
    `ANKYRA_EXTRACT_SAMPLES=1`):
    A 45 (done) → B 75 (A + 30 NatLang; **74/75**, gate met) → C 150 (75 core + 75
    NatLang; **148/150**, gate met after the B8 span-overlap fix) → D 300
-   (C + 150 `depth-3ext`; **296/300**, gate not green — 2 grounded mismatches, one
-   reproducible and one provider variance; accepted for now, findings 21–22); the
-   full collection (6 368 theories, ≈11 h), Tier E, is **CANCELLED** — there is no
-   free LLM access and API tokens are paid out of pocket; the all-questions set
-   (54 848, ≈97 h) stays out of scope. **Tier D (300, 99%, 0 grounded false
-   proofs) is the accepted proof of concept.**
+   (C + 150 `depth-3ext`; first run **296/300** with 2 grounded mismatches; after
+   findings 21–22 were closed, a parallel re-run (`--jobs 5`) gave **297/300
+   (99%), 0 grounded false proofs**, gate green); the full collection (6 368 theories,
+   ≈11 h), Tier E, is **CANCELLED** — there is no free LLM access and API tokens
+   are paid out of pocket; the all-questions set (54 848, ≈97 h) stays out of
+   scope. **Tier D (300, 99%, 0 grounded false proofs) is the accepted proof of
+   concept.**
    Gates per tier: 0 grounded false proofs, every determinate answer `proven`,
    kind accuracy ≥ 90% (B) / 95% (C, D); every remaining failure categorized. The
    tiers serve both measurement and debugging. Built by
@@ -447,7 +448,8 @@ notes are `docs/proofwriter.md`, `docs/prontoqa.md`, `docs/ar_lsat.md`,
 Stages:
 
 - **L0 — definite Horn** (current spine: `is_a`, complementary-pair negation,
-  OWA). Benchmark ProofWriter; Tier D 296/300 is the accepted proof of concept.
+  OWA). Benchmark ProofWriter; Tier D 297/300 (re-run, 0 grounded false proofs) is
+  the accepted proof of concept.
 - **L1 — stratified negation / negation-as-failure** with a declared world
   assumption, for disjointness and explicit negative knowledge. Benchmark
   ProntoQA; flag `ANKYRA_NEGATION_MODE`. **Implemented**: `Constraint` +

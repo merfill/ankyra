@@ -43,7 +43,7 @@ Every stage is defined by the same six items:
 
 | Stage | Formalism | Answer semantics | Procedure | Benchmark | Flag | Status |
 |---|---|---|---|---|---|---|
-| **L0** | Definite Horn, `is_a`, complementary-pair negation | `supported / insufficient / unsupported / refuted` (OWA) | semi-naive forward chaining | ProofWriter | — | **done** (Tier D 296/300) |
+| **L0** | Definite Horn, `is_a`, complementary-pair negation | `supported / insufficient / unsupported / refuted` (OWA) | semi-naive forward chaining | ProofWriter | — | **done** (Tier D 297/300) |
 | **L1** | Stratified negation / NAF, declared CWA | open/closed world per query; `¬atom` by failure | stratified closure | ProntoQA (negation/disjointness) | `ANKYRA_NEGATION_MODE` | implemented; gates green (synthetic 40/40, ProntoQA 208/208) |
 | **L2** | Positive FOL: disjunction, `∃/∀`, proof by cases | entailment / refutation in a bounded clausal search | bounded resolution | ProntoQA-OOD (compositional), FOLIO | `ANKYRA_LOGIC` | planned |
 | **L3** | Finite-domain constraints (CSP/SAT) | `must` = true in all models, `could` = true in some | SAT/SMT or finite-domain search | AR-LSAT | — | planned (separate engine, low priority) |
@@ -57,8 +57,9 @@ Every stage is defined by the same six items:
 - **Procedure:** `saturate` (semi-naive forward chaining to a fixed point);
   `verify` classifies `supported / insufficient / unsupported / refuted`; an
   optional range-restricted comparison layer (`=, neq, <, lte, >, gte`).
-- **Benchmark:** ProofWriter; Tier D 296/300, accepted as the proof of concept.
-  Tier E (full collection) is cancelled (no free LLM access).
+- **Benchmark:** ProofWriter; Tier D re-run **297/300 (99%)**, 0 grounded false
+  proofs, accepted as the proof of concept. Tier E (full collection) is cancelled
+  (no free LLM access).
 - **Status:** done. No new work; this is the baseline every later stage extends.
 
 ### L1 — Stratified negation / negation-as-failure
@@ -88,7 +89,9 @@ Every stage is defined by the same six items:
   proofs), and the FOLIO negation subset was run as a secondary cross-check (6/13;
   mismatches are formalization/fragment, not unsoundness). ProntoQA v1 itself
   exercises only explicit negation, which was already supported (see
-  `docs/prontoqa.md` §8).
+  `docs/prontoqa.md` §8). **ProntoQA is closed**: tested at L1, both tiers green,
+  no further runs unless a later stage specifically needs the collection (then as
+  its own budgeted decision).
 
 ### L2 — Positive FOL: disjunction, quantifiers, proof by cases
 
@@ -191,8 +194,8 @@ speculatively.
 
 | Stage | Benchmark | Committed sample | Gate | Status |
 |---|---|---|---|---|
-| L0 | ProofWriter | Tier D 300 | 0 grounded false proofs; determinate all `proven`; ≥95% | done (296/300) |
-| L1 | ProntoQA (negation), FOLIO negation subset | to build | same + declared CWA | implemented (engine) + synthetic gate; public runs pending budget |
+| L0 | ProofWriter | Tier D 300 | 0 grounded false proofs; determinate all `proven`; ≥95% | done (297/300 re-run) |
+| L1 | ProntoQA (negation), FOLIO negation subset | ProntoQA tier a/b | same + declared CWA | implemented (engine) + synthetic gate; ProntoQA green and closed |
 | L2 | ProntoQA-OOD (compositional), then FOLIO | to build | same; FOLIO stratified by construct | planned |
 | L3 | AR-LSAT | to build | per-option solver check | planned (separate engine) |
 | L4 | GSM8K | to build | numeric match | low priority |

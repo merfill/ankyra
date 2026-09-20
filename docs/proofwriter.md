@@ -199,9 +199,10 @@ misses are NatLang extraction / formalization errors (`NatLang-10`: `feels blue`
 kept as a state predicate; `NatLang-114`: `blue skin` attached to `skin`), answered
 as honest `unknown`.
 
-Tier D (`--tier d`, 75 core + 75 NatLang + 150 `depth-3ext`): **296/300 (99%)**
-(core 74/75, NatLang 73/75, `depth-3ext` 149/150), determinate 198/200 all
-`proven`, no hypotheses. The gate is **not green — accepted for now**. Triage (one
+Tier D first run (`--tier d`, 75 core + 75 NatLang + 150 `depth-3ext`):
+**296/300 (99%)** (core 74/75, NatLang 73/75, `depth-3ext` 149/150), determinate
+198/200 all `proven`, no hypotheses. The gate was **not green** on that run (the
+re-run below closes it). Triage (one
 re-run each): `RelNeg-OWA-D1-1025` and `AttNonegNatLang-OWA-107` did not reproduce
 (provider variance); `AttNoneg-OWA-D0-2873` (a named-entity conditional
 over-generalized to `is_a(?x,young) => is_a(?x,rough)`) and
@@ -211,6 +212,20 @@ that are absent from the question, and those ungrounded conditions can refute th
 target — a soundness hole; (2) a named-entity conditional can be extracted as a
 universal rule (extraction; deterministic NL parsing is forbidden). See
 `quality_findings` E.
+
+**Tier D re-run (`--jobs 5`, parallel).** After the provider stabilised, Tier D was
+re-run with the harness thread pool: **0 grounded false proofs**, every determinate
+match `proven` (197/199), kind accuracy **297/299 (99%)**, `depth-3ext` **150/150**.
+One item (`RelNeg-OWA-D3-1062`) returned no target on the first attempt — the
+`extract_problem` call left the recorded question blank, so the question call saw an
+empty question — and a single `--ids` re-run answered it `yes`/`proven`: provider
+variance (C1), not a failure. The two remaining misses are NatLang
+extraction/formalization errors answered as honest `unknown`:
+`AttNonegNatLang-OWA-108` (`Dave feels blue` extracted as a state predicate `feel`,
+not `is_a(dave, blue)`) and `AttNonegNatLang-OWA-114` (the known `blue skin` miss).
+`AttNoneg-OWA-D0-2873` (named-entity conditional) and `AttNonegNatLang-OWA-107` both
+matched this run. The two open findings above are unchanged — not observed as false
+proofs here.
 
 Thresholds and the Tier C/D splits are policy knobs, not architecture; they can be
 tightened as the extraction improves. Tiers B–D are added to the committed sample
@@ -231,9 +246,12 @@ Target CLI (requires the builder/harness changes noted in §6):
   `uv run --with pyarrow python -m evals.build_proofwriter_sample --tier b`
   → `evals/data/proofwriter_tier_b.jsonl` (deterministic; `--tier c`, `--tier d`);
 - run a tier (strict, the default):
-  `uv run python -m evals.proofwriter --tier b`
+  `uv run python -m evals.proofwriter --tier b [--jobs N]`
   — per-item traces to `evals/out/proofwriter/<id>.json`; `--hypotheses` enables
-  the abductive mode (reported, never a gate); `--limit N` for a smoke run;
+  the abductive mode (reported, never a gate); `--limit N` for a smoke run.
+  `--jobs N` (shared by `evals.run`/`proofwriter`/`prontoqa`/`folio`) runs up to N
+  items concurrently on threads; per-problem flags stay in a `ContextVar`, so the
+  race-free general mechanism works for heterogeneous `problems.jsonl` too;
 - targeted re-run after a fix:
   `uv run python -m evals.proofwriter --tier b --ids <id1>,<id2>`;
 - inspect one item: `evals.narrate` renders a stored trace. **Tooling gap:** it

@@ -185,5 +185,12 @@ One-sided 95% Clopper–Pearson lower bound on the per-problem accuracy: 94.0% (
 n=48) and **98.1%** (tier b, n=160), so tier b supports the "≥95%" claim
 statistically. Caveat: ProntoQA v1 is uniformly 10-hop, so the sample measures
 extraction robustness rather than reasoning depth (depth is covered by the
-ProofWriter Tier D 296/300). See `docs/reasoning_roadmap.md` L1 and
+ProofWriter Tier D re-run 297/300). See `docs/reasoning_roadmap.md` L1 and
 `docs/l1_plan.md`.
+
+**Closed — no further ProntoQA runs.** The collection is considered tested at L1:
+both tiers are green and the explicit-negation subset is already engine-supported,
+so there is nothing left to measure here. ProntoQA v1 is not re-run as part of
+stage work; a run is re-opened only if a later stage specifically needs the
+collection (e.g. the ProntoQA-OOD compositional slice for L2), and then as its own
+budgeted decision. Otherwise it stays closed, to save tokens.

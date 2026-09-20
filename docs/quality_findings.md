@@ -287,15 +287,20 @@ all `proven`; the two remaining misses are NatLang extraction / formalization
 errors (`NatLang-10`: `feels blue` kept as a state predicate; `NatLang-114`:
 `blue skin` attached to `skin`), honestly `unknown`.
 
-**Tier D (300, staged expansion) — measured; gate not green (accepted for now).**
-75 core + 75 NatLang + 150 `depth-3ext`: **296/300 (99%)** (core 74/75, NatLang
-73/75, `depth-3ext` 149/150), determinate 198/200 all `proven`, 0 hypotheses. Four
-mismatches, triaged by one re-run each: `RelNeg-OWA-D1-1025` and
+**Tier D (300, staged expansion) — measured; gate green after the re-run.**
+First run, 75 core + 75 NatLang + 150 `depth-3ext`: **296/300 (99%)** (core 74/75,
+NatLang 73/75, `depth-3ext` 149/150), determinate 198/200 all `proven`, 0
+hypotheses. Four mismatches, triaged by one re-run each: `RelNeg-OWA-D1-1025` and
 `AttNonegNatLang-OWA-107` are provider variance (did not reproduce);
-`AttNoneg-OWA-D0-2873` and `AttNonegNatLang-OWA-114` reproduce. The two findings
-below were closed in code; a clean Tier D re-run is blocked by the provider
-regression in `docs/implementation_plan.md` §8 item 23, so the gate number above
-stands as the last clean run.
+`AttNoneg-OWA-D0-2873` and `AttNonegNatLang-OWA-114` reproduce (both findings
+below, now CLOSED). After the fixes, a parallel re-run (`--jobs 5`) gave
+**297/300 (99%)**, **0 grounded false proofs**, determinate 197/199 all `proven`,
+`depth-3ext` **150/150**. One item (`RelNeg-OWA-D3-1062`) hit the item-23 provider
+behaviour (empty `question` → no target); a single `--ids` re-run answered it
+`proven`, so it is provider variance, not a failure. The only two misses are honest
+NatLang extraction errors: `AttNonegNatLang-OWA-108` (`feels blue` kept as a state
+predicate) and `AttNonegNatLang-OWA-114` (`blue skin`). See `docs/proofwriter.md`
+§6.
 
 - **Gamma/target injection via `reformalize_query` (soundness hole) — CLOSED.**
   `RelNeg-OWA-D1-1025` ("The lion does not chase the lion", `Unknown`) was refuted
@@ -402,11 +407,10 @@ State after the extraction-canonicalization, soundness-guard and staged-benchmar
 work (`ANKYRA_EXTRACT_SAMPLES=1`):
 
 - **ProofWriter staged tiers (strict, 0 hypotheses):** A **45/45**, B **74/75**,
-  C **148/150** (after the B8 span-overlap fix), D **296/300** (75 core + 75 NatLang
-  + 150 `depth-3ext`); every determinate answer `proven`. D's gate is not green —
-  one reproducible grounded false proof (`AttNoneg-OWA-D0-2873`, an over-generalized
-  named-entity rule) plus one provider-variance mismatch; accepted for now (open
-  findings 21–22 in `implementation_plan.md`). See `docs/proofwriter.md` §6.
+  C **148/150** (after the B8 span-overlap fix), D first run **296/300**, re-run
+  **297/300** (75 core + 75 NatLang + 150 `depth-3ext`); every determinate answer
+  `proven` and **0 grounded false proofs** in the re-run. D's gate is now green;
+  findings 21–22 are closed. See `docs/proofwriter.md` §6.
 - **Abductive mode:** hypothetical refutations are removed (B, guard); the remaining
   misses are hypothetical decisions/question-begging, both explicitly guarded and
   labelled `proven_under`; no grounded false proof.

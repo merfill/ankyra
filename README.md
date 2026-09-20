@@ -107,6 +107,11 @@ uv run python -m evals.run --ids rain,vehicle
 uv run python -m evals.narrate --lang ru   # read the reasoning
 ```
 
+Every live adapter (`evals.run`, `evals.proofwriter`, `evals.prontoqa`,
+`evals.folio`) takes `--jobs N` to run up to N problems concurrently on threads;
+per-problem flags stay in a `ContextVar`, so the pool is safe for heterogeneous
+problems.
+
 Tests: `uv run pytest` (offline), `ANKYRA_LIVE=1 uv run pytest -m live` (real LLM).
 
 ### Staged-formalism gates
@@ -116,7 +121,7 @@ untethered "reasoning". Committed gates:
 
 | Stage | Formalism | Benchmark | Result |
 |---|---|---|---|
-| L0 | definite Horn | ProofWriter Tier D | 296/300 (accepted proof of concept) |
+| L0 | definite Horn | ProofWriter Tier D | **297/300 (99%)**, 0 grounded false proofs (accepted proof of concept) |
 | L0 | definite Horn | ProofWriter Tier A (strict) | 45/45 |
 | L1 | explicit negation | ProntoQA tier a | 48/48 (100%), all `proven` |
 | L1 | explicit negation | ProntoQA tier b | **160/160 (100%)**, all `proven` |
@@ -127,6 +132,13 @@ The ProntoQA runs have **0 grounded false proofs** and every determinate answer 
 `proven`; the one-sided 95% Clopper–Pearson lower bound on per-problem accuracy is
 98.1% for tier b (n=160). The synthetic runners build engine models directly (no
 extraction, no LLM), so they gate the semantics with zero provider variance.
+
+The ProofWriter Tier D re-run (`--jobs 5`) has **0 grounded false proofs**, every
+determinate answer `proven` (197/199), and `depth-3ext` **150/150**; the two
+remaining misses are NatLang extraction errors answered as honest `unknown`, and the
+one no-target item was provider variance (a single `--ids` re-run answered it
+`proven`). ProntoQA is used as the L1 gate and is considered closed — no further
+runs unless a later stage specifically needs it.
 
 ```bash
 uv run --with pyarrow python -m evals.build_prontoqa_sample --tier b
@@ -152,11 +164,13 @@ remaining gap is the L2 fragment, not extraction.
 ## Status
 
 Core engine, guided cycle, hypotheses, explanation and builtins are implemented and
-covered by tests. **L1 is implemented and gated**: stratified negation-as-failure,
-disjointness constraints and the per-query declared closed world
-(`ANKYRA_NEGATION_MODE`), with ProntoQA 208/208 (tiers a+b, all `proven`, 0 grounded
-false proofs) and LLM-free synthetic gates 40/40 (L1) and 8/8 (defeasible). The
-defeasible layer (D) is implemented behind `ANKYRA_DEFEASIBLE`.
+covered by tests. **L0 is gated**: definite Horn on ProofWriter, Tier D re-run
+**297/300 (99%)** with 0 grounded false proofs and every determinate answer `proven`.
+**L1 is implemented and gated**: stratified negation-as-failure, disjointness
+constraints and the per-query declared closed world (`ANKYRA_NEGATION_MODE`), with
+ProntoQA 208/208 (tiers a+b, all `proven`, 0 grounded false proofs; the collection
+is considered closed) and LLM-free synthetic gates 40/40 (L1) and 8/8 (defeasible).
+The defeasible layer (D) is implemented behind `ANKYRA_DEFEASIBLE`.
 
 Known open items: L2 (disjunction/quantifiers/proof by cases; FOLIO,
 ProntoQA-OOD), extraction robustness on real text (`docs/folio.md` §9), and the
