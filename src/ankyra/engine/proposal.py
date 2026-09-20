@@ -90,8 +90,10 @@ Actions, with the field to fill:
   A rule with no conditions is an unconditional fact.
 - assert_cited_fact: one fact in "fact": {predicate, subject, object, modality,
   negated, quote}, with a valid quote when it is grounded in the text.
-- reformalize_query: a replacement query in "query": {conditions: [atom...],
-  target: atom, variables: {}, answer_type}. The target may not be dropped.
+- reformalize_query: declare/adjust the unknowns in "query": {target: atom,
+  variables: {}}. The target and the question conditions (Gamma) are fixed by Phase 0
+  and must be repeated unchanged (or omitted); never substitute the target or add,
+  drop or rewrite a condition.
 - select_subgoal: a short "subgoal" string.
 
 An atom is {predicate, subject, object, modality, negated, quote}; modality is

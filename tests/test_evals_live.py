@@ -21,6 +21,7 @@ live = pytest.mark.skipif(
 _PROBLEMS = load_problems()
 _BUILTIN_PROBLEMS = [problem for problem in _PROBLEMS if problem.get("builtins")]
 _PRESUPPOSITION_PROBLEMS = [p for p in _PROBLEMS if p.get("presupposition")]
+_NAMED_CONDITIONAL_PROBLEMS = [p for p in _PROBLEMS if p.get("named_conditional")]
 
 
 @pytest.mark.live
@@ -52,6 +53,21 @@ def test_builtin_expectations_are_met(problem):
 def test_presupposition_expectations_are_met(problem):
     """Explicit presuppositions (RU/EN) become question conditions; a comma
     declarative is read as a descriptive fact. The point is the honest status."""
+    _trace, result = run_one(problem)
+    score = ExpectationEvaluator().evaluate(problem, result, {})
+    assert score.passed, score.notes
+
+
+@pytest.mark.live
+@live
+@pytest.mark.parametrize(
+    "problem",
+    _NAMED_CONDITIONAL_PROBLEMS,
+    ids=[p["id"] for p in _NAMED_CONDITIONAL_PROBLEMS],
+)
+def test_named_conditional_stays_ground(problem):
+    """A conditional about a named individual must not become a universal rule
+    that fires for other individuals (finding 22)."""
     _trace, result = run_one(problem)
     score = ExpectationEvaluator().evaluate(problem, result, {})
     assert score.passed, score.notes

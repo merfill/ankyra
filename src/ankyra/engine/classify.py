@@ -236,29 +236,31 @@ def _apply_rule(
     return Classification("hypothesis", f"hypothesis:{hypothesis_id}", candidate, query, hypothesis)
 
 
-def _merge_conditions(old: list[Morphism], new: list[Morphism]) -> list[Morphism]:
-    merged = list(old)
-    seen = {_atom_key(cond) for cond in merged}
-    for cond in new:
-        key = _atom_key(cond)
-        if key not in seen:
-            seen.add(key)
-            merged.append(cond)
-    return merged
-
-
 def _reformalize(draft: ProposalDraft, theory: Theory, query: Query) -> Classification:
     if draft.query is None:
         return Classification("rejected", "missing_payload", theory, query)
     if query.target is not None and draft.query.target is None:
         return Classification("rejected", "target_weakened", theory, query)
-    target = draft.query.target if draft.query.target is not None else query.target
+    # The target is the question itself (phi). Phase 0 fixes it; a wave may only
+    # re-declare the variables, never substitute a different conclusion, because a
+    # different target would answer a different question and could be an atom the
+    # theory already proves (docs/quality_findings.md section E, finding 21).
+    draft_target = draft.query.target
+    if draft_target is not None and (
+        query.target is None or _atom_key(draft_target) != _atom_key(query.target)
+    ):
+        return Classification("rejected", "target_substituted", theory, query)
+    # Gamma is Phase 0's artifact. A reformalization may never add, drop or rewrite
+    # a question condition: a condition the question did not assert is a fabricated
+    # premise, and treating it as given would manufacture a proof. An empty
+    # condition list is read as "no change", so a draft that only restates the
+    # target still applies.
+    proposed = {_atom_key(cond) for cond in draft.query.conditions}
+    current = {_atom_key(cond) for cond in query.conditions}
+    if proposed and proposed != current:
+        return Classification("rejected", "fabricated_condition", theory, query)
     updated = query.model_copy(
-        update={
-            "conditions": _merge_conditions(query.conditions, draft.query.conditions),
-            "target": target,
-            "variables": {**query.variables, **draft.query.variables},
-        }
+        update={"variables": {**query.variables, **draft.query.variables}}
     )
     if updated == query:
         return Classification("derivable", "no_change", theory, query)

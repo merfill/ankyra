@@ -403,6 +403,71 @@ def test_reformalize_rejects_target_weakening():
     assert result.reason == "target_weakened"
 
 
+def test_reformalize_rejects_a_fabricated_condition():
+    theory = Theory()
+    query = Query(target=Morphism(predicate="chase", subject="lion", object="lion", negated=True))
+    draft = ProposalDraft(
+        action="reformalize_query",
+        query=Query(
+            conditions=[Morphism(predicate="is_a", subject="lion", object="red")],
+            target=query.target,
+        ),
+    )
+    result = _classify(draft, theory, query)
+    assert result.category == "rejected"
+    assert result.reason == "fabricated_condition"
+    assert result.query == query
+
+
+def test_reformalize_rejects_target_substitution():
+    theory = Theory(morphisms=[Morphism(predicate="chase", subject="rabbit", object="lion")])
+    query = Query(target=Morphism(predicate="chase", subject="lion", object="lion", negated=True))
+    draft = ProposalDraft(
+        action="reformalize_query",
+        query=Query(target=Morphism(predicate="chase", subject="rabbit", object="lion")),
+    )
+    result = _classify(draft, theory, query)
+    assert result.category == "rejected"
+    assert result.reason == "target_substituted"
+    assert result.query == query
+
+
+def test_reformalize_allows_a_variable_update_with_the_same_target():
+    theory = Theory()
+    gamma = Morphism(predicate="is_a", subject="lion", object="red")
+    target = Morphism(predicate="chase", subject="lion", object="lion", negated=True)
+    query = Query(conditions=[gamma], target=target)
+    draft = ProposalDraft(
+        action="reformalize_query",
+        query=Query(conditions=[gamma], target=target, variables={"c": "class"}),
+    )
+    result = _classify(draft, theory, query)
+    assert result.category == "derivable"
+    assert result.reason == "reformalized"
+    assert result.query.conditions == [gamma]
+    assert result.query.target == target
+    assert result.query.variables == {"c": "class"}
+
+
+def test_reformalize_rejects_condition_removal():
+    theory = Theory()
+    kept = Morphism(predicate="is_a", subject="lion", object="red")
+    query = Query(
+        conditions=[
+            kept,
+            Morphism(predicate="like", subject="lion", object="rabbit", negated=True),
+        ],
+        target=Morphism(predicate="chase", subject="lion", object="lion", negated=True),
+    )
+    draft = ProposalDraft(
+        action="reformalize_query",
+        query=Query(conditions=[kept], target=query.target, variables={"c": "class"}),
+    )
+    result = _classify(draft, theory, query)
+    assert result.category == "rejected"
+    assert result.reason == "fabricated_condition"
+
+
 def test_a_mislabeled_fact_action_is_decided_by_its_payload():
     theory = Theory(
         morphisms=[Morphism(predicate="nice", subject="fiona")],

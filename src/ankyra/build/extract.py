@@ -71,7 +71,11 @@ RESERVED CONVENTIONS:
   for, with, from, in, on, as, when). Object ids: lowercase English head nouns; reuse
   the SAME id for the SAME concept, never mint synonyms.
 - A real conditional ("if / when / provided that") is a rule; never assert its
-  conclusion as a fact. An exception ("except") is kind "exception".
+  conclusion as a fact. An exception ("except") is kind "exception". A conditional
+  about a SPECIFIC named individual keeps that CONSTANT and is a ground
+  implication, never a variable over "?x": "If Harry is young then Harry is rough"
+  -> antecedent young(harry), consequent rough(harry). Only a generic statement
+  ("all / every / any X", a plural or a bare generic noun) is quantified over "?x".
 - "question" is a PLAIN STRING with the verbatim interrogative part — never an object.
 - Extract facts/rules ONLY from the descriptive part (everything before the question).
   The question and any condition stated inside it ("given that ...", "assuming ...",
