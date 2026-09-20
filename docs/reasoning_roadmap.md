@@ -8,7 +8,8 @@ decides.
 
 Canonical language: English; Russian mirror: `docs/reasoning_roadmap_ru.md`.
 Related: `docs/logic_layer.md` (the protocol seam), `docs/l1_plan.md` (the L1
-implementation plan), `docs/proofwriter.md`, `docs/prontoqa.md`, `docs/folio.md`,
+implementation plan), `docs/l2_plan.md` (the L2 implementation plan),
+`docs/proofwriter.md`, `docs/prontoqa.md`, `docs/folio.md`,
 `docs/ar_lsat.md`, `docs/gsm8k.md`, `docs/defeasible_reasoning.md`, `docs/task.md`,
 `docs/implementation_plan.md`.
 
@@ -45,7 +46,7 @@ Every stage is defined by the same six items:
 |---|---|---|---|---|---|---|
 | **L0** | Definite Horn, `is_a`, complementary-pair negation | `supported / insufficient / unsupported / refuted` (OWA) | semi-naive forward chaining | ProofWriter | — | **done** (Tier D 297/300) |
 | **L1** | Stratified negation / NAF, declared CWA | open/closed world per query; `¬atom` by failure | stratified closure | ProntoQA (negation/disjointness) | `ANKYRA_NEGATION_MODE` | implemented; gates green (synthetic 40/40, ProntoQA 208/208) |
-| **L2** | Positive FOL: disjunction, `∃/∀`, proof by cases | entailment / refutation in a bounded clausal search | bounded resolution | ProntoQA-OOD (compositional), FOLIO | `ANKYRA_LOGIC` | planned |
+| **L2** | Positive FOL: disjunction, `∃/∀`, proof by cases | entailment / refutation in a bounded clausal search | bounded resolution | ProntoQA-OOD (compositional), FOLIO | `ANKYRA_LOGIC` | implemented (synthetic gate green; live gates pending budget) |
 | **L3** | Finite-domain constraints (CSP/SAT) | `must` = true in all models, `could` = true in some | SAT/SMT or finite-domain search | AR-LSAT | — | planned (separate engine, low priority) |
 | **L4** | Arithmetic terms and equations | numeric answer, not entailment | evaluation / equation solving | GSM8K | — | low priority (separate engine / tool-use) |
 | **D** | Defaults with specificity via `is_a` | answer plus resolved/undecided conflict | `engine/defeasible.py` | defeasible-NLI / αNLI | `ANKYRA_DEFEASIBLE` | implemented + synthetic gate |
@@ -117,6 +118,15 @@ Every stage is defined by the same six items:
   the honest `insufficient`.
 - **Risk:** combinatorial blow-up; the budget must be explicit and the answer
   honest when it is exhausted.
+- **Plan:** `docs/l2_plan.md` (approved plan; decisions `D-L2-1`…`D-L2-7`).
+- **Status:** engine implemented behind `ANKYRA_LOGIC` — ground clause IR + bounded
+  set-of-support resolution, disjunction/case split, finite-domain quantifiers
+  (Skolemization + witness enumeration), compound/open goals, and the `Inference`
+  protocol seam. LLM-free synthetic gate `evals.l2_synthetic` is green (**23/23**, 0
+  grounded false proofs); the ProntoQA-OOD and FOLIO harnesses are built with live
+  gates pending a separate budget decision. Full first-order **unification** is
+  deferred: a prototype diverges on `not_entailed` (semi-decidability); the committed
+  collections are finite named domains, where grounding is sound and terminating.
 
 ### L3 — Finite-domain constraints (CSP/SAT) — *separate engine*
 
@@ -196,7 +206,7 @@ speculatively.
 |---|---|---|---|---|
 | L0 | ProofWriter | Tier D 300 | 0 grounded false proofs; determinate all `proven`; ≥95% | done (297/300 re-run) |
 | L1 | ProntoQA (negation), FOLIO negation subset | ProntoQA tier a/b | same + declared CWA | implemented (engine) + synthetic gate; ProntoQA green and closed |
-| L2 | ProntoQA-OOD (compositional), then FOLIO | to build | same; FOLIO stratified by construct | planned |
+| L2 | ProntoQA-OOD (compositional), then FOLIO | ProntoQA-OOD tier a (44), FOLIO L2 tier a (45) | same; FOLIO stratified by construct | implemented (synthetic gate 23/23; live gates pending budget) |
 | L3 | AR-LSAT | to build | per-option solver check | planned (separate engine) |
 | L4 | GSM8K | to build | numeric match | low priority |
 | D | defeasible-NLI | to choose | resolved/undecided conflict reported | implemented + synthetic gate |

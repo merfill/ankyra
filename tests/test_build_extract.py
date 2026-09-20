@@ -205,3 +205,16 @@ def test_parallel_samples_keep_the_llm_trace(monkeypatch):
     with llm_trace.tracing() as active:
         extract_mod._pick_best(make_candidate, lambda _candidate: (0, 0, 0), 3)
     assert len(active.calls) == 3
+
+
+def test_problem_prompt_teaches_the_l2_forms():
+    for token in ('"consequents"', '"disjunctive_antecedent"', '"disjunctions"', '"existentials"'):
+        assert token in extract_mod.PROBLEM_SYSTEM
+    # The conjunctive-conclusion guidance must point at the slot set.
+    assert "set" in extract_mod.PROBLEM_SYSTEM
+    assert "one rule per conjunct" in extract_mod.PROBLEM_SYSTEM
+
+
+def test_question_prompt_teaches_compound_goals():
+    assert '"ask_all"' in extract_mod.QUESTION_SYSTEM
+    assert '"ask_any"' in extract_mod.QUESTION_SYSTEM

@@ -30,6 +30,8 @@ def _valid_rule(rule: Rule) -> bool:
     """A rule is dropped when any of its atoms is malformed."""
     if not (rule.consequence.predicate or "").strip():
         return False
+    if any(not (alt.predicate or "").strip() for alt in rule.alternatives):
+        return False
     return all((condition.predicate or "").strip() for condition in rule.conditions)
 
 
@@ -53,6 +55,7 @@ def _rewrite_rule(rule: Rule) -> Rule:
         update={
             "conditions": _dedupe_morphisms([_rewrite_morphism(c) for c in rule.conditions]),
             "consequence": _rewrite_morphism(rule.consequence),
+            "alternatives": [_rewrite_morphism(alt) for alt in rule.alternatives],
         }
     )
 
@@ -69,11 +72,23 @@ def _dedupe_rules(rules: list[Rule]) -> list[Rule]:
     return out
 
 
+def _rewrite_existential(existential):
+    return existential.model_copy(
+        update={"atoms": [_rewrite_morphism(atom) for atom in existential.atoms]}
+    )
+
+
+def _valid_existential(existential) -> bool:
+    return bool(existential.atoms) and all(
+        (atom.predicate or "").strip() for atom in existential.atoms
+    )
+
+
 def _iter_rule_morphisms(rules: list[Rule]) -> list[Morphism]:
     out: list[Morphism] = []
     for rule in rules:
         out.extend(rule.conditions)
-        out.append(rule.consequence)
+        out.extend(rule.head)
     return out
 
 
@@ -165,8 +180,15 @@ def enrich_theory(theory: Theory) -> Theory:
     constraints = _dedupe_constraints(
         [_rewrite_constraint(c) for c in theory.constraints if _valid_constraint(c)]
     )
+    existentials = [
+        _rewrite_existential(e) for e in theory.existentials if _valid_existential(e)
+    ]
 
-    for morphism in [*morphisms, *_iter_rule_morphisms(rules)]:
+    for morphism in [
+        *morphisms,
+        *_iter_rule_morphisms(rules),
+        *(atom for existential in existentials for atom in existential.atoms),
+    ]:
         if morphism.subject and morphism.subject not in ids:
             ids.append(morphism.subject)
         if morphism.object and morphism.object not in ids:
@@ -182,5 +204,6 @@ def enrich_theory(theory: Theory) -> Theory:
             "morphisms": morphisms,
             "rules": rules,
             "constraints": constraints,
+            "existentials": existentials,
         }
     )

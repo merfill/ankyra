@@ -50,6 +50,42 @@ def test_quantified_conclusion_is_beyond_l1():
     assert not builder.in_l1_negation(row)
 
 
+def test_in_l2_accepts_disjunction_and_existential():
+    assert builder.in_l2(_row(["∀x (A(x) → B(x))"], "C(a) ∨ D(a)"))
+    assert builder.in_l2(_row(["∃x (A(x) ∧ B(x))"], "C(a)"))
+
+
+def test_in_l2_rejects_beyond_l2_constructs():
+    assert not builder.in_l2(_row(["∀x (A(x) → B(x))"], "C(a) ⊕ D(a)"))
+    assert not builder.in_l2(_row(["∀x ∀y (R(x, y) → S(x, y))"], "C(a) ∨ D(a)"))
+    assert not builder.in_l2(_row(["∀x (A(x) → ¬B(x))"], "¬B(a)"))
+
+
+def test_committed_l2_sample_stays_in_the_l2_fragment():
+    records = folio.load_sample(folio.sample_path("l2"))
+    assert len(records) == 45
+    for record in records:
+        raw = {
+            "premises-FOL": record["premises_fol"],
+            "conclusion-FOL": record["conclusion_fol"],
+            "label": record["label"],
+        }
+        assert builder.in_l2(raw), record["id"]
+        assert record["label"] in {"True", "False", "Uncertain"}
+
+
+def test_sample_paths_are_distinct():
+    assert folio.sample_path("negation").name == "folio_negation_tier_a.jsonl"
+    assert folio.sample_path("l2").name == "folio_l2_tier_a.jsonl"
+
+
+def test_l2_problem_selects_the_ground_logic():
+    record = folio.load_sample(folio.sample_path("l2"))[0]
+    problem = folio._to_problem(record, allow_hypotheses=False, logic="ground")
+    assert problem["logic"] == "ground"
+    assert problem["world_assumption"] == "open"
+
+
 def test_committed_sample_stays_in_the_l1_negation_fragment():
     records = folio.load_sample()
     assert records

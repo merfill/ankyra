@@ -42,7 +42,8 @@ an explicit hypothesis tag (`hypothesis`).
 - `build/` — Phase 0: LLM extraction plus deterministic assembly of the theory and
   query.
 - `engine/` — Phase 1 deterministic Horn engine (plus the flag-gated defeasible
-  layer), Phase 2 guided cycle, Phase 3 explanation, and the pipeline nodes.
+  layer), the L2 clausal engine behind `ANKYRA_LOGIC`, the pluggable `Inference`
+  seam, Phase 2 guided cycle, Phase 3 explanation, and the pipeline nodes.
 - `graph/` — the LangGraph adapter over the engine nodes.
 - `evals/` — offline/live evaluation harness (not part of the package).
 
@@ -161,6 +162,22 @@ pools and query bindings. `unify_pattern` matches a pattern against a ground fac
   rule applications resolved by specificity over `is_a`; NFA (strict overrides),
   undecided conflicts (Nixon diamond) accepted by neither branch. See
   `docs/defeasible_reasoning.md`.
+- **L2 (behind `ANKYRA_LOGIC`, off by default).** A separate, non-Horn procedure:
+  - `clause.py` — lowers a theory into **ground clauses** over its finite domain
+    (axioms → units; rules → `¬body ∨ head…` per grounding; transitive `is_a` and
+    `Constraint`s → clauses; a conjunctive existential premise is Skolemized with a
+    fresh constant). A rule with a disjunctive head stays one clause.
+  - `resolution.py` — bounded **set-of-support** binary resolution with an explicit
+    step budget (`ANKYRA_LOGIC_BUDGET`) and a recorded proof DAG. Statuses:
+    `entailed` / `not_entailed` / `budget` / `unsupported`; only a derived empty
+    clause is a proof.
+  - `inference.py` — the pluggable semantics seam (`docs/logic_layer.md` §10): the
+    `Inference` protocol with `HornInference` and `ClausalInference`.
+- `verify.py` dispatch: with `ANKYRA_LOGIC` off the Horn/L1 path decides; with it on
+  the L2 procedure decides ground goals, decomposed `∧`/`∨` goals, and open/`∃` goals
+  by witness enumeration over the finite pool (`out_of_fragment:naf_in_l2` if a
+  closed-world NAF query would mix the two semantics). `verify` keeps the policy and
+  delegates the decision to the selected `Inference`.
 
 Gap codes: `target_unmatched:`, `condition_unmatched:`, `unused_premise:`,
 `contradiction:`, `target_refuted:`, `inconsistent_theory:`, `undecided_conflict:`.
@@ -270,6 +287,8 @@ Open items (`docs/quality_findings.md`): explanation fidelity for refuted goals
 and rule provenance in traces; question-presupposition capture; LLM variance;
 non-monotonic exceptions (`docs/defeasible_reasoning.md` — design note ready).
 
-Future direction: making the inference semantics pluggable is described in
-`docs/logic_layer.md` (extract a narrow `Inference` protocol only when the second
-semantics lands).
+Future direction: the inference semantics are now pluggable. `docs/logic_layer.md`
+§10 describes the extracted `Inference` protocol (`engine/inference.py`, with
+`HornInference` and `ClausalInference`); `justification`/`consistent` remain concrete
+until a semantics needs a structurally different proof object. The staged widening of
+decidable formalisms (L0 → L4) is `docs/reasoning_roadmap.md`.

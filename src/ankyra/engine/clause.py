@@ -1,0 +1,264 @@
+"""Ground clause IR and finite-domain clausification for the L2 procedure.
+
+The L2 procedure decides a clause set by bounded resolution (``docs/reasoning_roadmap.md``).
+This module lowers a ``Theory`` into **ground clauses over the theory's finite domain**
+(``docs/l2_plan.md`` D-L2-4):
+
+* an axiom / assumption becomes a unit clause;
+* a rule becomes ``¬c1 ∨ … ∨ h1 ∨ …`` for every grounding of its body variables over
+  the object pool (a disjunctive head stays a disjunction of positive literals);
+* transitive ``is_a`` and the disjointness ``Constraint``\\ s become ordinary ground
+  clauses, so L2 does not call the Horn forward chain and the two engines cannot
+  diverge;
+* a conjunctive existential premise (``∃x (φ ∧ …)``) is **Skolemized** to a fresh
+  constant per existential (added to the pool), at clausification time — not by the
+  builder.
+
+Rationale for grounding (not first-order unification): the committed collections
+(ProntoQA-OOD, FOLIO's in-fragment slice) are over finite, named domains, and ground
+resolution terminates where first-order saturation need not (``not_entailed`` stays
+decidable). Function terms and nested existentials remain outside the fragment and are
+reported ``unsupported``; a head variable not bound by the body is an unsafe rule.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from itertools import product
+
+from ankyra.build.normalize import is_var
+from ankyra.core.models import FactKey, Morphism, Theory
+from ankyra.engine.builtins import canonical_builtin
+from ankyra.engine.horn import build_context
+
+# A literal is a ground atom key: predicate, subject, object, negated, modality.
+Literal = FactKey
+Clause = frozenset[tuple[str, str, str, bool, str]]
+ClauseKey = tuple[tuple[str, str, str, bool, str], ...]
+
+_IS_A = "is_a"
+_NEUTRAL = "neutral"
+
+
+def literal_of(morphism: Morphism) -> Literal:
+    return (
+        morphism.predicate,
+        morphism.subject or "",
+        morphism.object or "",
+        morphism.negated,
+        morphism.modality,
+    )
+
+
+def negate(literal: Literal) -> Literal:
+    return (literal[0], literal[1], literal[2], not literal[3], literal[4])
+
+
+def clause_key(clause: Clause) -> ClauseKey:
+    return tuple(sorted(clause))
+
+
+def is_tautology(clause: Clause) -> bool:
+    return any(negate(literal) in clause for literal in clause)
+
+
+def label_of(literal: Literal) -> str:
+    neg = "NOT " if literal[3] else ""
+    modality = "" if literal[4] == _NEUTRAL else f"{literal[4]}:"
+    args = ",".join(part for part in (literal[1], literal[2]) if part)
+    return f"{neg}{modality}{literal[0]}({args})"
+
+
+@dataclass
+class Clausification:
+    """Ground clauses plus provenance, Skolem constants and the fragment flags."""
+
+    clauses: list[Clause] = field(default_factory=list)
+    origins: dict[ClauseKey, list[str]] = field(default_factory=dict)
+    unsupported: list[str] = field(default_factory=list)
+    skolems: list[str] = field(default_factory=list)
+
+    def add(self, clause: Clause, origin: str) -> None:
+        key = clause_key(clause)
+        for existing in self.origins.setdefault(key, []):
+            if existing == origin:
+                return
+        self.origins[key].append(origin)
+        self.clauses.append(clause)
+
+
+def _rule_variables(rule) -> tuple[set[str], set[str]]:
+    body = {
+        var
+        for condition in rule.conditions
+        for var in (condition.subject, condition.object)
+        if is_var(var)
+    }
+    head = {var for literal in rule.head for var in (literal.subject, literal.object) if is_var(var)}
+    return body, head
+
+
+def _ground_literal(morphism: Morphism, subst: dict[str, str]) -> Literal | None:
+    subject = morphism.subject or ""
+    obj = morphism.object or ""
+    if is_var(subject):
+        subject = subst.get(subject, "")
+        if not subject:
+            return None
+    if is_var(obj):
+        obj = subst.get(obj, "")
+        if not obj:
+            return None
+    return (morphism.predicate, subject, obj, morphism.negated, morphism.modality)
+
+
+def _groundings(rule, pool: list[str]) -> list[dict[str, str]] | None:
+    """Every grounding of the rule's body variables, or ``None`` when unsafe."""
+    body_vars, head_vars = _rule_variables(rule)
+    if head_vars - body_vars:
+        return None
+    names = sorted(body_vars)
+    return [
+        dict(zip(names, combo)) for combo in product(pool or [""], repeat=len(names))
+    ]
+
+
+def _clause_of_rule(rule, subst: dict[str, str]) -> Clause | None:
+    literals: set[Literal] = set()
+    for condition in rule.conditions:
+        literal = _ground_literal(condition, subst)
+        if literal is None:
+            return None
+        literals.add(negate(literal))
+    for head in rule.head:
+        literal = _ground_literal(head, subst)
+        if literal is None:
+            return None
+        literals.add(literal)
+    clause = frozenset(literals)
+    return None if is_tautology(clause) else clause
+
+
+def _positive_is_a_edges(clauses: list[Clause]) -> set[tuple[str, str]]:
+    edges: set[tuple[str, str]] = set()
+    for clause in clauses:
+        for literal in clause:
+            if (
+                literal[0] == _IS_A
+                and not literal[3]
+                and literal[4] == _NEUTRAL
+                and literal[1]
+                and literal[2]
+            ):
+                edges.add((literal[1], literal[2]))
+    return edges
+
+
+def _transitive_closure(edges: set[tuple[str, str]]) -> set[tuple[str, str]]:
+    closure = set(edges)
+    changed = True
+    while changed:
+        changed = False
+        for left, mid in list(closure):
+            for mid2, right in list(closure):
+                if mid == mid2 and (left, right) not in closure:
+                    closure.add((left, right))
+                    changed = True
+    return closure
+
+
+def _is_a_atom(subject: str, obj: str, *, negated: bool) -> Literal:
+    return (_IS_A, subject, obj, negated, _NEUTRAL)
+
+
+def _add_transitivity(result: Clausification) -> None:
+    """Add the ground instances ``¬is_a(a,b) ∨ ¬is_a(b,c) ∨ is_a(a,c)``.
+
+    Instantiating only the transitive closure of the potential ``is_a`` edges keeps the
+    clause set small without losing any derivable ``is_a``.
+    """
+    closure = _transitive_closure(_positive_is_a_edges(result.clauses))
+    seen: set[ClauseKey] = set()
+    for left, mid in closure:
+        for mid2, right in closure:
+            if mid != mid2:
+                continue
+            clause = frozenset(
+                {
+                    _is_a_atom(left, mid, negated=True),
+                    _is_a_atom(mid, right, negated=True),
+                    _is_a_atom(left, right, negated=False),
+                }
+            )
+            if is_tautology(clause):
+                continue
+            key = clause_key(clause)
+            if key in seen:
+                continue
+            seen.add(key)
+            result.add(clause, "transitivity")
+
+
+def _add_constraints(result: Clausification, theory: Theory) -> None:
+    """Add ``¬is_a(t,left) ∨ ¬is_a(t,right)`` for every class term ``t``."""
+    if not theory.constraints:
+        return
+    terms: set[str] = set()
+    for clause in result.clauses:
+        for literal in clause:
+            if literal[0] == _IS_A:
+                terms.update(part for part in (literal[1], literal[2]) if part)
+    for constraint in theory.constraints:
+        for term in terms:
+            result.add(
+                frozenset(
+                    {
+                        _is_a_atom(term, constraint.left, negated=True),
+                        _is_a_atom(term, constraint.right, negated=True),
+                    }
+                ),
+                f"constraint:{constraint.left}|{constraint.right}",
+            )
+
+
+def _add_existentials(result: Clausification, theory: Theory) -> None:
+    """Skolemize each conjunctive existential premise with a fresh constant."""
+    for index, existential in enumerate(theory.existentials):
+        constant = f"sk{index}"
+        result.skolems.append(constant)
+        for atom in existential.atoms:
+            subject = constant if atom.subject == existential.variable else atom.subject
+            obj = constant if atom.object == existential.variable else atom.object
+            grounded = atom.model_copy(update={"subject": subject, "object": obj})
+            result.add(frozenset({literal_of(grounded)}), f"skolem:{index}")
+
+
+def clausify(
+    theory: Theory, *, assumptions: list[Morphism] | None = None
+) -> Clausification:
+    """Lower a theory (and the query's Gamma assumptions) into ground clauses."""
+    result = Clausification()
+    for morphism in theory.morphisms:
+        result.add(frozenset({literal_of(morphism)}), f"axiom:{label_of(literal_of(morphism))}")
+    for index, assumption in enumerate(assumptions or ()):
+        result.add(frozenset({literal_of(assumption)}), f"presupposition:{index}")
+
+    _add_existentials(result, theory)
+    pool = sorted(set(build_context(theory).obj_pool) | set(result.skolems))
+
+    for index, rule in enumerate(theory.rules, 1):
+        if any(canonical_builtin(condition.predicate) for condition in rule.conditions):
+            result.unsupported.append(f"builtin:rule:{index}")
+            continue
+        groundings = _groundings(rule, pool)
+        if groundings is None:
+            result.unsupported.append(f"unsafe_rule:{index}")
+            continue
+        for subst in groundings:
+            clause = _clause_of_rule(rule, subst)
+            if clause is not None:
+                result.add(clause, f"rule:{index}")
+
+    _add_transitivity(result)
+    _add_constraints(result, theory)
+    return result

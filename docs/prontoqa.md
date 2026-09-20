@@ -1,6 +1,6 @@
 # ProntoQA — collection notes
 
-Operating notes for a synthetic deductive benchmark, planned as the **L1 gate** of
+Operating notes for a synthetic deductive benchmark, the **L1 gate** of
 `docs/reasoning_roadmap.md`. Russian mirror: `docs/prontoqa_ru.md`. Related:
 `docs/reasoning_roadmap.md`, `docs/l1_plan.md` (L1 implementation plan),
 `docs/proofwriter.md`, `docs/task.md` §3.8.
@@ -194,3 +194,77 @@ so there is nothing left to measure here. ProntoQA v1 is not re-run as part of
 stage work; a run is re-opened only if a later stage specifically needs the
 collection (e.g. the ProntoQA-OOD compositional slice for L2), and then as its own
 budgeted decision. Otherwise it stays closed, to save tokens.
+
+## 9. ProntoQA-OOD recon (L2, LLM-free)
+
+Source: `tasksource/prontoqa`, the OOD release (Saparov & He, NeurIPS 2023). It is
+58 JSON files of 100 entries each; the entry scored is `test_example`, giving
+**5800** examples. Reproduce with
+`uv run python -m evals.recon_l2 --prontoqa-only` (no LLM).
+
+Each `test_example` is classified by the L2 capability it needs: `horn` (a single
+positive/negative atom goal, no case split — already L0/L1), `l2_decomp` (a
+conjunctive or disjunctive **goal**, decidable by decomposition) and `l2_reductio`
+(the proof uses `Assume`: proof by cases / by contradiction).
+
+| Class | Examples | Share |
+|---|---|---|
+| `horn` (L0/L1) | 2534 | 43.7% |
+| `l2_decomp` (∧/∨ goal) | 1993 | 34.4% |
+| `l2_reductio` | 935 | 16.1% |
+| `l2_reductio+decomp` | 338 | 5.8% |
+| **L2 (any non-horn)** | **3266** | **56.3%** |
+
+By rule type:
+
+| Rule type | Examples | Shape | L2 capability |
+|---|---|---|---|
+| `AndElim` | 1200 | horn | — |
+| `AndIntro` | 1400 | l2_decomp | conjunctive goal (decompose) |
+| `ProofsOnly` | 900 | horn | — |
+| `ModusPonens` | 100 | horn | — |
+| `OrElim` | 600 | l2_reductio | proof by cases over a disjunctive ground fact |
+| `OrIntro` | 400 | l2_decomp | disjunctive goal (prove a disjunct) |
+| `ProofByContra` | 300 | l2_reductio+decomp | reductio + conjunctive negative goal |
+| `Composed` | 900 | mixed | 334 horn, 193 decomp, 335 reductio, 38 both |
+
+Surface forms (examples using each): disjunctive **ground fact** 600 (e.g. "Rex is
+a shumpus or a jompus or a grimpus"), disjunctive **rule antecedent** 1211 ("Everything
+that is A or B or C is D"), disjunctive **goal** 587 ("Prove: … is A, B, or C"),
+**existential 0**.
+
+Findings:
+
+- **Surface `or` is over class-membership/property atoms** (`is_a`), not arbitrary
+  propositions and not object fillers. It appears in rule antecedents (Horn-splittable:
+  `A∨B → D` ≡ `A→D ∧ B→D`), in **ground facts** (non-Horn) and in **goals**.
+- **`OrElim` is proof by cases** (`docs/prontoqa.md` §4): from a disjunctive ground
+  fact, assume each disjunct and prove the goal; genuinely non-Horn.
+- **`OrIntro` is a disjunctive goal** proved by proving a disjunct.
+- **`ProofByContra` / `Composed` are reductio**: assume the negation and derive a
+  contradiction — the contrapositive a Horn/L1 engine does not have.
+- **`AndIntro` is a conjunctive goal** (`T ⊢ A ∧ B` iff each conjunct); `AndElim`,
+  `ProofsOnly` and `ModusPonens` (and 334 `Composed`) are Horn.
+- **No existential is exercised (0/5800).** The first-order / `∃` layer (L2 plan
+  milestone 8) is therefore **not** gated by ProntoQA-OOD; only FOLIO exercises it
+  (`docs/folio.md` §9).
+
+Implication. The first L2 gate needs (a) conjunctive and disjunctive **goal**
+decomposition, (b) disjunctive **ground facts** with **case split**, and (c)
+**reductio/contrapositive**. It does **not** need quantifier or Skolem machinery.
+This is narrower and more concrete than the roadmap's L2 sketch and is recorded in
+`docs/l2_plan.md` §6/§9.
+
+**L2 harness implemented (LLM-free); live run pending budget.**
+`evals.build_prontoqa_ood_sample` commits `evals/data/prontoqa_ood_tier_a.jsonl`
+(44 problems, stratified by rule type × L2 class: `horn`, `l2_decomp`, `l2_reductio`,
+`l2_reductio+decomp`; tier b = 12 per bucket). `evals.prontoqa_ood` is the
+polarity-aware adapter (`--tier a|b`, `--ids`, `--limit`, `--no-write`, `--jobs`),
+running the engine at `logic="ground"` (``ANKYRA_LOGIC``) and open world; it reports
+kind accuracy, the `out_of_fragment` bucket, and statuses. Offline tests:
+`tests/test_evals_prontoqa_ood.py`.
+
+The **live** run invokes the paid extractor and is deferred to a separate budget
+decision. One dependency: compound cases (`ask_all`/`ask_any`) need the extraction
+prompt support of L2 plan milestone 9 before they can be scored on kind; until then
+they report no target and are counted, not failed.

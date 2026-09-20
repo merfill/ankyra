@@ -43,7 +43,7 @@ def _all_slots(theory: Theory):
     yield from theory.morphisms
     for rule in theory.rules:
         yield from rule.conditions
-        yield rule.consequence
+        yield from rule.head
 
 
 def _object_pool(theory: Theory) -> set[str]:
@@ -297,6 +297,16 @@ def has_naf(theory: Theory) -> bool:
     )
 
 
+def has_non_horn(theory: Theory) -> bool:
+    """True when the theory contains a non-Horn clause (a disjunctive head/fact).
+
+    Such a clause is out of the Horn fragment: the forward chain must not fire it
+    (``_fire_rules`` skips non-Horn rules), and ``verify`` reports the theory
+    ``out_of_fragment`` unless the L2 procedure is enabled (``docs/l2_plan.md``).
+    """
+    return any(not rule.is_horn for rule in theory.rules)
+
+
 def stratification(theory: Theory) -> dict[str, int] | None:
     """Stratify predicate symbols for NAF, or ``None`` when not stratifiable.
 
@@ -397,6 +407,10 @@ def _fire_rules(
         snapshot = list(store.facts)
         for i, rule in enumerate(theory.rules, 1):
             if not rule.conditions:
+                continue
+            if not rule.is_horn:
+                # A disjunctive head is not Horn: deriving its first disjunct would be
+                # unsound. The L2 procedure handles it (docs/l2_plan.md D-L2-3).
                 continue
             if strengths is not None and rule.strength not in strengths:
                 continue

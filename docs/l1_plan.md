@@ -1,9 +1,9 @@
 # L1 Plan — Stratified negation / negation-as-failure
 
-Status: **draft plan** — not implemented. The open decisions in §18 are unresolved
-and must be settled by discussion before any code is written. This document is the
-working plan for stage **L1** of `docs/reasoning_roadmap.md`; it will be updated as
-the work proceeds.
+Status: **implemented and gated** — L1 (disjointness constraints, stratified
+negation-as-failure, declared CWA) landed; the decisions in §18 are **DECIDED**. This
+is the working plan for stage **L1** of `docs/reasoning_roadmap.md`; the milestone
+status is in §16.
 
 Canonical language: English; Russian mirror: `docs/l1_plan_ru.md`. Related:
 `docs/reasoning_roadmap.md` (§3 L1, §4–5), `docs/prontoqa.md`, `docs/folio.md`,
@@ -264,7 +264,7 @@ conflicts. Separate harness and flag (`ANKYRA_DEFEASIBLE`), same gate shape.
 3. ~~Constraints in the engine (disjointness and explicit negatives).~~ **DONE.**
 4. ~~Stratified NAF + declared CWA behind `ANKYRA_NEGATION_MODE`.~~ **DONE.**
 5. ~~Synthetic structural collection + runner (`l1_synthetic`) and the L1 gate.~~
-   **DONE — 32/32 green.**
+   **DONE — 32/32 green (extended to 40/40).**
 6. ~~ProntoQA builder + adapter.~~ **DONE. Live L0/L1 gates: tier a 48/48 and
    tier b 160/160 (100%), all `proven`, 0 grounded false proofs; 95% lower bound
    98.1% on tier b.**

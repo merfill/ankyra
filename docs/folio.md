@@ -1,7 +1,7 @@
 # FOLIO — collection notes
 
-Operating notes for an expert-written first-order-logic benchmark, planned as the
-**L2 gate** of `docs/reasoning_roadmap.md`. Russian mirror: `docs/folio_ru.md`.
+Operating notes for an expert-written first-order-logic benchmark, the **L2 gate** of
+`docs/reasoning_roadmap.md`. Russian mirror: `docs/folio_ru.md`.
 Related: `docs/reasoning_roadmap.md`, `docs/prontoqa.md`, `docs/task.md` §3.8.
 
 Source: Han et al., *FOLIO: Natural Language Reasoning with First-Order Logic*
@@ -208,3 +208,28 @@ correctly the **L2 gate**, not an L1 gate. Higher yield needs L2 (reductio) and/
 the gated HF v2 release (full FOL for train). Function terms are not separately
 detected in v0.0 (no clean field); a documented fragment limitation. See
 `docs/reasoning_roadmap.md` L2 and `docs/l1_plan.md`.
+
+## 10. L2 recon (LLM-free)
+
+Reproduce with `uv run python -m evals.recon_l2 --folio-only`. Over the v0.0
+validation split (204 rows), the construct tally is: negation 157, **disjunction
+76**, **existential 76**, xor 43, multivar 33, biconditional 6 (constructs overlap
+within a row). The **L2 fragment** — a disjunction or an existential, with no
+equality/xor/biconditional/multi-variable quantification — is **93 rows** (True 33,
+Unknown 34, False 26). This is the intended second L2 gate.
+
+Key point: FOLIO is where **`∃` is actually exercised** (76 rows, e.g.
+`∃x (GetMonkeypox(x) ∧ Coughing(x))`), unlike ProntoQA-OOD, which has none
+(`docs/prontoqa.md` §9). So the first-order/Skolem layer of L2 (plan milestone 8) is
+gated by FOLIO, not by the first (ProntoQA-OOD) gate. Function/equality detection
+remains a documented limitation of v0.0 (§9).
+
+**L2 harness implemented (LLM-free); live run pending budget.**
+`evals.build_folio_sample --subset l2` commits `evals/data/folio_l2_tier_a.jsonl`
+(45 problems, 15 per label: True/False/Uncertain) — the L2 fragment (disjunction or
+existential, no equality/XOR/biconditional/multi-variable quantification).
+`evals.folio` gained `--subset negation|l2` and a `logic` level (the L2 subset runs
+`logic="ground"`, open world); the L1 negation subset is unchanged. Offline tests:
+`tests/test_evals_folio.py`. The gold-fed diagnostic (`evals/folio_fol.py`) still
+parses only the L1 negation shape; extending its parser to `∨`/`∃` (to separate
+fragment from extraction on the L2 slice) is a follow-up.

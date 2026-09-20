@@ -243,7 +243,7 @@ def effective_closure(
     defeasible_rules = [
         (index, rule)
         for index, rule in enumerate(theory.rules, 1)
-        if rule.strength == "defeasible" and rule.conditions
+        if rule.strength == "defeasible" and rule.conditions and rule.is_horn
     ]
     if not defeasible_rules:
         return strict, {}, []

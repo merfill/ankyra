@@ -431,7 +431,7 @@ Source: `docs/quality_findings.md`. Ordered by priority.
     (`Theory.constraints`), stratified negation-as-failure and the per-query
     closed-world assumption (`Query.world_assumption`, flag `ANKYRA_NEGATION_MODE`)
     are implemented; `verify` reports `out_of_fragment` for non-stratified
-    programs. LLM-free gates: `evals.l1_synthetic` (32/32) and
+    programs. LLM-free gates: `evals.l1_synthetic` (40/40) and
     `evals.defeasible_synthetic` (8/8). ProntoQA and FOLIO harnesses with committed
     samples are in place; their live runs invoke the paid extractor and are
     pending budget. Plan and decisions: `docs/l1_plan.md`.
@@ -454,13 +454,19 @@ Stages:
   assumption, for disjointness and explicit negative knowledge. Benchmark
   ProntoQA; flag `ANKYRA_NEGATION_MODE`. **Implemented**: `Constraint` +
   `Query.world_assumption`, stratified NAF in `engine/horn.py`, CWA in
-  `engine/verify.py`; primary gate `evals.l1_synthetic` (32/32, LLM-free), plus
+  `engine/verify.py`; primary gate `evals.l1_synthetic` (40/40, LLM-free), plus
   ProntoQA and FOLIO harnesses (`docs/l1_plan.md`; public runs pending budget).
 - **L2 — disjunction / positive FOL / proof by cases**, for compositional chains.
   Benchmark ProntoQA-OOD (compositional); flag `ANKYRA_LOGIC`. Second gate
   **FOLIO** (`docs/folio.md`), stratified by FOL construct (in-fragment scored,
   functions/equality/schemas `out_of_fragment`); full FOL is semi-decidable, so
   the search is bounded and exhaustion is an honest `insufficient`.
+  **Implemented** (finite-domain form): ground clause IR + bounded set-of-support
+  resolution (`engine/clause.py`, `engine/resolution.py`), disjunction/case split,
+  quantifiers by Skolemization + witness enumeration, compound/open goals, and the
+  `Inference` protocol seam (`engine/inference.py`); primary LLM-free gate
+  `evals.l2_synthetic` (**23/23**), ProntoQA-OOD and FOLIO harnesses built with live
+  gates pending budget (`docs/l2_plan.md`). Full first-order unification is deferred.
 - **L3 — finite-domain CSP/SAT, a separate engine.** Benchmark AR-LSAT.
 - **L4 — arithmetic, a separate numeric engine or tool-use.** Benchmark GSM8K.
 - **D — defeasible** (behind `ANKYRA_DEFEASIBLE`); **implemented + synthetic gate**

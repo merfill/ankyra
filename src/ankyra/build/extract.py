@@ -70,6 +70,19 @@ RESERVED CONVENTIONS:
   "X and Y are disjoint") goes to "disjoint" as {"left": <class>, "right": <class>}.
   Never write it as a rule with negated premises, and never infer disjointness from
   class names: record it only when the text states it.
+- Disjunction (L2). A rule whose CONSEQUENT is an alternative goes to "consequents"
+  (a LIST of atoms); leave "consequent" at its default. A rule whose ANTECEDENT is a
+  disjunction ("Everything that is A or B or C is D") goes to "disjunctive_antecedent"
+  (a LIST of atoms) and "antecedent" is ignored; a conjunctive antecedent stays in
+  "antecedent". A disjunctive GROUND fact about a named individual ("Rex is a shumpus
+  or a jompus or a grimpus") goes to "disjunctions" as {"literals": [atom, atom, …],
+  "quote": …}; NEVER split it into separate facts and never use "facts" for it. A
+  CONJUNCTION of conclusions ("Each X is A and B") stays one consequent whose extra
+  members go in the slot's "set" — the builder emits one rule per conjunct.
+- Existential premise (L2). A statement that some unnamed individual has a property
+  ("There is an animal", "Some person has a license", "Symptoms include coughing")
+  goes to "existentials" as [{"variable": "?x", "atoms": [atom over ?x, …],
+  "quote": …}]. Never encode it as a fact whose subject is the class noun.
 - "domain" is the legacy global form of the same idea; leave it empty when rules
   carry "forall".
 - Denial is the SAME predicate with "negated": true; never a twin predicate.
@@ -131,6 +144,16 @@ EXAMPLES (shape only; do not reuse the content):
              "consequent":{"predicate":"is_a","subject":"?x","object":"imaginary","negated":true,"quote":"is not imaginary"},
              "quote":"Every real number is not imaginary"}]
    disjoint = [{"left":"prime","right":"even","quote":"No prime is even"}]
+7) "Rex is a wumpus or a lorpus. Everything that is a wumpus or a lorpus is fierce. There is an animal."
+   rules = [{"disjunctive_antecedent":[{"predicate":"is_a","subject":"?x","object":"wumpus","quote":"a wumpus"},
+                                        {"predicate":"is_a","subject":"?x","object":"lorpus","quote":"a lorpus"}],
+             "consequent":{"predicate":"is_a","subject":"?x","object":"fierce","quote":"is fierce"},
+             "quote":"Everything that is a wumpus or a lorpus is fierce"}]
+   disjunctions = [{"literals":[{"predicate":"is_a","subject":"rex","object":"wumpus","quote":"a wumpus"},
+                                {"predicate":"is_a","subject":"rex","object":"lorpus","quote":"a lorpus"}],
+                    "quote":"Rex is a wumpus or a lorpus"}]
+   existentials = [{"variable":"?x","atoms":[{"predicate":"is_a","subject":"?x","object":"animal","quote":"There is an animal"}],
+                    "quote":"There is an animal"}]
 Return ONLY valid JSON, no markdown fences."""
 
 PROBLEM_HUMAN = """Problem:
@@ -184,6 +207,12 @@ How to decompose the question:
    - A yes/no question: the ask is the checkable conclusion, with constants only, in
      POSITIVE form. Ask "Can Tweety fly?" as fly(tweety); never copy a negation or a
      fact-to-the-contrary from the text ("cannot fly") into the ask.
+   - A question asking whether SEVERAL statements ALL hold ("is X both A and B?",
+     "Prove: A and B", "are A, B and C true?") goes to "ask_all" (a LIST of positive
+     atoms); a question asking whether SOME statement holds ("is X A or B?",
+     "Prove: A or B") goes to "ask_any" (a LIST of positive atoms). Both replace
+     "ask" and leave it null; use "ask" only for a single conclusion. Every listed
+     atom is in POSITIVE form with constants, exactly as for a single ask.
    - ONLY an imperative action request ("what should I do", "how do I proceed") has no
      single conclusion: set ask to null.
    Never turn "what type / which class / who / how many" into a null ask.
@@ -198,6 +227,10 @@ EXAMPLE (shape only):
   presuppositions = [{"predicate":"is_a","subject":"socrates","object":"philosopher","quote":"Socrates is a philosopher"}]
   ask = {"predicate":"is_a","subject":"socrates","object":"mortal","quote":"is Socrates mortal"}
   variables = {}
+"Prove: Rex is a or b."
+  ask = null
+  ask_any = [{"predicate":"is_a","subject":"rex","object":"a","quote":"a"},
+             {"predicate":"is_a","subject":"rex","object":"b","quote":"b"}]
 The declarative clause is a question condition and MUST appear in presuppositions; the
 ask keeps only the interrogative part.
 Return ONLY valid JSON, no markdown fences."""
@@ -356,16 +389,23 @@ def format_theory_for_llm(theory: Theory) -> str:
     rule_lines = []
     for i, rule in enumerate(theory.rules, 1):
         conditions = " AND ".join(_fmt_morphism(c, with_quote=False) for c in rule.conditions)
-        consequence = _fmt_morphism(rule.consequence, with_quote=False)
+        head = " OR ".join(_fmt_morphism(h, with_quote=False) for h in rule.head)
         quote = f' quote="{rule.quote}"' if rule.quote else ""
-        rule_lines.append(f"  R{i}: IF {conditions or '?'} => {consequence}{quote}")
+        rule_lines.append(f"  R{i}: IF {conditions or '?'} => {head}{quote}")
     rules = "\n".join(rule_lines) or "  (none)"
+    existential_lines = [
+        "  " + " AND ".join(_fmt_morphism(atom, with_quote=False) for atom in existential.atoms)
+        + f" [∃{existential.variable}]"
+        for existential in theory.existentials
+    ]
+    existentials = "\n".join(existential_lines) or "  (none)"
     return (
         f"\n\n--- Theory ---\n"
         f"Objects: {', '.join(objects) or '(none)'}\n"
         f"Predicates: {', '.join(predicates) or '(none)'}\n\n"
         f"Morphisms:\n{morphism_lines}\n\n"
         f"Rules:\n{rules}\n"
+        f"Existentials:\n{existentials}\n"
         f"--- end theory ---\n"
     )
 
@@ -374,7 +414,7 @@ def _iter_slots(theory: Theory):
     yield from theory.morphisms
     for rule in theory.rules:
         yield from rule.conditions
-        yield rule.consequence
+        yield from rule.head
 
 
 def _fmt_morphism(morphism, *, with_quote: bool = True) -> str:

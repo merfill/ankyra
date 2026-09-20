@@ -18,6 +18,11 @@ RuleStrength = Literal["strict", "defeasible"]
 # query; ``open`` (default) is the usual open-world reading. It is a semantic choice
 # carried by the query, never guessed from wording (docs/l1_plan.md D-L1-4).
 WorldAssumption = Literal["open", "closed"]
+# How a decomposed question goal is read (L2, D-L2-7): ``single`` is the ordinary
+# one-target query; ``all`` requires every goal (a conjunctive question); ``any``
+# requires some goal (a disjunctive question). The goals are the decomposed
+# conjuncts/disjuncts; ``Query.target`` still names the first one for echo/answer use.
+GoalMode = Literal["single", "all", "any"]
 ConstraintKind = Literal["disjoint"]
 HypothesisKind = Literal["rule", "fact"]
 AnswerType = Literal["yes_no", "open", "instruction"]
@@ -111,10 +116,21 @@ class Morphism(BaseModel):
 
 
 class Rule(BaseModel):
-    """A Horn clause: ``conditions`` (AND) => ``consequence``."""
+    """A clause: ``conditions`` (AND) => ``head`` (disjunction of consequences).
+
+    The head is ``consequence`` plus any ``alternatives``. A Horn rule has none. A
+    disjunctive head (``A ∨ B ← G``) lists the other disjuncts there, and a
+    disjunctive ground fact (``A ∨ B``) is a conditionless rule with alternatives
+    (L2, ``docs/l2_plan.md`` D-L2-3). The Horn engine fires only Horn rules; the L2
+    procedure handles the disjunctive ones.
+    """
 
     conditions: list[Morphism] = Field(default_factory=list)
-    consequence: Morphism = Field(description="Conclusion; never a plain string.")
+    consequence: Morphism = Field(description="First head literal; never a plain string.")
+    alternatives: list[Morphism] = Field(
+        default_factory=list,
+        description="Other disjuncts of the head; empty for a Horn rule (L2).",
+    )
     kind: RuleKind = Field(default="implication")
     forall: dict[str, str] = Field(
         default_factory=dict,
@@ -153,6 +169,30 @@ class Rule(BaseModel):
             return self.source.split(":", 1)[1]
         return None
 
+    @property
+    def head(self) -> list[Morphism]:
+        """Every head literal: the consequence plus the disjunctive alternatives."""
+        return [self.consequence, *self.alternatives]
+
+    @property
+    def is_horn(self) -> bool:
+        """True when the head has a single literal (a Horn clause)."""
+        return not self.alternatives
+
+
+class Existential(BaseModel):
+    """A conjunctive existential premise: ``∃variable (atom ∧ …)`` (L2).
+
+    Phase 0 records the quantifier structure; the prover Skolemizes it (a fresh
+    constant per existential) during clausification. It is deliberately not expanded
+    by the builder: Skolemization is a decision-procedure step, not extraction
+    (docs/folio.md §4, docs/l2_plan.md §7.4).
+    """
+
+    variable: str = Field(default="?x", description="The existentially quantified variable.")
+    atoms: list[Morphism] = Field(default_factory=list, description="The conjoined atoms over it.")
+    quote: str | None = Field(default=None, description="Optional verbatim source span.")
+
 
 class Constraint(BaseModel):
     """A negative constraint between two classes: no individual is both.
@@ -187,6 +227,10 @@ class Theory(BaseModel):
         default_factory=list,
         description="Negative constraints (L1): disjoint class atoms, strict axioms.",
     )
+    existentials: list[Existential] = Field(
+        default_factory=list,
+        description="Conjunctive existential premises (L2): Skolemized by the prover.",
+    )
     source_text: str = Field(default="", description="Original problem text; injected by Phase 0.")
     domain: list[str] = Field(
         default_factory=list, description="Universe sorts declared by Phase 0; membership is vacuous."
@@ -198,6 +242,15 @@ class Query(BaseModel):
 
     conditions: list[Morphism] = Field(default_factory=list)
     target: Morphism | None = Field(default=None)
+    goals: list[Morphism] = Field(
+        default_factory=list,
+        description="Decomposed goals when the question target is a conjunction or "
+        "disjunction (L2, D-L2-7); empty for the single-target case.",
+    )
+    goal_mode: GoalMode = Field(
+        default="single",
+        description="single | all (conjunctive) | any (disjunctive) over ``goals``.",
+    )
     variables: dict[str, str] = Field(default_factory=dict)
     answer_type: AnswerType = Field(default="yes_no")
     world_assumption: WorldAssumption = Field(
@@ -321,7 +374,10 @@ class Revision(BaseModel):
     )
 
 
-ExplanationKind = Literal["axiom", "assumption", "rule", "is_a", "hypothesis", "constraint", "naf"]
+ExplanationKind = Literal[
+    "axiom", "assumption", "rule", "is_a", "hypothesis", "constraint", "naf",
+    "case", "resolution", "skolem",
+]
 
 
 class ExplanationStep(BaseModel):

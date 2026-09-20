@@ -50,14 +50,19 @@ def _drop_goal_echo(query: Query) -> Query:
     positive target with a ``¬phi`` condition is the question restated with the
     polarity on the wrong side, and would make the query self-contradictory. The
     condition is the echo, so it is dropped; genuine presuppositions name other
-    atoms and are kept.
+    atoms and are kept. Every decomposed goal (L2, D-L2-7) counts as a target.
     """
-    if query.target is None:
+    goals = [*(query.goals or [])]
+    if query.target is not None:
+        goals.append(query.target)
+    if not goals:
         return query
     kept = [
         cond
         for cond in query.conditions
-        if not _same_atom(cond, query.target) and not _complement_atom(cond, query.target)
+        if not any(
+            _same_atom(cond, goal) or _complement_atom(cond, goal) for goal in goals
+        )
     ]
     if len(kept) == len(query.conditions):
         return query
@@ -74,6 +79,7 @@ def settle_query(query: Query) -> Query:
         update={
             "conditions": [_normalize_polarity(c) for c in query.conditions],
             "target": _normalize_polarity(query.target) if query.target else None,
+            "goals": [_normalize_polarity(goal) for goal in (query.goals or [])],
         }
     )
     return _drop_goal_echo(settled)

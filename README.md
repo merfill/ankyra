@@ -108,9 +108,9 @@ uv run python -m evals.narrate --lang ru   # read the reasoning
 ```
 
 Every live adapter (`evals.run`, `evals.proofwriter`, `evals.prontoqa`,
-`evals.folio`) takes `--jobs N` to run up to N problems concurrently on threads;
-per-problem flags stay in a `ContextVar`, so the pool is safe for heterogeneous
-problems.
+`evals.prontoqa_ood`, `evals.folio`) takes `--jobs N` to run up to N problems
+concurrently on threads; per-problem flags stay in a `ContextVar`, so the pool is safe
+for heterogeneous problems.
 
 Tests: `uv run pytest` (offline), `ANKYRA_LIVE=1 uv run pytest -m live` (real LLM).
 
@@ -126,6 +126,7 @@ untethered "reasoning". Committed gates:
 | L1 | explicit negation | ProntoQA tier a | 48/48 (100%), all `proven` |
 | L1 | explicit negation | ProntoQA tier b | **160/160 (100%)**, all `proven` |
 | L1 | disjointness, NAF, declared CWA | synthetic (LLM-free) | 40/40 |
+| L2 | disjunction, case split, finite-domain quantifiers | synthetic (LLM-free) | 23/23 |
 | D | defeasible | synthetic (LLM-free) | 8/8 |
 
 The ProntoQA runs have **0 grounded false proofs** and every determinate answer is
@@ -144,19 +145,27 @@ runs unless a later stage specifically needs it.
 uv run --with pyarrow python -m evals.build_prontoqa_sample --tier b
 uv run python -m evals.prontoqa --tier b     # live LLM run
 uv run python -m evals.l1_synthetic          # L1 synthetic gate (offline)
+uv run python -m evals.l2_synthetic          # L2 synthetic gate (offline)
 uv run python -m evals.defeasible_synthetic  # defeasible synthetic gate (offline)
+uv run python -m evals.build_prontoqa_ood_sample --tier a  # ProntoQA-OOD L2 sample
 uv run python -m evals.analyze_folio         # FOLIO fragment-vs-extraction diagnostic
 ```
 
-FOLIO is the planned **L2** gate (`docs/folio.md`); its L1 negation slice is small and
-mostly needs proof by contradiction. The negation-subset run scores 7/13, and the
-gold-FOL diagnostic (`evals.analyze_folio`) shows text-fed equals gold-fed, i.e. the
-remaining gap is the L2 fragment, not extraction.
+**L2** (disjunction, case split, finite-domain quantifiers) is implemented behind
+`ANKYRA_LOGIC` (default `off`) and gated by the LLM-free synthetic collection
+**23/23**, 0 grounded false proofs (`docs/l2_plan.md`). The ProntoQA-OOD and FOLIO L2
+harnesses are built with committed samples (`evals.prontoqa_ood`, `evals.folio
+--subset l2`) and their **live gates are pending a separate budget decision**. The
+earlier FOLIO L1 negation slice scored 7/13, and the gold-FOL diagnostic
+(`evals.analyze_folio`) showed text-fed equals gold-fed — the remaining gap is the L2
+fragment, not extraction.
 
 ## Documentation
 
 - `ARCHITECTURE.md` — layers, flows, data model, module map.
 - `docs/task.md` — technical specification.
+- `docs/reasoning_roadmap.md` — staged formalisms and gates (the main axis).
+- `docs/l2_plan.md` — L2 implementation plan (L2 is implemented).
 - `docs/implementation_plan.md` — roadmap and backlog.
 - `docs/quality_findings.md` — eval findings and open quality gaps.
 - `docs/defeasible_reasoning.md` — design note on exceptions/defaults.
@@ -170,8 +179,14 @@ covered by tests. **L0 is gated**: definite Horn on ProofWriter, Tier D re-run
 constraints and the per-query declared closed world (`ANKYRA_NEGATION_MODE`), with
 ProntoQA 208/208 (tiers a+b, all `proven`, 0 grounded false proofs; the collection
 is considered closed) and LLM-free synthetic gates 40/40 (L1) and 8/8 (defeasible).
-The defeasible layer (D) is implemented behind `ANKYRA_DEFEASIBLE`.
+**L2 is implemented and gated** behind `ANKYRA_LOGIC`: disjunction and case splits,
+conjunctive/disjunctive and open goals, and finite-domain quantifiers (Skolemization
+plus witness enumeration). The LLM-free synthetic gate is **23/23** with 0 grounded
+false proofs; the ProntoQA-OOD and FOLIO L2 harnesses are built with live gates
+pending a separate budget decision. The defeasible layer (D) is implemented behind
+`ANKYRA_DEFEASIBLE`.
 
-Known open items: L2 (disjunction/quantifiers/proof by cases; FOLIO,
-ProntoQA-OOD), extraction robustness on real text (`docs/folio.md` §9), and the
-items in `docs/quality_findings.md`.
+Known open items: live L2 gates (ProntoQA-OOD, FOLIO) pending budget; the gold-fed L2
+diagnostic parser (`∨`/`∃`); full first-order unification (deferred — grounding is
+sound and terminating on the committed finite domains); extraction robustness on real
+text (`docs/folio.md` §9); and the items in `docs/quality_findings.md`.

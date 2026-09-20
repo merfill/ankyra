@@ -46,6 +46,7 @@ def run_one(problem: dict) -> tuple[dict, object]:
     with setting_overrides(
         BUILTINS=bool(problem.get("builtins", False)),
         DEFEASIBLE=bool(problem.get("defeasible", False)),
+        LOGIC=str(problem.get("logic", "off") or "off"),
     ), tracing() as llm_trace:
         result = run_problem(
             problem["text"],

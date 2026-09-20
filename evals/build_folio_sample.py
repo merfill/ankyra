@@ -45,6 +45,8 @@ _CONSTRUCTS = {
     "negation": "¬",
 }
 _BEYOND_L1 = {"disjunction", "existential", "equality", "xor", "biconditional", "multivar"}
+# Constructs beyond the committed L2 fragment (functions/equality/schemas + XOR/bicond).
+_BEYOND_L2 = {"equality", "xor", "biconditional", "multivar"}
 # A quantified or compound conclusion is an L2 target; the L1 query path expects a
 # ground literal (a negated atom is fine).
 _CONCLUSION_COMPOUND = ("∀", "∃", "→", "∧", "∨", "↔", "⊕")
@@ -103,6 +105,19 @@ def in_l1_negation(row: dict) -> bool:
     return not any(token in row["conclusion-FOL"] for token in _CONCLUSION_COMPOUND)
 
 
+def in_l2(row: dict) -> bool:
+    """True when the example stays inside the L2 fragment (``∨``/``∃``, no functions).
+
+    L2 adds disjunction and the existential quantifier to L1; equality, XOR,
+    biconditional and multi-variable quantification remain beyond the committed
+    fragment (``docs/folio.md`` §4, ``docs/l2_plan.md`` D-L2-4).
+    """
+    used = constructs(row)
+    if not (used & {"disjunction", "existential"}):
+        return False
+    return not (used & _BEYOND_L2)
+
+
 def _record(row: dict) -> dict:
     return {
         "id": f"folio-{row['split']}-{row['index']:04d}",
@@ -134,22 +149,41 @@ def select(rows: list[dict], tier: str = "a") -> list[dict]:
     return selected
 
 
+def select_l2(rows: list[dict], tier: str = "a") -> list[dict]:
+    """The L2 slice: disjunction and/or existential, no equality/XOR/biconditional."""
+    if tier not in TIERS:
+        raise SystemExit(f"unknown tier {tier!r}; choose from {', '.join(TIERS)}")
+    per_label = TIERS[tier]
+    by_label: dict[str, list[dict]] = defaultdict(list)
+    for raw in rows:
+        if in_l2(raw):
+            by_label[raw["label"]].append(_record(raw))
+    selected: list[dict] = []
+    for label in sorted(by_label):
+        selected.extend(sorted(by_label[label], key=lambda r: r["id"])[:per_label])
+    selected.sort(key=lambda r: (r["label"], r["id"]))
+    return selected
+
+
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Build a FOLIO negation-subset sample.")
+    parser = argparse.ArgumentParser(description="Build a FOLIO sample (L1 negation or L2).")
     parser.add_argument("--tier", default="a", choices=sorted(TIERS))
-    parser.add_argument("--out", default="", help="Output JSONL (default: data/folio_negation_tier_<tier>.jsonl)")
+    parser.add_argument("--subset", default="negation", choices=["negation", "l2"])
+    parser.add_argument("--out", default="", help="Output JSONL (default: data/folio_<subset>_tier_<tier>.jsonl)")
     args = parser.parse_args(argv)
 
     rows = _load_rows()
+    predicate = in_l2 if args.subset == "l2" else in_l1_negation
+    selector = select_l2 if args.subset == "l2" else select
     tally = Counter()
     for row in rows:
-        used = constructs(row)
-        for name in used:
+        for name in constructs(row):
             tally[name] += 1
-        if in_l1_negation(row):
-            tally["in_l1_negation"] += 1
-    selected = select(rows, args.tier)
-    out = Path(args.out) if args.out else DATA / f"folio_negation_tier_{args.tier}.jsonl"
+        if predicate(row):
+            tally[f"in_{args.subset}"] += 1
+    selected = selector(rows, args.tier)
+    default_name = f"folio_{'l2' if args.subset == 'l2' else 'negation'}_tier_{args.tier}.jsonl"
+    out = Path(args.out) if args.out else DATA / default_name
     out.parent.mkdir(parents=True, exist_ok=True)
     with out.open("w", encoding="utf-8") as handle:
         for record in selected:

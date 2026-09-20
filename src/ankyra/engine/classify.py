@@ -14,7 +14,8 @@ from ankyra.build.normalize import is_var
 from ankyra.build.symbolic import normalize_quote, quote_in_source, quote_only_in_conditional
 from ankyra.core.models import Hypothesis, Morphism, ProposalCategory, Query, Rule, Theory
 from ankyra.engine.builtins import builtin_unsafe
-from ankyra.engine.horn import build_context, derive_store, instantiate, unify_pattern
+from ankyra.engine.horn import build_context, instantiate, unify_pattern
+from ankyra.engine.inference import HornInference
 from ankyra.engine.ledger import HypothesisLedger, morphism_key
 from ankyra.engine.proposal import ProposalDraft, effective_action, payload_actions
 
@@ -29,7 +30,7 @@ class Classification:
 
 
 def _closure_keys(theory: Theory) -> set:
-    return {fact.key for fact in derive_store(theory).facts}
+    return HornInference().closure_keys(theory)
 
 
 def _adds_new_facts(theory: Theory, candidate: Theory) -> bool:
@@ -39,12 +40,19 @@ def _adds_new_facts(theory: Theory, candidate: Theory) -> bool:
 def _unsafe_rule(rule: Rule) -> bool:
     """Range restriction: every variable in the head must occur in the body."""
     body = {v for cond in rule.conditions for v in (cond.subject, cond.object) if is_var(v)}
-    head = {v for v in (rule.consequence.subject, rule.consequence.object) if is_var(v)}
+    head = {
+        v
+        for literal in rule.head
+        for v in (literal.subject, literal.object)
+        if is_var(v)
+    }
     return bool(head - body)
 
 
 def _empty_predicates(rule: Rule) -> bool:
     if not (rule.consequence.predicate or "").strip():
+        return True
+    if any(not (alt.predicate or "").strip() for alt in rule.alternatives):
         return True
     return any(not (cond.predicate or "").strip() for cond in rule.conditions)
 

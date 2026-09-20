@@ -422,7 +422,7 @@
     (`Theory.constraints`), стратифицированный negation-as-failure и допущение
     закрытого мира на запрос (`Query.world_assumption`, флаг `ANKYRA_NEGATION_MODE`)
     реализованы; `verify` репортит `out_of_fragment` для нестратифицируемых программ.
-    LLM-free гейты: `evals.l1_synthetic` (32/32) и `evals.defeasible_synthetic` (8/8).
+    LLM-free гейты: `evals.l1_synthetic` (40/40) и `evals.defeasible_synthetic` (8/8).
     Харнессы ProntoQA и FOLIO с закоммиченными сэмплами готовы; их живые прогоны
     вызывают платный извлекатель и ждут бюджета. План и решения: `docs/l1_plan_ru.md`.
 
@@ -444,13 +444,20 @@
   допущением о мире, для дизъюнктности и явного отрицательного знания. Бенчмарк
   ProntoQA; флаг `ANKYRA_NEGATION_MODE`. **Реализовано**: `Constraint` +
   `Query.world_assumption`, стратифицированный NAF в `engine/horn.py`, CWA в
-  `engine/verify.py`; первичный гейт `evals.l1_synthetic` (32/32, без LLM), плюс
+  `engine/verify.py`; первичный гейт `evals.l1_synthetic` (40/40, без LLM), плюс
   харнессы ProntoQA и FOLIO (`docs/l1_plan_ru.md`; живые прогоны ждут бюджета).
 - **L2 — дизъюнкция / positive FOL / proof by cases**, для compositional-цепочек.
   Бенчмарк ProntoQA-OOD (compositional); флаг `ANKYRA_LOGIC`. Второй гейт
   **FOLIO** (`docs/folio_ru.md`), стратифицирован по конструкции FOL (in-fragment
   оценивается, функции/равенство/схемы — `out_of_fragment`); полная FOL
   полуразрешима, поэтому поиск ограничен, а исчерпание — честный `insufficient`.
+  **Реализовано** (конечно-доменная форма): ground клаузальный IR + ограниченная
+  резолюция set-of-support (`engine/clause.py`, `engine/resolution.py`),
+  дизъюнкция/разбор случаев, кванторы через Skolemization + перебор свидетелей,
+  составные/open-цели и шов протокола `Inference` (`engine/inference.py`);
+  первичный LLM-free гейт `evals.l2_synthetic` (**23/23**), harness'ы ProntoQA-OOD и
+  FOLIO построены, живые гейты ждут бюджета (`docs/l2_plan_ru.md`). Полная
+  первопорядковая унификация отложена.
 - **L3 — конечнодоменные CSP/SAT, отдельный движок.** Бенчмарк AR-LSAT.
 - **L4 — арифметика, отдельный числовой движок или tool-use.** Бенчмарк GSM8K.
 - **D — defeasible** (за `ANKYRA_DEFEASIBLE`); **реализовано + синтетический гейт**

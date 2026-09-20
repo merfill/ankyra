@@ -1,4 +1,4 @@
-# Pluggable Logic Layer — design note (future)
+# Pluggable Logic Layer — design note (protocol extracted; see §10)
 
 Whether and when to abstract the inference semantics so different logics can be
 used in perspective. Canonical language: English; Russian mirror:
@@ -42,7 +42,7 @@ must not become harder to read in the meantime.
 - **Varying (the seam):** `entails`, `answer`, `justification`, `consistent`, and
   capability flags.
 
-## 5. Proposed protocol (sketch, not yet implemented)
+## 5. Proposed protocol (sketch; extracted in §10)
 
 ```python
 class Inference(Protocol):
@@ -97,3 +97,23 @@ Is a pluggable logic layer a **near-term** need (several semantics are planned) 
 (L1 stratified negation, L2 disjunction/FOL, plus separate L3/L4 engines), so the
 seam is near-term. Extract the protocol when L1 lands, not before; until then this
 note is a design sketch, not a task.
+
+## 10. Status — protocol extracted (L2 milestone 10)
+
+The seam is implemented in `engine/inference.py`:
+
+- `Inference(Protocol)` with `entails`, `closure_keys` and `decide`;
+- `HornInference` (forward-chaining closure) and `ClausalInference` (L2 ground-clause
+  resolution);
+- `select_inference(*, logic_enabled, has_goals)` picks the semantics; `verify` keeps
+  the *policy* (the config flag, the closed-world NAF guard) and delegates the decision
+  to the chosen object; `classify` classifies proposals against the Horn closure via
+  `HornInference.closure_keys`.
+
+Deliberately minimal: the concrete procedures stay in `engine/horn.py` /
+`engine/resolution.py` and verdict assembly in `engine/verify.py`, so the seam adds no
+duplicated logic. `justification` and `consistent` from the §5 sketch are **not** yet
+protocol methods — `build_explanation` still carries the Horn proof walk with an L2
+branch — and become relevant only when a semantics needs a structurally different
+justification (e.g. ASP). `ClausalInference.closure_keys` deliberately raises: L2 has
+no fact closure and proposals are unsupported (D-L2-6).

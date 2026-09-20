@@ -19,9 +19,15 @@ from ankyra.core.models import (
     Theory,
     Verdict,
 )
+from ankyra.engine.clause import label_of
 from ankyra.engine.horn import build_context
 from ankyra.engine.ledger import HypothesisLedger, morphism_key
-from ankyra.engine.verify import _key_matches, winning_store_hit
+from ankyra.engine.verify import (
+    _key_matches,
+    l2_outcomes,
+    logic_enabled,
+    winning_store_hit,
+)
 
 
 def render_atom(morphism) -> str:
@@ -33,10 +39,14 @@ def render_atom(morphism) -> str:
 
 
 def render_rule(rule) -> str:
-    """Readable Horn rule: ``IF is_a(?x,dog) => is_a(?x,mammal) [implication]``."""
+    """Readable clause: ``IF is_a(?x,dog) => is_a(?x,mammal) [implication]``.
+
+    A disjunctive head renders its literals with ``OR`` (L2).
+    """
     conditions = " AND ".join(render_atom(condition) for condition in rule.conditions) or "TRUE"
+    head = " OR ".join(render_atom(literal) for literal in rule.head)
     label = rule.kind if rule.strength == "strict" else f"{rule.kind}, defeasible"
-    return f"IF {conditions} => {render_atom(rule.consequence)} [{label}]"
+    return f"IF {conditions} => {head} [{label}]"
 
 
 def _constraint_quote(theory: Theory, witness: str) -> str | None:
@@ -315,6 +325,111 @@ def _resolved_conflict(
     return None
 
 
+def _clause_text(key) -> str:
+    if not key:
+        return "contradiction"
+    return " OR ".join(label_of(literal) for literal in key)
+
+
+def _classify_clause(origins, theory: Theory):
+    """Map a clause's origin label to an explanation kind, rule, source and quote."""
+    for origin in origins:
+        if origin.startswith("axiom:"):
+            return "axiom", None, "quote", None
+        if origin.startswith("rule:"):
+            index = int(origin.split(":", 1)[1])
+            rule = theory.rules[index - 1]
+            return "rule", index, rule.source, rule.quote
+        if origin == "transitivity":
+            return "is_a", None, None, None
+        if origin.startswith("constraint:"):
+            left, _, right = origin.split(":", 1)[1].partition("|")
+            for constraint in theory.constraints:
+                if {constraint.left, constraint.right} == {left, right}:
+                    return "constraint", None, "quote", constraint.quote
+            return "constraint", None, None, None
+        if origin.startswith("presupposition:"):
+            return "assumption", None, "presupposition", None
+        if origin == "goal":
+            return "assumption", None, "goal_negation", None
+    return "resolution", None, None, None
+
+
+def _l2_steps(proof, theory: Theory) -> list[ExplanationStep]:
+    """Render a resolution refutation as premises-first explanation steps."""
+    steps: list[ExplanationStep] = []
+    index: dict = {}
+    for key in proof.derivation():
+        node = proof.nodes.get(key)
+        premise_ids: list[int] = []
+        if node is not None:
+            for parent in node[:2]:
+                if parent is not None and parent in index:
+                    premise_ids.append(index[parent])
+        kind, rule_index, source, quote = _classify_clause(
+            proof.origins.get(key, []), theory
+        )
+        rule = theory.rules[rule_index - 1] if rule_index else None
+        steps.append(
+            ExplanationStep(
+                index=len(steps),
+                kind=kind,
+                statement=_clause_text(key),
+                premises=premise_ids,
+                rule_index=rule_index,
+                rule=render_rule(rule) if rule else None,
+                source=source,
+                quote=quote,
+            )
+        )
+        index[key] = steps[-1].index
+    return steps
+
+
+def _l2_explanation(theory: Theory, query: Query, verdict: Verdict) -> Explanation:
+    """Build the explanation of an L2 verdict from the resolution proofs."""
+    _, outcomes = l2_outcomes(theory, query)
+    if not outcomes:
+        return Explanation()
+    binding = dict(verdict.bindings)
+    if verdict.status == "contradiction":
+        for goal, outcome, target, complement, _ in outcomes:
+            if outcome == "contradiction":
+                return Explanation(
+                    goal=render_atom(goal),
+                    binding=binding,
+                    conflict=Conflict(
+                        kind="strict",
+                        status="undecided",
+                        supporting=_l2_steps(target.proof, theory),
+                        attacking=_l2_steps(complement.proof, theory),
+                        defeated="none",
+                        note="both polarities are derivable by resolution",
+                    ),
+                )
+        return Explanation()
+    if verdict.status == "supported":
+        for goal, outcome, target, _, _ in outcomes:
+            if outcome == "supported" and target is not None and target.proof is not None:
+                return Explanation(
+                    goal=render_atom(goal),
+                    binding=binding,
+                    steps=_l2_steps(target.proof, theory),
+                )
+        return Explanation()
+    if verdict.status == "refuted":
+        for goal, outcome, _, complement, _ in outcomes:
+            if outcome in {"refuted", "contradiction"} and complement is not None and complement.proof is not None:
+                negated_goal = goal.model_copy(update={"negated": not goal.negated})
+                return Explanation(
+                    goal=render_atom(negated_goal),
+                    binding=binding,
+                    steps=_l2_steps(complement.proof, theory),
+                )
+        return Explanation()
+    return Explanation()
+
+
 def build_explanation(
     theory: Theory,
     query: Query,
@@ -326,6 +441,10 @@ def build_explanation(
     ``supported`` yields the positive trace; ``target_refuted`` the negative one;
     ``contradiction`` both branches; everything else an empty trace.
     """
+    if logic_enabled():
+        explanation = _l2_explanation(theory, query, verdict)
+        if explanation.steps or explanation.conflict:
+            return explanation
     if query.target is None:
         return Explanation()
     if verdict.status == "supported":

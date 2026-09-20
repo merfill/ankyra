@@ -123,10 +123,26 @@ class StructAtom(BaseModel):
 
 
 class StructRule(BaseModel):
-    """A real conditional: IF antecedent (AND) => consequent."""
+    """A real conditional: IF antecedent (AND) => consequent.
+
+    A **disjunctive head** is expressed with ``consequents`` (an OR of atoms); when
+    it is non-empty it replaces ``consequent``. A **disjunctive body** is expressed
+    with ``disjunctive_antecedent`` (an OR of atoms); when it is non-empty the body
+    is that disjunction and the builder splits it into one rule per atom (L2).
+    """
 
     antecedent: list[StructAtom] = Field(default_factory=list)
     consequent: StructAtom = Field(default_factory=StructAtom)
+    consequents: list[StructAtom] = Field(
+        default_factory=list,
+        description="Disjunctive head (OR of atoms); when non-empty it replaces "
+        "'consequent'. Use the single 'consequent' for a Horn head.",
+    )
+    disjunctive_antecedent: list[StructAtom] = Field(
+        default_factory=list,
+        description="Disjunctive body (OR of atoms); when non-empty the body is that "
+        "disjunction and 'antecedent' is ignored. The builder emits one rule per atom.",
+    )
     kind: RuleKind = Field(default="implication", description="exception negates the consequent.")
     forall: dict[str, str] = Field(
         default_factory=dict,
@@ -162,7 +178,7 @@ class StructRule(BaseModel):
                     out[name] = str(sort).strip()
         return out
 
-    @field_validator("antecedent", mode="before")
+    @field_validator("antecedent", "consequents", "disjunctive_antecedent", mode="before")
     @classmethod
     def _wrap_antecedent(cls, value: Any) -> Any:
         if isinstance(value, dict):
@@ -218,6 +234,51 @@ class StructDisjoint(BaseModel):
         return value
 
 
+class StructDisjunction(BaseModel):
+    """A disjunctive ground fact: ``A ∨ B ∨ …`` (L2).
+
+    Structurally extracted ("Rex is a shumpus or a jompus or a grimpus"). The builder
+    turns it into a conditionless clause with a disjunctive head, never into a set of
+    concurrent facts (which would be an unsound OR-as-AND).
+    """
+
+    literals: list[StructAtom] = Field(default_factory=list, description="The disjunct atoms (at least two).")
+    quote: str = Field(default="", description="Minimal verbatim span supporting the fact.")
+
+    @field_validator("literals", mode="before")
+    @classmethod
+    def _wrap_literals(cls, value: Any) -> Any:
+        if isinstance(value, dict):
+            return [value]
+        return value
+
+
+class StructExistential(BaseModel):
+    """A conjunctive existential premise: ``∃variable (atom ∧ …)`` (L2).
+
+    Structurally extracted ("There is an animal", "Some person has a license"). The
+    builder records it on the theory; the prover Skolemizes it (docs/l2_plan.md §7.4),
+    so it is never turned into a fact about a class constant.
+    """
+
+    variable: str = Field(default="?x", description="The existentially quantified variable.")
+    atoms: list[StructAtom] = Field(default_factory=list, description="The conjoined atoms over it.")
+    quote: str = Field(default="", description="Minimal verbatim span supporting the premise.")
+
+    @field_validator("variable", mode="before")
+    @classmethod
+    def _normalize_variable(cls, value: Any) -> str:
+        text = str(value or "?x").strip() or "?x"
+        return text if text.startswith("?") else f"?{text}"
+
+    @field_validator("atoms", mode="before")
+    @classmethod
+    def _wrap_atoms(cls, value: Any) -> Any:
+        if isinstance(value, dict):
+            return [value]
+        return value
+
+
 class ProblemStructure(BaseModel):
     """Structural decomposition of the descriptive part of a problem."""
 
@@ -237,6 +298,18 @@ class ProblemStructure(BaseModel):
         "state disjointness — never infer it from class names.",
     )
     variants: list[StructAtom] = Field(default_factory=list, description="Disjunctive options; never expanded into concurrent facts.")
+    disjunctions: list[StructDisjunction] = Field(
+        default_factory=list,
+        description="Disjunctive ground facts (L2): A or B or C. A non-Horn clause, "
+        "never a set of concurrent facts. Leave empty unless the text asserts a "
+        "disjunction of facts.",
+    )
+    existentials: list[StructExistential] = Field(
+        default_factory=list,
+        description="Conjunctive existential premises (L2): there is an X such that "
+        "…. Recorded structurally; the prover Skolemizes them. Leave empty unless the "
+        "text asserts existence over an unnamed individual.",
+    )
     references: list[str] = Field(default_factory=list, description="Cross-references; not theory facts.")
     domain: list[str] = Field(
         default_factory=list,
@@ -314,6 +387,18 @@ class QuestionStructure(BaseModel):
     )
     rules: list[StructRule] = Field(default_factory=list, description="Only real conditionals inside the question.")
     ask: StructAtom | None = Field(default=None, description="Single target, or null.")
+    ask_all: list[StructAtom] = Field(
+        default_factory=list,
+        description="Conjunctive goal (L2): every listed atom must hold ('is X both A "
+        "and B?'). When non-empty it replaces 'ask'; the builder decomposes it into "
+        "one goal per atom.",
+    )
+    ask_any: list[StructAtom] = Field(
+        default_factory=list,
+        description="Disjunctive goal (L2): some listed atom must hold ('is X A, B, or "
+        "C?'). When non-empty it replaces 'ask'; the builder decomposes it into one "
+        "goal per atom.",
+    )
     variables: dict[str, str] = Field(default_factory=dict, description="Theory slot name (no '?') -> literal.")
 
 

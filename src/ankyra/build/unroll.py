@@ -15,8 +15,18 @@ from __future__ import annotations
 
 from ankyra.build.normalize import canonicalize_predicate, is_var
 from ankyra.build.query import derive_answer_type
-from ankyra.core.models import Constraint, Morphism, Object, Query, Rule, Theory, WorldAssumption
-from ankyra.core.schemas import ProblemStructure, QuestionStructure, Slot, StructAtom
+from ankyra.core.models import (
+    Constraint,
+    Existential,
+    GoalMode,
+    Morphism,
+    Object,
+    Query,
+    Rule,
+    Theory,
+    WorldAssumption,
+)
+from ankyra.core.schemas import ProblemStructure, QuestionStructure, Slot, StructAtom, StructRule
 
 
 def modality_prefix(modality: str) -> str:
@@ -106,6 +116,12 @@ def _ordered_objects(structure: ProblemStructure) -> list[Object]:
     for rule in structure.rules:
         atoms.extend(rule.antecedent)
         atoms.append(rule.consequent)
+        atoms.extend(rule.consequents)
+        atoms.extend(rule.disjunctive_antecedent)
+    for item in structure.disjunctions:
+        atoms.extend(item.literals)
+    for item in structure.existentials:
+        atoms.extend(item.atoms)
     for atom in atoms:
         for morphism in atom_to_morphisms(atom):
             use(morphism.subject)
@@ -163,6 +179,115 @@ def _normalize_domain(
     return kept
 
 
+def _uses_variants(atom: StructAtom) -> bool:
+    """True when the atom's slots express an OR (alternatives), not an AND-set."""
+    return bool(atom.subject.variants or atom.object.variants)
+
+
+def _head_groups(struct_rule: StructRule, *, deontic_prefixes: bool) -> list[tuple[Morphism, list[Morphism]]]:
+    """One ``(consequence, alternatives)`` head per rule the conclusion yields.
+
+    * ``consequents`` (an explicit list) is a **disjunctive** head: one clause with the
+      alternatives.
+    * a single ``consequent`` whose slots use ``variants`` is likewise disjunctive.
+    * a single ``consequent`` whose set expands to several morphisms is a **conjunction**
+      of conclusions: one Horn rule per conjunct (this closes the old drop-the-rest bug).
+    """
+    if struct_rule.consequents:
+        morphisms = [
+            morphism
+            for atom in struct_rule.consequents
+            for morphism in atom_to_morphisms(atom, deontic_prefixes=deontic_prefixes)
+        ]
+        groups = [(morphisms[0], morphisms[1:])] if morphisms else []
+    else:
+        morphisms = atom_to_morphisms(struct_rule.consequent, deontic_prefixes=deontic_prefixes)
+        if not morphisms:
+            groups = []
+        elif _uses_variants(struct_rule.consequent):
+            groups = [(morphisms[0], morphisms[1:])]
+        else:
+            groups = [(morphism, []) for morphism in morphisms]
+    if struct_rule.kind == "exception":
+        groups = [
+            (head.model_copy(update={"negated": True}), [a.model_copy(update={"negated": True}) for a in alternatives])
+            for head, alternatives in groups
+        ]
+    return groups
+
+
+def _body_variants(
+    struct_rule: StructRule, sorts: dict[str, str], *, deontic_prefixes: bool
+) -> list[list[Morphism]]:
+    """One condition list per body alternative.
+
+    A disjunctive body (``A ∨ B => C``) is a logical OR over bodies, which is a Horn
+    split: the builder emits one rule per disjunct. A conjunctive body stays a single
+    condition list, with the quantifier's domain premise normalized away.
+    """
+    if struct_rule.disjunctive_antecedent:
+        return [
+            list(atom_to_morphisms(atom, deontic_prefixes=deontic_prefixes))
+            for atom in struct_rule.disjunctive_antecedent
+        ]
+    normalized = _normalize_domain(struct_rule.antecedent, sorts)
+    return [
+        [
+            morphism
+            for atom in normalized
+            for morphism in atom_to_morphisms(atom, deontic_prefixes=deontic_prefixes)
+        ]
+    ]
+
+
+def _unroll_disjunctions(
+    structure: ProblemStructure, *, deontic_prefixes: bool
+) -> list[Rule]:
+    """Compile disjunctive ground facts into conditionless clauses with a head OR.
+
+    A disjunctive fact is non-Horn; lowering it into concurrent facts would be an
+    unsound OR-as-AND. A one-literal "disjunction" is malformed and dropped.
+    """
+    rules: list[Rule] = []
+    for item in structure.disjunctions:
+        literals = [
+            morphism
+            for atom in item.literals
+            for morphism in atom_to_morphisms(atom, deontic_prefixes=deontic_prefixes)
+        ]
+        if len(literals) < 2:
+            continue
+        rules.append(
+            Rule(
+                conditions=[],
+                consequence=literals[0],
+                alternatives=literals[1:],
+                source="quote",
+                quote=item.quote or None,
+            )
+        )
+    return rules
+
+
+def _unroll_existentials(
+    structure: ProblemStructure, *, deontic_prefixes: bool
+) -> list[Existential]:
+    """Compile existential premises into ``Theory.existentials`` (Skolemized later)."""
+    out: list[Existential] = []
+    for item in structure.existentials:
+        atoms = [
+            morphism
+            for atom in item.atoms
+            for morphism in atom_to_morphisms(atom, deontic_prefixes=deontic_prefixes)
+        ]
+        if not atoms or not all((atom.predicate or "").strip() for atom in atoms):
+            continue
+        out.append(
+            Existential(variable=item.variable or "?x", atoms=atoms, quote=item.quote or None)
+        )
+    return out
+
+
 def unroll_problem_structure(
     structure: ProblemStructure,
     *,
@@ -170,39 +295,60 @@ def unroll_problem_structure(
 ) -> Theory:
     """Deterministically expand a ProblemStructure into a Theory."""
     morphisms: list[Morphism] = []
-    for atom in list(structure.facts) + list(structure.variants):
+    for atom in structure.facts:
         morphisms.extend(atom_to_morphisms(atom, deontic_prefixes=deontic_prefixes))
 
-    rules: list[Rule] = []
+    # ``variants`` is a disjunction of options, never concurrent facts: a lone option
+    # is a plain fact, several become a disjunctive ground-fact clause (OR-as-AND closed).
+    variant_literals = [
+        morphism
+        for atom in structure.variants
+        for morphism in atom_to_morphisms(atom, deontic_prefixes=deontic_prefixes)
+    ]
+    if len(variant_literals) == 1:
+        morphisms.extend(variant_literals)
+
+    rules: list[Rule] = _unroll_disjunctions(structure, deontic_prefixes=deontic_prefixes)
+    if len(variant_literals) >= 2:
+        rules.append(
+            Rule(
+                conditions=[],
+                consequence=variant_literals[0],
+                alternatives=variant_literals[1:],
+                source="quote",
+                quote=variant_literals[0].quote,
+            )
+        )
+
     for struct_rule in structure.rules:
         sorts = {
             f"?{name.lstrip('?')}": sort for name, sort in (struct_rule.forall or {}).items()
         }
-        conditions: list[Morphism] = []
-        for atom in _normalize_domain(struct_rule.antecedent, sorts):
-            conditions.extend(atom_to_morphisms(atom, deontic_prefixes=deontic_prefixes))
-        consequents = atom_to_morphisms(struct_rule.consequent, deontic_prefixes=deontic_prefixes)
-        if not consequents:
+        head_groups = _head_groups(struct_rule, deontic_prefixes=deontic_prefixes)
+        if not head_groups:
             continue
-        consequence = consequents[0]
-        if struct_rule.kind == "exception":
-            consequence = consequence.model_copy(update={"negated": True})
-        rules.append(
-            Rule(
-                conditions=conditions,
-                consequence=consequence,
-                kind=struct_rule.kind,
-                forall=sorts,
-                source="quote",
-                quote=struct_rule.quote or None,
-            )
-        )
+        for conditions in _body_variants(struct_rule, sorts, deontic_prefixes=deontic_prefixes):
+            for consequence, alternatives in head_groups:
+                if not (consequence.predicate or "").strip():
+                    continue
+                rules.append(
+                    Rule(
+                        conditions=conditions,
+                        consequence=consequence,
+                        alternatives=alternatives,
+                        kind=struct_rule.kind,
+                        forall=sorts,
+                        source="quote",
+                        quote=struct_rule.quote or None,
+                    )
+                )
 
     return Theory(
         objects=_ordered_objects(structure),
         morphisms=morphisms,
         rules=rules,
         constraints=_unroll_constraints(structure),
+        existentials=_unroll_existentials(structure, deontic_prefixes=deontic_prefixes),
         source_text=structure.source_text,
         domain=list(structure.domain),
     )
@@ -247,6 +393,25 @@ def unroll_query_structure(
         if asks:
             target = asks[0]
 
+    goals: list[Morphism] = []
+    goal_mode: GoalMode = "single"
+    if structure.ask_all:
+        goals = [
+            morphism
+            for atom in structure.ask_all
+            for morphism in atom_to_morphisms(atom, deontic_prefixes=deontic_prefixes)
+        ]
+        goal_mode = "all"
+    elif structure.ask_any:
+        goals = [
+            morphism
+            for atom in structure.ask_any
+            for morphism in atom_to_morphisms(atom, deontic_prefixes=deontic_prefixes)
+        ]
+        goal_mode = "any"
+    if goals:
+        target = goals[0]
+
     variables: dict[str, str] = {}
     for key, value in (structure.variables or {}).items():
         name = str(key).lstrip("?")
@@ -256,6 +421,8 @@ def unroll_query_structure(
     return Query(
         conditions=conditions,
         target=target,
+        goals=goals,
+        goal_mode=goal_mode,
         variables=variables,
         answer_type=derive_answer_type(target, variables),
         world_assumption=world_assumption,

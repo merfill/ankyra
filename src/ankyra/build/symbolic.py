@@ -141,6 +141,9 @@ def check_quote_witnesses(theory: Theory) -> list[str]:
     for i, constraint in enumerate(theory.constraints, 1):
         if not quote_in_source(constraint.quote, theory.source_text):
             gaps.append(f"missing_quote:constraint:{i}")
+    for i, existential in enumerate(theory.existentials, 1):
+        if not quote_in_source(existential.quote, theory.source_text):
+            gaps.append(f"missing_quote:existential:{i}")
     return gaps
 
 
@@ -210,7 +213,9 @@ def _all_slots(theory: Theory):
     yield from theory.morphisms
     for rule in theory.rules:
         yield from rule.conditions
-        yield rule.consequence
+        yield from rule.head
+    for existential in theory.existentials:
+        yield from existential.atoms
 
 
 @dataclass
@@ -251,14 +256,21 @@ def enforce_grounded(theory: Theory) -> Theory:
     morphisms = [m for m in theory.morphisms if quote_in_source(m.quote, source)]
     rules = [r for r in theory.rules if quote_in_source(r.quote, source)]
     constraints = [c for c in theory.constraints if quote_in_source(c.quote, source)]
+    existentials = [e for e in theory.existentials if quote_in_source(e.quote, source)]
     if (
         len(morphisms) == len(theory.morphisms)
         and len(rules) == len(theory.rules)
         and len(constraints) == len(theory.constraints)
+        and len(existentials) == len(theory.existentials)
     ):
         return theory
     return theory.model_copy(
-        update={"morphisms": morphisms, "rules": rules, "constraints": constraints}
+        update={
+            "morphisms": morphisms,
+            "rules": rules,
+            "constraints": constraints,
+            "existentials": existentials,
+        }
     )
 
 

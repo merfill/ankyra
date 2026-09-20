@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+from itertools import product
+
 from ankyra.build.normalize import is_var
+from ankyra.config.settings import get_setting
 from ankyra.core.models import Fact, FactKey, Morphism, Query, Theory, Verdict
+from ankyra.engine.clause import clausify, literal_of, negate
 from ankyra.engine.horn import (
     AtomStore,
     GoalHit,
@@ -13,10 +17,13 @@ from ankyra.engine.horn import (
     derive_closure,
     derive_store,
     has_naf,
+    has_non_horn,
     match_goal,
     stratification,
     unify_pattern,
 )
+from ankyra.engine.inference import select_inference
+from ankyra.engine.resolution import DEFAULT_BUDGET, refute
 
 
 def _ground(target: Morphism) -> bool:
@@ -98,8 +105,8 @@ def _target_keys(query: Query, store: AtomStore, ctx) -> set[FactKey]:
     return keys
 
 
-def verify(theory: Theory, query: Query) -> Verdict:
-    """Verify the query sequent. Unused premises block support; contradictions are explicit.
+def _verify_horn(theory: Theory, query: Query, ctx) -> Verdict:
+    """The Horn/L1 path: forward-chaining closure and single-atom targets.
 
     Status: ``contradiction`` when the target's own proof contains ``P ∧ ¬P``;
     ``supported`` when the target matches and every condition is used;
@@ -108,7 +115,25 @@ def verify(theory: Theory, query: Query) -> Verdict:
     inconsistency unrelated to the target is reported as an ``inconsistent_theory:``
     gap and does not change the answer.
     """
-    ctx = build_context(theory)
+    if has_non_horn(theory):
+        # A disjunctive head/fact is out of the Horn fragment. Until the L2 procedure
+        # is wired behind ANKYRA_LOGIC, report it honestly instead of guessing
+        # (docs/l2_plan.md D-L2-3).
+        return Verdict(
+            status="out_of_fragment",
+            bindings=dict(ctx.bindings),
+            gaps=["out_of_fragment:non_horn"],
+            shelf="refused",
+        )
+    if query.goal_mode != "single":
+        # A conjunctive/disjunctive goal is decomposed by the L2 path (D-L2-7); the
+        # Horn engine decides a single target only.
+        return Verdict(
+            status="out_of_fragment",
+            bindings=dict(ctx.bindings),
+            gaps=["out_of_fragment:compound_goal"],
+            shelf="refused",
+        )
     if query.world_assumption == "closed" and has_naf(theory) and stratification(theory) is None:
         return Verdict(
             status="out_of_fragment",
@@ -238,3 +263,222 @@ def verify(theory: Theory, query: Query) -> Verdict:
         status, shelf = "unsupported", "refused"
 
     return Verdict(status=status, bindings=bindings, gaps=gaps, matched=matched, shelf=shelf)
+
+
+def _logic_mode() -> str:
+    return str(get_setting("LOGIC", "off") or "off").strip().lower()
+
+
+def logic_enabled() -> bool:
+    """True when the L2 procedure is selected (``ANKYRA_LOGIC`` is not ``off``)."""
+    return _logic_mode() != "off"
+
+
+def _logic_budget() -> int:
+    value = get_setting("LOGIC_BUDGET", DEFAULT_BUDGET)
+    try:
+        return max(1, int(value))
+    except (TypeError, ValueError):
+        return DEFAULT_BUDGET
+
+
+def _ground_morphism(morphism: Morphism) -> bool:
+    return not (is_var(morphism.subject) or is_var(morphism.object))
+
+
+def _goals_of(query: Query) -> list[Morphism]:
+    if query.goal_mode != "single" and query.goals:
+        return list(query.goals)
+    if query.target is not None:
+        return [query.target]
+    return []
+
+
+def _l2_outcome(clausification, goal: Morphism) -> tuple[str, object, object]:
+    """The L2 outcome of one ground goal and its proof results.
+
+    ``supported`` (goal entailed), ``refuted`` (its negation entailed),
+    ``contradiction`` (both), ``budget`` (exhausted), else ``unknown``.
+    """
+    budget = _logic_budget()
+    target = refute(clausification, literal_of(goal), budget=budget)
+    complement = refute(clausification, negate(literal_of(goal)), budget=budget)
+    if target.status == "budget" or complement.status == "budget":
+        return "budget", target, complement
+    if target.status == "entailed" and complement.status == "entailed":
+        return "contradiction", target, complement
+    if target.status == "entailed":
+        return "supported", target, complement
+    if complement.status == "entailed":
+        return "refuted", target, complement
+    return "unknown", target, complement
+
+
+def _witness_pool(theory: Theory, clausification) -> list[str]:
+    """Ground terms the L2 procedure can use as witnesses (objects + Skolem constants)."""
+    return sorted(set(build_context(theory).obj_pool) | set(clausification.skolems))
+
+
+def _goal_outcome(clausification, goal: Morphism, pool: list[str]):
+    """Outcome of a ground goal, or of an open goal by witness enumeration.
+
+    An open target (``?x``) is an existential question over the finite pool: it is
+    ``supported`` with the first witness, ``refuted`` when every candidate is refuted,
+    ``budget`` on exhaustion, else ``unknown``. Returns
+    ``(outcome, target_result, complement_result, binding)``.
+    """
+    if _ground_morphism(goal):
+        outcome, target, complement = _l2_outcome(clausification, goal)
+        return outcome, target, complement, {}
+    variables = [term for term in (goal.subject, goal.object) if is_var(term)]
+    tried = 0
+    any_budget = False
+    all_refuted = True
+    for combo in product(pool, repeat=len(variables)):
+        subst = dict(zip(variables, combo))
+        grounded = goal.model_copy(
+            update={
+                "subject": subst.get(goal.subject, goal.subject),
+                "object": subst.get(goal.object, goal.object),
+            }
+        )
+        outcome, target, complement = _l2_outcome(clausification, grounded)
+        tried += 1
+        if outcome == "supported":
+            binding = {var: value for var, value in subst.items()}
+            return "supported", target, complement, binding
+        if outcome == "budget":
+            any_budget = True
+        if outcome != "refuted":
+            all_refuted = False
+    if any_budget:
+        return "budget", None, None, {}
+    if tried and all_refuted:
+        return "refuted", None, None, {}
+    return "unknown", None, None, {}
+
+
+def _l2_status(mode: str, kinds: list[str]) -> str:
+    if "contradiction" in kinds:
+        return "contradiction"
+    if mode == "all":
+        if kinds and all(kind == "supported" for kind in kinds):
+            return "supported"
+        if any(kind == "refuted" for kind in kinds):
+            return "refuted"
+        return "insufficient"
+    if mode == "any":
+        if any(kind == "supported" for kind in kinds):
+            return "supported"
+        if kinds and all(kind == "refuted" for kind in kinds):
+            return "refuted"
+        return "insufficient"
+    kind = kinds[0] if kinds else "unknown"
+    return {
+        "supported": "supported",
+        "refuted": "refuted",
+        "budget": "insufficient",
+        "unknown": "unsupported",
+    }.get(kind, "unsupported")
+
+
+def _unused_l2(theory: Theory, query: Query, proof) -> list[int]:
+    """Indices of query conditions no winning proof uses (and that are not entailed)."""
+    if not query.conditions or proof is None:
+        return []
+    used = {
+        origin for key in proof.derivation() for origin in proof.origins.get(key, [])
+    }
+    unused: list[int] = []
+    for index, condition in enumerate(query.conditions):
+        if f"presupposition:{index}" in used:
+            continue
+        result = refute(clausify(theory), literal_of(condition), budget=_logic_budget())
+        if result.status == "entailed":
+            continue
+        unused.append(index)
+    return unused
+
+
+_SHELVES = {
+    "supported": "proven",
+    "refuted": "refused",
+    "contradiction": "refused",
+    "insufficient": "attested",
+    "unsupported": "refused",
+    "out_of_fragment": "refused",
+}
+
+
+def _verify_l2(theory: Theory, query: Query, ctx) -> Verdict:
+    bindings = dict(ctx.bindings)
+    clausification, outcomes = l2_outcomes(theory, query)
+    if clausification.unsupported:
+        return Verdict(
+            status="out_of_fragment",
+            bindings=bindings,
+            gaps=[f"out_of_fragment:{item}" for item in clausification.unsupported],
+            shelf="refused",
+        )
+    mode = query.goal_mode if query.goal_mode in {"all", "any"} else "single"
+    status = _l2_status(mode, [outcome for _, outcome, _, _, _ in outcomes])
+    gaps: list[str] = []
+    if any(outcome == "budget" for _, outcome, _, _, _ in outcomes):
+        gaps.append("logic_budget:exhausted")
+    if status == "unsupported":
+        predicate = query.target.predicate if query.target else "?"
+        gaps.append(f"target_unmatched:{predicate}")
+    if status == "refuted" and query.target is not None:
+        gaps.append(f"target_refuted:{query.target.predicate}")
+    for _, outcome, _, _, binding in outcomes:
+        if outcome == "supported" and binding:
+            bindings.update(binding)
+            break
+    if status == "supported" and mode == "single":
+        target_result = outcomes[0][2]
+        unused = _unused_l2(theory, query, target_result.proof if target_result else None)
+        if unused:
+            return Verdict(
+                status="insufficient",
+                bindings=bindings,
+                gaps=[f"unused_premise:{query.conditions[i].predicate}" for i in unused],
+                shelf="attested",
+                unused_premises=unused,
+            )
+    return Verdict(status=status, bindings=bindings, gaps=gaps, shelf=_SHELVES[status])
+
+
+def l2_outcomes(theory: Theory, query: Query):
+    """Clausify and decide every goal, for the verdict and the explanation.
+
+    Returns ``(clausification, [(goal, outcome, target_result, complement_result, binding)])``.
+    """
+    clausification = clausify(theory, assumptions=query.conditions)
+    if clausification.unsupported:
+        return clausification, []
+    pool = _witness_pool(theory, clausification)
+    return clausification, [
+        (goal, *_goal_outcome(clausification, goal, pool)) for goal in _goals_of(query)
+    ]
+
+
+def verify(theory: Theory, query: Query) -> Verdict:
+    """Verify the query sequent, dispatching through the ``Inference`` protocol.
+
+    Policy (which semantics runs) lives here: with ``ANKYRA_LOGIC`` off the Horn/L1
+    semantics decides; with it on, the L2 clausal semantics decides ground goals,
+    decomposed conjunction/disjunction goals and open goals by witness enumeration.
+    The Horn/L1 machinery (declared CWA, negation-as-failure) is deliberately not
+    mixed into L2, so a closed-world NAF query under L2 is ``out_of_fragment``.
+    """
+    if logic_enabled() and has_naf(theory) and query.world_assumption == "closed":
+        return Verdict(
+            status="out_of_fragment",
+            bindings=dict(build_context(theory).bindings),
+            gaps=["out_of_fragment:naf_in_l2"],
+            shelf="refused",
+        )
+    inference = select_inference(
+        logic_enabled=logic_enabled(), has_goals=bool(_goals_of(query))
+    )
+    return inference.decide(theory, query)

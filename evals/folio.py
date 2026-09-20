@@ -37,6 +37,12 @@ SAMPLE = ROOT / "data" / "folio_negation_tier_a.jsonl"
 OUT = ROOT / "out" / "folio"
 
 _LABEL_TO_KIND = {"True": "yes", "False": "no", "Uncertain": "unknown"}
+_SUBSETS = {"negation": "negation", "l2": "l2"}
+
+
+def sample_path(subset: str = "negation", tier: str = "a") -> Path:
+    stem = _SUBSETS.get(subset, "negation")
+    return ROOT / "data" / f"folio_{stem}_tier_{tier}.jsonl"
 
 
 def load_sample(path: Path = SAMPLE) -> list[dict]:
@@ -108,12 +114,13 @@ def mismatch_shape(score: dict, trace: dict) -> str:
     return "hypothetical_decision"
 
 
-def _to_problem(record: dict, *, allow_hypotheses: bool) -> dict:
+def _to_problem(record: dict, *, allow_hypotheses: bool, logic: str = "off") -> dict:
     return {
         "id": record["id"],
         "text": problem_text(record),
         "builtins": False,
         "defeasible": False,
+        "logic": logic,
         "allow_hypotheses": allow_hypotheses,
         "max_waves": 4,
         "world_assumption": "open",
@@ -147,7 +154,10 @@ def _report(scores: list[dict]) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Run the FOLIO negation-subset eval.")
+    parser = argparse.ArgumentParser(description="Run the FOLIO eval (L1 negation or L2).")
+    parser.add_argument("--subset", default="negation", choices=sorted(_SUBSETS), help="Committed subset (default: negation).")
+    parser.add_argument("--tier", default="a", help="Committed tier (default: a).")
+    parser.add_argument("--logic", default="", help="Logic level override (default: ground for the L2 subset, off otherwise).")
     parser.add_argument("--ids", default="", help="Comma-separated ids (default: all).")
     parser.add_argument("--limit", type=int, default=0, help="Run at most N problems.")
     parser.add_argument("--out", default=str(OUT), help="Directory for per-problem traces.")
@@ -156,15 +166,19 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--jobs", type=int, default=1, help="Run up to N problems concurrently (default: 1).")
     args = parser.parse_args(argv)
 
+    logic = args.logic or ("ground" if args.subset == "l2" else "off")
     wanted = {item.strip() for item in args.ids.split(",") if item.strip()}
-    records = [r for r in load_sample() if not wanted or r["id"] in wanted]
+    records = [r for r in load_sample(sample_path(args.subset, args.tier)) if not wanted or r["id"] in wanted]
     if args.limit:
         records = records[: args.limit]
     out_dir = Path(args.out)
     if not args.no_write:
         out_dir.mkdir(parents=True, exist_ok=True)
 
-    problems = [_to_problem(record, allow_hypotheses=args.hypotheses) for record in records]
+    problems = [
+        _to_problem(record, allow_hypotheses=args.hypotheses, logic=logic)
+        for record in records
+    ]
     scores: list[dict | None] = [None] * len(records)
     for index, trace, result in iter_run_many(problems, jobs=args.jobs):
         record = records[index]
