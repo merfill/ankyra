@@ -391,6 +391,57 @@ unit-tested):
   sentence itself. This enforces "the question is never asserted as a fact" against
   the proposal path, not just extraction.
 
+## G. External benchmark — L2 live (ProntoQA-OOD, FOLIO)
+
+Live L2 gates ran with `--jobs 5` (paid extractor, `ANKYRA_EXTRACT_SAMPLES=1`),
+`logic="ground"`. Adapters: `evals/prontoqa_ood.py` (tier a, 44),
+`evals/folio.py --subset l2` (tier a, 45). Traces in `evals/out/`.
+
+**ProntoQA-OOD tier a — green.** 42 scored targets: **41/42 (97.6%)**, **0 grounded
+false proofs**, every supported/refuted answer `proven`; 2 no-target (unknown), 1
+honest `contradiction`. Two harness defects inflated the miss rate first (neither was
+engine unsoundness) and were fixed: `verify` downgraded a *proved* goal when its
+complement timed out (now a proved goal wins; contradiction detection runs under a
+smaller cap), and the adapter scored a compound goal by its first, possibly negated,
+conjunct (now by the whole claim). See `docs/prontoqa.md` §9.
+
+**FOLIO L2 tier a — extraction-bound (backlog G1–G4).** 45 problems: correct 26,
+undecided 15, wrong-determinate 4 (2 of them scoring artifacts). The L2 procedure
+never derived a false conclusion from a correctly extracted theory; every miss is a
+formalization problem:
+
+- **G1 — non-range-restricted rules → `out_of_fragment` (5).** The extractor emits a
+  rule whose head variable is not bound by the body, e.g. `0044` ("Either female
+  players or male players" → `[] → is_a(?x, female_tennis_player…)`). The engine
+  refuses correctly (`out_of_fragment:unsafe_rule:1`); the fix is extraction (or a
+  repair pass), not the prover.
+- **G2 — lost premises / unlinked facts → unknown (8 `insufficient`).** e.g. `0072`
+  (conclusion `CompaniesStocks(ko) ∧ GrowthCompaniesStocks(ko)`, label False) has
+  **0 morphisms** in the extracted theory: the KO facts were dropped, so the engine can
+  only say unknown. Other ids: `0058`, `0139`, `0109`, `0149`.
+- **G3 — complex conclusions collapsed to one ground atom (→ wrong or unknown).**
+  `0107` (False): `¬∃x FinancialAid(x)` extracted as the **positive** fact
+  `provide_financial_aid(ets, gre_applicant)`, so the engine affirms it. `0045`
+  (Uncertain): `∀x(Pet→¬Cat)` extracted as the ground `¬is_a(pet,cat)`; with the
+  correctly extracted `∃x(Pet∧¬Mammal)` and `Cat→Mammal` that atom really follows, so
+  the proof is sound *for the wrong target*. `0007` (Uncertain):
+  `∀x(Human→¬Flu)` → `target=None` (`instruction`/`no_progress`). Conditionals and
+  universals must be expressible as goals/queries (the M9 `ask_*`/`∃` forms plus a
+  universal/conditional target form).
+- **G4 — ground-saturation budget (3).** Larger stories (6–8 rules, many objects)
+  exhaust the 10000-step cap (`0127`, `0009`, `0039`) → `insufficient`. Unit
+  propagation and/or a larger budget is the fix.
+- **Scoring artifacts, not engine bugs.** `0073` (True): the engine derived
+  `¬volatile(ko)`, which is actually entailed by `mature(ko)`, `mature→suitable`,
+  `volatile→¬suitable`; the adapter's single-atom polarity heuristic mis-scored a
+  *conditional* conclusion (it expected `no`). `0007` differs only in the `kind` label
+  (`instruction` vs `unknown`).
+
+Net: on FOLIO's 30 determinate (True/False) problems the engine decides 13, honestly
+declines 15 (`unknown`/`out_of_fragment`), and is wrong on 2 — both from extraction
+(`0107` an inverted `¬∃`; `0045` a universal collapsed to a ground atom). 14/15
+`Uncertain` are the correct `unknown`.
+
 ## Priority
 
 1. **Extraction generalization** seen on ProofWriter (generic nouns, modifier
@@ -400,6 +451,11 @@ unit-tested):
    take the modal structure) — robustness against an unlucky sample, not
    determinism. Provider-level variance itself (C1) is accepted as external and not
    pursued.
+3. **FOLIO L2 formalization (G1–G4)** — the live FOLIO score is dominated by
+   undecided/out-of-fragment, not by engine unsoundness. Concretely: keep rules
+   range-restricted (G1), retain all premises (G2), express universal/conditional/
+   negated-existential conclusions as targets instead of ground atoms (G3), and speed
+   up ground saturation (G4). This is the highest-value extraction work now.
 
 ## Results summary
 
@@ -422,5 +478,9 @@ work (`ANKYRA_EXTRACT_SAMPLES=1`):
   (A, B11); per-rule quantifier sort `forall` (B, B10).
 - **Reproducibility:** provider nondeterminism accepted as external; deterministic
   tie-break by structural fingerprint; no best-of-N sampling (`SAMPLES=1`).
+- **L2 live (`ANKYRA_LOGIC`):** ProntoQA-OOD tier a **41/42 (97.6%)**, 0 grounded
+  false proofs; FOLIO L2 tier a extraction-bound (correct 26 / undecided 15 /
+  wrong-determinate 4, 2 of them scoring artifacts). No L2 unsoundness found; the
+  backlog is G1–G4 (section G). Synthetic gate `evals.l2_synthetic` **23/23**.
 - **Closed without implementation:** dropped-conjunct detector (A6, not reproduced).
-- Tests: `285 passed, 24 skipped`.
+- Tests: `420 passed, 26 skipped`.

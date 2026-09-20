@@ -187,8 +187,9 @@ false proofs; the ProntoQA-OOD and FOLIO L2 harnesses are built with live gates
 pending a separate budget decision. The defeasible layer (D) is implemented behind
 `ANKYRA_DEFEASIBLE`.
 
-Known open items: FOLIO L2 extraction (universal/conditional conclusions collapsing to
-ground atoms) and its `out_of_fragment` constructs; the gold-fed L2 diagnostic parser
-(`∨`/`∃`); full first-order unification (deferred — grounding is sound and terminating
-on the committed finite domains); extraction robustness on real text (`docs/folio.md`
-§9); and the items in `docs/quality_findings.md`.
+Known open items: FOLIO L2 formalization (backlog **G1–G4** in
+`docs/quality_findings.md` §G — range-restriction, retained premises, universal/
+conditional conclusions as targets, ground-saturation budget); the gold-fed L2
+diagnostic parser (`∨`/`∃`); full first-order unification (deferred — grounding is
+sound and terminating on the committed finite domains); extraction robustness on real
+text (`docs/folio.md` §9); and the items in `docs/quality_findings.md`.
