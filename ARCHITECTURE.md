@@ -43,7 +43,8 @@ an explicit hypothesis tag (`hypothesis`).
   query.
 - `engine/` — Phase 1 deterministic Horn engine (plus the flag-gated defeasible
   layer), the L2 clausal engine behind `ANKYRA_LOGIC`, the pluggable `Inference`
-  seam, Phase 2 guided cycle, Phase 3 explanation, and the pipeline nodes.
+  seam with declared-fragment routing, Phase 2 guided cycle, Phase 3 explanation,
+  and the pipeline nodes.
 - `graph/` — the LangGraph adapter over the engine nodes.
 - `evals/` — offline/live evaluation harness (not part of the package).
 
@@ -172,12 +173,22 @@ pools and query bindings. `unify_pattern` matches a pattern against a ground fac
     `entailed` / `not_entailed` / `budget` / `unsupported`; only a derived empty
     clause is a proof.
   - `inference.py` — the pluggable semantics seam (`docs/logic_layer.md` §10): the
-    `Inference` protocol with `HornInference` and `ClausalInference`.
-- `verify.py` dispatch: with `ANKYRA_LOGIC` off the Horn/L1 path decides; with it on
-  the L2 procedure decides ground goals, decomposed `∧`/`∨` goals, and open/`∃` goals
-  by witness enumeration over the finite pool (`out_of_fragment:naf_in_l2` if a
-  closed-world NAF query would mix the two semantics). `verify` keeps the policy and
-  delegates the decision to the selected `Inference`.
+    `Inference` protocol with `HornInference` and `ClausalInference`. It also holds
+    the declared-fragment contract (`docs/fragment_routing.md`): `analyze_routing`
+    derives the required `FragmentFeature` set from the built structure (non-Horn
+    head, existential, compound goal, negation, builtin), reads the declared world
+    assumption and defeasible flag, and validates against the per-run capability
+    set (the `ANKYRA_*` flags), returning a `RoutingDecision` whose `refusal` is a
+    named `out_of_fragment` gap.
+- `verify.py` dispatch: `verify` first calls `analyze_routing`; a non-`None`
+  `refusal` (fragment outside the capabilities, or a combination the chosen
+  procedure cannot honor, e.g. `defeasible_with_clausal_fragment`) is an
+  `out_of_fragment` verdict, otherwise the selected `Inference` decides. With
+  `ANKYRA_LOGIC` off the Horn/L1 path decides; with it on the L2 procedure decides
+  ground goals, decomposed `∧`/`∨` goals, and open/`∃` goals by witness enumeration
+  over the finite pool (`out_of_fragment:naf_in_l2` if a closed-world NAF query
+  would mix the two semantics). `verify` keeps the policy and delegates the
+  decision to the selected `Inference`.
 
 Gap codes: `target_unmatched:`, `condition_unmatched:`, `unused_premise:`,
 `contradiction:`, `target_refuted:`, `inconsistent_theory:`, `undecided_conflict:`.
@@ -252,8 +263,8 @@ the end-to-end entry point; `engine/cycle.run_cycle` is the reasoning-only API.
 Dynaconf, env prefix `ANKYRA`, from `.env`. Provider: `API_URL`, `API_KEY`, `MODEL`,
 `TEMPERATURE`, `MAX_TOKENS`, `MAX_TOKENS_EXTRACT`, `EXTRA_BODY`,
 `REASONING_EFFORT`. Engine: `MAX_WAVES`, `ALLOW_HYPOTHESES`, `BUILTINS`,
-`DEFEASIBLE`, `LANG`, `DEONTIC_PREFIXES`, `EXTRACT_SAMPLES`,
-`EXTRACT_REPAIRS`. Tests: `LIVE`.
+`DEFEASIBLE`, `NEGATION_MODE`, `LOGIC`, `LOGIC_BUDGET`, `LANG`,
+`DEONTIC_PREFIXES`, `EXTRACT_SAMPLES`, `EXTRACT_REPAIRS`. Tests: `LIVE`.
 
 ## 9. LLM layer (`llm/`)
 
@@ -290,5 +301,8 @@ non-monotonic exceptions (`docs/defeasible_reasoning.md` — design note ready).
 Future direction: the inference semantics are now pluggable. `docs/logic_layer.md`
 §10 describes the extracted `Inference` protocol (`engine/inference.py`, with
 `HornInference` and `ClausalInference`); `justification`/`consistent` remain concrete
-until a semantics needs a structurally different proof object. The staged widening of
-decidable formalisms (L0 → L4) is `docs/reasoning_roadmap.md`.
+until a semantics needs a structurally different proof object. Choosing *which*
+semantics runs is the declared-fragment contract (`docs/fragment_routing.md`): the
+fragment is derived from the built structure, the semantics is declared by the
+query/harness, and a mismatch is an honest `out_of_fragment`, never a guess. The
+staged widening of decidable formalisms (L0 → L4) is `docs/reasoning_roadmap.md`.

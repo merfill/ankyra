@@ -147,6 +147,7 @@ uv run python -m evals.prontoqa --tier b     # live LLM run
 uv run python -m evals.l1_synthetic          # L1 synthetic gate (offline)
 uv run python -m evals.l2_synthetic          # L2 synthetic gate (offline)
 uv run python -m evals.defeasible_synthetic  # defeasible synthetic gate (offline)
+uv run python -m evals.routing_synthetic     # declared-fragment routing gate (offline)
 uv run python -m evals.build_prontoqa_ood_sample --tier a  # ProntoQA-OOD L2 sample
 uv run python -m evals.analyze_folio         # FOLIO fragment-vs-extraction diagnostic
 ```
@@ -166,6 +167,7 @@ gap is logic/extraction, not the engine core.
 - `ARCHITECTURE.md` — layers, flows, data model, module map.
 - `docs/task.md` — technical specification.
 - `docs/reasoning_roadmap.md` — staged formalisms and gates (the main axis).
+- `docs/fragment_routing.md` — declared-fragment contract (which procedure runs).
 - `docs/l2_plan.md` — L2 implementation plan (L2 is implemented).
 - `docs/implementation_plan.md` — roadmap and backlog.
 - `docs/quality_findings.md` — eval findings and open quality gaps.
@@ -186,7 +188,10 @@ plus witness enumeration). The LLM-free synthetic gate is **23/23** with 0 groun
 false proofs, and the **ProntoQA-OOD tier-a live gate is green: 41/42 (97.6%), 0
 grounded false proofs**. FOLIO's L2 live gate is **extraction-bound (26/44)** with no
 engine unsoundness (backlog G1–G4 in `docs/quality_findings.md` §G). The defeasible
-layer (D) is implemented behind `ANKYRA_DEFEASIBLE`.
+layer (D) is implemented behind `ANKYRA_DEFEASIBLE`. The declared-fragment contract
+(`docs/fragment_routing.md`) derives the required fragment from the built structure
+and refuses an unsupported one with a named `out_of_fragment`, instead of guessing;
+its LLM-free gate is **12/12**.
 
 Known open items: FOLIO L2 formalization (backlog **G1–G4** in
 `docs/quality_findings.md` §G — range-restriction, retained premises, universal/

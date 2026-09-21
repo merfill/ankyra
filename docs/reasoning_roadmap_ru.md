@@ -10,7 +10,10 @@
 объявленного фрагмента), `docs/l1_plan_ru.md` (план реализации
 L1), `docs/l2_plan_ru.md` (план реализации L2), `docs/proofwriter_ru.md`,
 `docs/prontoqa_ru.md`, `docs/folio_ru.md`,
-`docs/ar_lsat_ru.md`, `docs/gsm8k_ru.md`, `docs/defeasible_reasoning_ru.md`,
+`docs/folio_ceilings_ru.md` (потолки покрытия и извлечения),
+`docs/folio_extension_plan_ru.md` (поэтапное расширение FOLIO, отложено),
+`docs/ar_lsat_ru.md`,
+`docs/gsm8k_ru.md`, `docs/defeasible_reasoning_ru.md`,
 `docs/task_ru.md`, `docs/implementation_plan_ru.md`.
 
 ## 1. Тезис

@@ -11,7 +11,9 @@ Related: `docs/logic_layer.md` (the protocol seam), `docs/fragment_routing.md`
 (the declared-fragment contract), `docs/l1_plan.md` (the L1
 implementation plan), `docs/l2_plan.md` (the L2 implementation plan),
 `docs/proofwriter.md`, `docs/prontoqa.md`, `docs/folio.md`,
-`docs/ar_lsat.md`, `docs/gsm8k.md`, `docs/defeasible_reasoning.md`, `docs/task.md`,
+`docs/folio_ceilings.md` (coverage vs extraction ceilings),
+`docs/folio_extension_plan.md` (staged FOLIO extension, deferred), `docs/ar_lsat.md`,
+`docs/gsm8k.md`, `docs/defeasible_reasoning.md`, `docs/task.md`,
 `docs/implementation_plan.md`.
 
 ## 1. Thesis

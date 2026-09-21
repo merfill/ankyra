@@ -2,7 +2,8 @@
 
 Operating notes for an expert-written first-order-logic benchmark, the **L2 gate** of
 `docs/reasoning_roadmap.md`. Russian mirror: `docs/folio_ru.md`.
-Related: `docs/reasoning_roadmap.md`, `docs/prontoqa.md`, `docs/task.md` §3.8.
+Related: `docs/reasoning_roadmap.md`, `docs/folio_ceilings.md` (coverage vs
+extraction ceilings), `docs/prontoqa.md`, `docs/task.md` §3.8.
 
 Source: Han et al., *FOLIO: Natural Language Reasoning with First-Order Logic*
 (arXiv:2209.00840, v3 2024). Data: `github.com/Yale-LILY/FOLIO` (MIT); current

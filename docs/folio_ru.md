@@ -2,7 +2,8 @@
 
 Рабочие заметки по написанному экспертами бенчмарку логики первого порядка,
 **гейт L2** `docs/reasoning_roadmap_ru.md`. Английский оригинал:
-`docs/folio.md`. Смежное: `docs/reasoning_roadmap_ru.md`, `docs/prontoqa_ru.md`,
+`docs/folio.md`. Смежное: `docs/reasoning_roadmap_ru.md`,
+`docs/folio_ceilings_ru.md` (потолки покрытия и извлечения), `docs/prontoqa_ru.md`,
 `docs/task_ru.md` §3.8.
 
 Источник: Han et al., *FOLIO: Natural Language Reasoning with First-Order Logic*
