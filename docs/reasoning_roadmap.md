@@ -7,7 +7,8 @@ benchmark, and preserves the design commitment: the LLM proposes, the engine
 decides.
 
 Canonical language: English; Russian mirror: `docs/reasoning_roadmap_ru.md`.
-Related: `docs/logic_layer.md` (the protocol seam), `docs/l1_plan.md` (the L1
+Related: `docs/logic_layer.md` (the protocol seam), `docs/fragment_routing.md`
+(the declared-fragment contract), `docs/l1_plan.md` (the L1
 implementation plan), `docs/l2_plan.md` (the L2 implementation plan),
 `docs/proofwriter.md`, `docs/prontoqa.md`, `docs/folio.md`,
 `docs/ar_lsat.md`, `docs/gsm8k.md`, `docs/defeasible_reasoning.md`, `docs/task.md`,
@@ -193,6 +194,11 @@ extract the `Inference` protocol — L1/L2 are new semantics, and L3/L4 are
 separate engines behind the same orchestration. Extract the protocol when the
 **second** semantics lands (defeasible already qualifies); do not abstract
 speculatively.
+
+Choosing *which* semantics runs is specified separately as the declared-fragment
+contract in `docs/fragment_routing.md`: the fragment is derived from the built
+structure, the semantics is declared by the query/harness, and a mismatch is an
+honest `out_of_fragment`, never a guess.
 
 ## 7. Non-goals
 

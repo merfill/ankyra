@@ -15,9 +15,159 @@ of *which* semantics runs stays there); ``classify`` uses the Horn closure.
 
 from __future__ import annotations
 
-from typing import Protocol
+from dataclasses import dataclass
+from typing import Literal, Protocol
 
+from ankyra.config.settings import get_setting
 from ankyra.core.models import FactKey, Query, Theory, Verdict
+
+
+# Expressiveness the built structure needs, before any procedure runs. The fragment
+# is *derived* from ``Theory``/``Query``; the semantics is *declared* by the query
+# and the run config (docs/fragment_routing.md).
+FragmentFeature = Literal[
+    "horn", "negation", "disjunction", "existential", "builtin", "compound_goal"
+]
+
+# The features whose presence makes the clausal (L2) procedure the required one.
+_CLAUSAL_FRAGMENT = frozenset({"disjunction", "existential", "compound_goal"})
+
+
+@dataclass(frozen=True)
+class RoutingDecision:
+    """Static selection of a decision procedure over the built structure.
+
+    ``fragment`` is derived, ``world_assumption`` and ``defeasible`` are declared,
+    and ``capabilities`` is the per-run policy (which procedures this run may use).
+    A non-``None`` ``refusal`` means the structure asks for a fragment outside the
+    capabilities, or for a combination the chosen procedure cannot honor; the code
+    is the ``out_of_fragment`` gap, never a silent downgrade.
+    """
+
+    fragment: frozenset[str]
+    procedure: str
+    capabilities: frozenset[str]
+    world_assumption: str
+    defeasible: bool
+    refusal: str | None
+    reasons: tuple[str, ...]
+
+    @property
+    def compatible(self) -> bool:
+        return self.refusal is None
+
+
+def _has_goals(query: Query) -> bool:
+    if query.goal_mode != "single" and query.goals:
+        return True
+    return query.target is not None
+
+
+def _has_negation(theory: Theory) -> bool:
+    if theory.constraints:
+        return True
+    if any(m.negated for m in theory.morphisms):
+        return True
+    for rule in theory.rules:
+        if rule.consequence.negated or any(a.negated for a in rule.alternatives):
+            return True
+        if any(condition.negated for condition in rule.conditions):
+            return True
+    return False
+
+
+def _has_builtin(theory: Theory) -> bool:
+    from ankyra.engine.builtins import is_builtin
+
+    for m in theory.morphisms:
+        if is_builtin(m.predicate):
+            return True
+    for rule in theory.rules:
+        if is_builtin(rule.consequence.predicate):
+            return True
+        if any(is_builtin(a.predicate) for a in rule.alternatives):
+            return True
+        if any(is_builtin(condition.predicate) for condition in rule.conditions):
+            return True
+    return False
+
+
+def _fragment(theory: Theory, query: Query) -> frozenset[str]:
+    from ankyra.engine.horn import has_non_horn
+
+    features = {"horn"}
+    if has_non_horn(theory):
+        features.add("disjunction")
+    if theory.existentials:
+        features.add("existential")
+    if _has_negation(theory):
+        features.add("negation")
+    if _has_builtin(theory):
+        features.add("builtin")
+    if query.goal_mode != "single":
+        features.add("compound_goal")
+    return frozenset(features)
+
+
+def capabilities() -> frozenset[str]:
+    """The procedures this run may use, from the config flags (per-run policy)."""
+    caps = {"horn"}
+    if str(get_setting("LOGIC", "off") or "off").strip().lower() != "off":
+        caps.add("clausal")
+    if bool(get_setting("BUILTINS", False)):
+        caps.add("builtin")
+    if bool(get_setting("DEFEASIBLE", False)):
+        caps.add("defeasible")
+    return frozenset(caps)
+
+
+def analyze_routing(theory: Theory, query: Query) -> RoutingDecision:
+    """Derive the fragment, read the semantics, validate, and pick a procedure.
+
+    A1 (D-FR-2): the procedure mirrors ``select_inference`` (clausal when the L2 flag
+    is on and there is a goal), and the existing refusals keep their gap codes. The
+    decision is the single place those refusals are expressed; ``verify`` consults it
+    before dispatching. Nothing escalates on a verdict's gaps.
+    """
+    from ankyra.engine.horn import has_naf, has_non_horn, stratification
+
+    caps = capabilities()
+    logic = "clausal" in caps
+    defeasible = bool(get_setting("DEFEASIBLE", False))
+    fragment = _fragment(theory, query)
+    has_goals = _has_goals(query)
+    procedure = "clausal" if (logic and has_goals) else "horn"
+    world = query.world_assumption
+
+    refusal: str | None = None
+    if logic and has_naf(theory) and world == "closed":
+        # L2 does not implement negation-as-failure: declared CWA is out of fragment.
+        refusal = "out_of_fragment:naf_in_l2"
+    elif procedure == "horn":
+        if has_non_horn(theory):
+            refusal = "out_of_fragment:non_horn"
+        elif query.goal_mode != "single":
+            refusal = "out_of_fragment:compound_goal"
+        elif world == "closed" and has_naf(theory) and stratification(theory) is None:
+            refusal = "out_of_fragment:stratification"
+        elif theory.existentials:
+            refusal = "out_of_fragment:existential"
+    elif defeasible and (_CLAUSAL_FRAGMENT & fragment):
+        # The defeasible layer ranges over the Horn closure and would be silently
+        # dropped under the clausal procedure (D-FR-4).
+        refusal = "out_of_fragment:defeasible_with_clausal_fragment"
+
+    drivers = tuple(sorted(feature for feature in fragment if feature != "horn"))
+    reasons = (*drivers, refusal) if refusal else (drivers or ("horn",))
+    return RoutingDecision(
+        fragment=fragment,
+        procedure=procedure,
+        capabilities=caps,
+        world_assumption=world,
+        defeasible=defeasible,
+        refusal=refusal,
+        reasons=reasons,
+    )
 
 
 class Inference(Protocol):

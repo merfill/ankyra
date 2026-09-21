@@ -16,13 +16,10 @@ from ankyra.engine.horn import (
     complementary,
     derive_closure,
     derive_store,
-    has_naf,
-    has_non_horn,
     match_goal,
-    stratification,
     unify_pattern,
 )
-from ankyra.engine.inference import select_inference
+from ankyra.engine.inference import analyze_routing, select_inference
 from ankyra.engine.resolution import DEFAULT_BUDGET, refute
 
 
@@ -115,32 +112,9 @@ def _verify_horn(theory: Theory, query: Query, ctx) -> Verdict:
     inconsistency unrelated to the target is reported as an ``inconsistent_theory:``
     gap and does not change the answer.
     """
-    if has_non_horn(theory):
-        # A disjunctive head/fact is out of the Horn fragment. Until the L2 procedure
-        # is wired behind ANKYRA_LOGIC, report it honestly instead of guessing
-        # (docs/l2_plan.md D-L2-3).
-        return Verdict(
-            status="out_of_fragment",
-            bindings=dict(ctx.bindings),
-            gaps=["out_of_fragment:non_horn"],
-            shelf="refused",
-        )
-    if query.goal_mode != "single":
-        # A conjunctive/disjunctive goal is decomposed by the L2 path (D-L2-7); the
-        # Horn engine decides a single target only.
-        return Verdict(
-            status="out_of_fragment",
-            bindings=dict(ctx.bindings),
-            gaps=["out_of_fragment:compound_goal"],
-            shelf="refused",
-        )
-    if query.world_assumption == "closed" and has_naf(theory) and stratification(theory) is None:
-        return Verdict(
-            status="out_of_fragment",
-            bindings=dict(ctx.bindings),
-            gaps=["out_of_fragment:stratification"],
-            shelf="refused",
-        )
+    # The fragment refusals (non-Horn head, compound goal, non-stratifiable CWA,
+    # existential) are decided once by ``analyze_routing`` before dispatch; the Horn
+    # path is only reached when the decision admits it (docs/fragment_routing.md).
     axiom_store = derive_store(theory, [], ctx=ctx)
     store, unresolved, _ = derive_closure(
         theory,
@@ -483,11 +457,12 @@ def verify(theory: Theory, query: Query) -> Verdict:
     The Horn/L1 machinery (declared CWA, negation-as-failure) is deliberately not
     mixed into L2, so a closed-world NAF query under L2 is ``out_of_fragment``.
     """
-    if logic_enabled() and has_naf(theory) and query.world_assumption == "closed":
+    decision = analyze_routing(theory, query)
+    if decision.refusal is not None:
         return Verdict(
             status="out_of_fragment",
             bindings=dict(build_context(theory).bindings),
-            gaps=["out_of_fragment:naf_in_l2"],
+            gaps=[decision.refusal],
             shelf="refused",
         )
     inference = select_inference(

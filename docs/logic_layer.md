@@ -117,3 +117,6 @@ protocol methods — `build_explanation` still carries the Horn proof walk with 
 branch — and become relevant only when a semantics needs a structurally different
 justification (e.g. ASP). `ClausalInference.closure_keys` deliberately raises: L2 has
 no fact closure and proposals are unsupported (D-L2-6).
+
+Selecting *which* procedure runs from the built structure is specified as the
+declared-fragment contract in `docs/fragment_routing.md`.

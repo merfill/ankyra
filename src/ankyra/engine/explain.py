@@ -21,11 +21,11 @@ from ankyra.core.models import (
 )
 from ankyra.engine.clause import label_of
 from ankyra.engine.horn import build_context
+from ankyra.engine.inference import analyze_routing
 from ankyra.engine.ledger import HypothesisLedger, morphism_key
 from ankyra.engine.verify import (
     _key_matches,
     l2_outcomes,
-    logic_enabled,
     winning_store_hit,
 )
 
@@ -441,7 +441,7 @@ def build_explanation(
     ``supported`` yields the positive trace; ``target_refuted`` the negative one;
     ``contradiction`` both branches; everything else an empty trace.
     """
-    if logic_enabled():
+    if analyze_routing(theory, query).procedure == "clausal":
         explanation = _l2_explanation(theory, query, verdict)
         if explanation.steps or explanation.conflict:
             return explanation
