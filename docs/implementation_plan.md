@@ -318,8 +318,12 @@ Source: `docs/quality_findings.md`. Ordered by priority.
    structural fingerprint (`extract._rank_key`, no arrival-order dependence),
    concurrent samples keep the LLM trace (`copy_context`), and per-role
    `ANKYRA_EXTRACT_TEMPERATURE=0` is honoured. Provider-level determinism is
-   accepted as external and out of scope; self-consistency clustering and prompt
-   stability remain optional robustness work.
+   accepted as external and out of scope. **Reaffirmed (L3, `docs/l3_plan.md`
+   D-L3-10): sampling and self-consistency over samples are not used, ever.** The
+   extraction ceiling is raised deterministically — few-shot examples and an
+   **error-driven language specification** (`ANKYRA_LANGUAGE_SPEC`) — never by best-of-N
+   or majority voting (a ranker cannot see logical difference; a majority can be
+   confidently wrong). Where the encoding stays uncertain the engine abstains.
 5. ~~**Non-monotonic exceptions.**~~ **DONE** behind `ANKYRA_DEFEASIBLE` (default
    off): every rule is a default and only asserted facts are strict (neither
    extraction nor a predicate heuristic authors strength), the layer in
@@ -513,6 +517,25 @@ Source: `docs/quality_findings.md`. Ordered by priority.
     LLM-free gates `evals.l2_synthetic` (56→**65/65**) and `evals.routing_synthetic`
     (17→**19/19**); pytest **505 passed**. **3b (bounded function terms) deferred**
     (no data; semi-decidability trap). Plan: `docs/equality_plan.md`.
+28. **Collection skills — next increment (planned).** Today a specialized source
+    language is handled by a single text block (`ANKYRA_LANGUAGE_SPEC`,
+    `docs/task.md` §0.6). The next step is a per-collection **skill** loaded
+    automatically with the benchmark, describing both the **language** (notation,
+    idioms) and the **task specifics** (question shapes, option formats, what the
+    harness declares). Skills are declarative guidance, never answer keys
+    (`docs/task.md` §3.8, `docs/l3_plan.md` D-L3-10). Proven on L3: the AR-LSAT eval
+    rose 7→21/30 and `grounded_mismatch` 2→0 once the error-driven guide encoded the
+    game's idioms (`docs/l3_plan.md` §11). Deliverable: a skill file/format per
+    collection plus harness auto-loading; the `ANKYRA_LANGUAGE_SPEC` seam is the
+    forward-compatible base.
+29. **FOLIO — fragment-bound vs extraction-bound (research).** The L1 negation slice
+    is **fragment-bound** (gold-fed == text-fed = 7/13; `docs/folio.md` §9): it needs
+    **L2 (reductio / declared CWA)**, not better text reading. The language guide
+    confirmed this — applied to L1 it gave **no gain** (7/12 ≈ 7/13) while injecting
+    correctly end-to-end. Open work: (a) test the guide on the **extraction-bound L2
+    tier a** slice (text-fed 29–31/45, `docs/g1_g4_plan.md`); (b) close the L1 residual
+    through L2 reductio/CWA rather than extraction. Do not sample
+    (`docs/l3_plan.md` D-L3-10).
 
 ## 9. Reasoning roadmap (main axis)
 
@@ -555,7 +578,18 @@ Stages:
   equality** is implemented as the named fragment `equality` with a synthetic gate
   (item 27, `docs/equality_plan.md`); 3b (functions) is deferred.
   Full first-order unification is deferred (`docs/l2_plan.md`).
-- **L3 — finite-domain CSP/SAT, a separate engine.** Benchmark AR-LSAT.
+- **L3 — finite-domain CSP/SAT, a separate engine.** Benchmark AR-LSAT. Plan:
+  `docs/l3_plan.md`. Milestones 1–4 done (LLM-free): CSP IR + in-repo finite-domain
+  solver (`engine/csp/`), the synthetic gate `evals.l3_synthetic` (**27/27**, including
+  `must_be_false`/"if" assumptions and the `all`/`any`/`not`/`count_compare` IR
+  extension), the Phase-0 CSP extraction path (schema + builder + prompt), the
+  dev/eval samples and adapter, and the gold-fed tier (**21/21**, 0
+  `grounded_mismatch`, 5 real games), plus routing (`ANKYRA_CSP`, `Answer.kind
+  "choice"`, the `model` explanation step). Live gates ran once: dev 9/12, 0
+  `grounded_mismatch`; **eval 21/30, 0 `grounded_mismatch` → gate GREEN** (70%).
+  Interface/prompt fixes, a bounded question-repair pass, a duplicate-option guard,
+  and an error-driven language-spec block (`ANKYRA_LANGUAGE_SPEC`) landed; sampling is
+  not used (D-L3-10, and item 4 below).
 - **L4 — arithmetic, a separate numeric engine or tool-use.** Benchmark GSM8K.
 - **D — defeasible** (behind `ANKYRA_DEFEASIBLE`); **implemented + synthetic gate**
   `evals.defeasible_synthetic` (8/8, LLM-free); a defeasible-NLI set remains a

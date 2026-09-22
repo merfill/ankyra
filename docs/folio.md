@@ -210,6 +210,17 @@ the gated HF v2 release (full FOL for train). Function terms are not separately
 detected in v0.0 (no clean field); a documented fragment limitation. See
 `docs/reasoning_roadmap.md` L2 and `docs/l1_plan.md`.
 
+**Language-spec experiment (L1 negation subset).** The shared task-notation guide
+(`ANKYRA_LANGUAGE_SPEC`, `evals/prompts/folio.md`; `docs/task.md` §0.6) was applied to
+the 13-example L1 negation subset and is injected into the Phase 0 prompts end-to-end
+(verified in the traces). Result: **7/12 correct** (~ the 7/13 baseline; one row has no
+target), i.e. **no gain — as the gold-fed diagnostic predicts**, because this subset is
+**fragment-bound, not extraction-bound**. The extraction-bound FOLIO target is the
+**L2 tier a** slice (`docs/g1_g4_plan.md`: text-fed 29–31/45); testing the guide there
+is the untested follow-up, at a higher token cost. No sampling is used
+(`docs/l3_plan.md` D-L3-10). Tracked as a research item in
+`docs/implementation_plan.md` §8 item 29.
+
 ## 10. L2 recon (LLM-free)
 
 Reproduce with `uv run python -m evals.recon_l2 --folio-only`. Over the v0.0

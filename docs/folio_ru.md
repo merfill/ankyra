@@ -213,6 +213,16 @@ text-fed теперь совпадает с gold-fed (оба 7/13), т.е. ос�
 документированное ограничение фрагмента. См. `docs/reasoning_roadmap_ru.md` L2 и
 `docs/l1_plan_ru.md`.
 
+**Эксперимент с language spec (L1 negation).** Общий гид по нотации
+(`ANKYRA_LANGUAGE_SPEC`, `evals/prompts/folio.md`; `docs/task.md` §0.6) применён к
+13-примерному L1 negation срезу и прокидывается в промпты Phase 0 end-to-end
+(проверено в трейсах). Результат: **7/12 correct** (~ baseline 7/13; одна строка без
+target), т.е. **прироста нет — как и предсказывает gold-fed диагностика**, потому что
+этот срез **fragment-bound, а не extraction-bound**. Extraction-bound цель FOLIO —
+срез **L2 tier a** (`docs/g1_g4_plan.md`: text-fed 29–31/45); проверка гида там —
+непроверенное продолжение, дороже по токенам. Сэмплирование не используется
+(`docs/l3_plan.md` D-L3-10).
+
 ## 10. Recon L2 (LLM-free)
 
 Воспроизводится командой `uv run python -m evals.recon_l2 --folio-only`. По

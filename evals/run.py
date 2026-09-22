@@ -47,6 +47,8 @@ def run_one(problem: dict) -> tuple[dict, object]:
         BUILTINS=bool(problem.get("builtins", False)),
         DEFEASIBLE=bool(problem.get("defeasible", False)),
         LOGIC=str(problem.get("logic", "off") or "off"),
+        # Per-collection task-notation guide (docs/task.md §0.6); empty by default.
+        LANGUAGE_SPEC=str(problem.get("language_spec", "") or ""),
     ), tracing() as llm_trace:
         result = run_problem(
             problem["text"],

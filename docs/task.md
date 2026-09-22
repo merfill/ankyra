@@ -182,6 +182,25 @@ honestly report `target_unmatched`.
 `settle` — ground terms onto theory ids, drop a goal echo, normalize polarity,
 and slim unused premises (re-verifying after each drop). No LLM.
 
+### 0.6 Specialized task-notation languages (optional prompt block)
+A collection whose problems are written in a specialized notation (e.g. the game
+descriptions of AR-LSAT) can supply a **language specification**: a text block
+appended to every Phase 0 system prompt (problem, question, and the L3 CSP
+game/question prompts). It is configured by `ANKYRA_LANGUAGE_SPEC` — a path to a
+text file (read when it exists) or inline text — and is **empty by default**, so
+prompts are unchanged when unset. It documents *how to read the source notation*
+(grammar, conventions, idioms); it must never enumerate per-example answers (that
+would be per-id tuning, §3.8). A collection activates its own file through its
+harness (e.g. `evals/prompts/ar_lsat.md`, `evals/prompts/folio.md`); the engine
+carries no collection semantics.
+
+**Next increment (planned):** turn this single text block into a per-collection
+**skill** — loaded automatically with the benchmark — that describes both the
+**language** (notation, idioms) and the **task specifics** (question shapes, option
+formats, what the harness declares). It stays declarative guidance, never answer
+keys. See `docs/implementation_plan.md` §8 item 28; the mechanism proved its worth on
+L3 (AR-LSAT eval 7→21/30, `grounded_mismatch` 2→0).
+
 ## 6. Phase 1 — The Deterministic Engine (the spine)
 
 - `saturate(theory ∪ Gamma)` — semi-naive forward chaining to a fixed point over

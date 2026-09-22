@@ -86,6 +86,13 @@ def test_l2_problem_selects_the_ground_logic():
     assert problem["world_assumption"] == "open"
 
 
+def test_folio_problem_carries_the_language_spec():
+    record = folio.load_sample()[0]
+    problem = folio._to_problem(record, allow_hypotheses=False)
+    assert folio.SPEC.is_file()
+    assert problem["language_spec"] == str(folio.SPEC)
+
+
 def test_committed_sample_stays_in_the_l1_negation_fragment():
     records = folio.load_sample()
     assert records

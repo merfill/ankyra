@@ -74,11 +74,15 @@ enumerating models. A Horn encoding would answer at best `unknown`.
 ## 5. What testing would require (L3 — separate engine)
 
 - a dedicated **CSP IR**: entities, finite domains, all-different, order,
-  adjacency (possibly circular), conditional constraints, and grouped positions;
-- a **solver**: SAT/SMT via Z3 or an in-repo finite-domain/backtracking search;
+  adjacency (possibly circular), conditional constraints, grouped positions,
+  count comparison, and **boolean composition** of relations (`all`/`any`/`not` —
+  real constraints are often "either before both X and Y, or after both");
+- a **solver**: in-repo finite-domain/backtracking search (an external SAT/SMT solver
+  is the documented fallback);
 - a **multiple-choice adapter**: each option is checked against the solver —
-  satisfiability for "could" / "not violate", entailment (unsat of the negation)
-  for "must", model enumeration for "complete and accurate list";
+  satisfiability for "could" / "not violate", no counter-model for "must",
+  unsatisfiability for "cannot be true", model enumeration for "complete and
+  accurate list"; question-local assumptions (Gamma) cover the "if" questions;
 - an **extraction** step that turns the game text into the CSP IR. This is the
   main difficulty and the main risk.
 
@@ -99,7 +103,9 @@ is a second engine, not the Horn spine.
 ## 7. Test plan (if pursued)
 
 0. **Feasibility spike (no LLM).** Hand-encode 5 games into the CSP IR and solve
-   them with Z3; measure solver-side correctness and the IR's expressiveness.
+   them with the L3 solver; measure solver-side correctness and the IR's
+   expressiveness. **Done** — in-repo finite-domain solver (`docs/l3_plan.md`
+   D-L3-1).
 1. **Extraction probe.** For the same 5 games, have the LLM propose the CSP IR;
    measure encoding accuracy against the hand-written IR (not the final answers).
 2. **Committed sample.** A small stratified set (by game/question type) built
@@ -111,5 +117,27 @@ is a second engine, not the Horn spine.
 
 ## 8. Status
 
-Not implemented; low priority, separate engine. Documented so the decision is
-explicit. See `docs/reasoning_roadmap.md` L3.
+Separate engine. The L3 plan (`docs/l3_plan.md`) is approved and milestones 1–3 are
+**green** (LLM-free): a general CSP IR plus an in-repo finite-domain solver
+(`engine/csp/`) decide hand-encoded games (spike 5/5), and the committed synthetic
+gate `evals.l3_synthetic` is **27/27** (every constraint kind — including boolean
+composition and count comparison — and every question semantics, with negative
+controls), 0 confidently-wrong answers. The real collection also forced the IR's
+boolean composition (`all`/`any`/`not`): analytical-reasoning constraints are often
+disjunctions of relations, not flat conjunctions (`docs/l3_plan.md` D-L3-2). The Phase-0 CSP extraction path
+(schema + deterministic builder + prompt) is in place and validated LLM-free
+(`tests/test_build_csp.py`). The **gold-fed tier is green: 21/21 real questions over
+5 development games, 0 `grounded_mismatch`** (`evals/build_ar_lsat_gold.py`,
+`evals/ar_lsat.py --gold`), so the method handles real games; the dev/eval samples are
+committed. Routing/answer/explanation are wired (`ANKYRA_CSP`, `Answer.kind "choice"`,
+the `model` explanation step). **The live gates were run once (budgeted): dev 9/12, 0
+`grounded_mismatch`; **eval 21/30, 0 `grounded_mismatch` → the eval gate is GREEN**
+(70% accuracy; the 9 misses are honest abstentions) — no engine unsoundness; the method
+is green (gold 21/21). Landed: the question call receives the five options; a stricter
+option prompt; a bounded question-repair pass; a duplicate-option guard; and an
+**error-driven language-spec block** (`ANKYRA_LANGUAGE_SPEC`,
+`evals/prompts/ar_lsat.md` for LSAT idioms). These raised eval from 7→21 correct and
+closed confidently-wrong to 0; the provider stays nondeterministic (C1). See
+`docs/reasoning_roadmap.md` L3 and, for the language guide and its next increment
+(collection skills), `docs/implementation_plan.md` §8 items 28 and
+`docs/l3_plan.md` §11.

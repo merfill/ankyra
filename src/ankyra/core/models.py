@@ -29,7 +29,7 @@ GoalMode = Literal["single", "all", "any", "forall", "cnf"]
 ConstraintKind = Literal["disjoint"]
 HypothesisKind = Literal["rule", "fact"]
 AnswerType = Literal["yes_no", "open", "instruction"]
-AnswerKind = Literal["yes", "no", "unknown", "contradiction", "binding", "instruction"]
+AnswerKind = Literal["yes", "no", "unknown", "contradiction", "binding", "choice", "instruction"]
 Status = Literal[
     "supported",
     "insufficient",
@@ -393,7 +393,7 @@ class Revision(BaseModel):
 
 ExplanationKind = Literal[
     "axiom", "assumption", "rule", "is_a", "hypothesis", "constraint", "naf",
-    "case", "resolution", "skolem",
+    "case", "resolution", "skolem", "model",
 ]
 
 

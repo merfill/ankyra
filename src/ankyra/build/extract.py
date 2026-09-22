@@ -9,6 +9,7 @@ with the theory, so it cannot be merged into a single call.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -291,6 +292,32 @@ def builtins_block() -> str:
     return BUILTINS_BLOCK if get_setting("BUILTINS", False) else ""
 
 
+def language_spec_block() -> str:
+    """User/harness-supplied specification of a specialized task-notation language.
+
+    Empty by default, so the prompts are byte-identical when it is unset.
+    ``ANKYRA_LANGUAGE_SPEC`` holds either a path to a text file (read when it exists)
+    or inline text. It documents *how to read the source notation* (e.g. the idioms of
+    a benchmark's game descriptions) and is appended to every Phase 0 system prompt.
+
+    Guardrail: it is notation/grammar guidance, never per-example answers — enumerating
+    dataset answer keys would be per-id tuning (`docs/task.md` §3.8).
+    """
+    value = get_setting("LANGUAGE_SPEC", "")
+    if not value:
+        return ""
+    text = str(value).strip()
+    if not text:
+        return ""
+    path = Path(text)
+    if path.is_file():
+        content = path.read_text(encoding="utf-8").strip()
+        if not content:
+            return ""
+        return f"\n\nADDITIONAL LANGUAGE SPECIFICATION ({path.name}):\n{content}\n"
+    return f"\n\nADDITIONAL LANGUAGE SPECIFICATION:\n{text}\n"
+
+
 REPAIR_BLOCK = """The previous decomposition below was rejected by a deterministic
 checker. Fix ONLY the listed problems and return the FULL corrected structure.
 Every atom MUST carry one verbatim quote that really occurs in the source; if an
@@ -472,7 +499,7 @@ def _fmt_morphism(morphism, *, with_quote: bool = True) -> str:
 
 def _extract_problem_once(llm: Any, text: str) -> ProblemStructure:
     messages = [
-        SystemMessage(content=PROBLEM_SYSTEM + builtins_block()),
+        SystemMessage(content=PROBLEM_SYSTEM + builtins_block() + language_spec_block()),
         HumanMessage(content=PROBLEM_HUMAN.format(text=text.strip())),
     ]
     llm = with_max_tokens(llm, extract_max_tokens(text))
@@ -486,7 +513,7 @@ def _repair_problem_once(
     llm: Any, text: str, structure: ProblemStructure, gaps: list[str]
 ) -> ProblemStructure:
     messages = [
-        SystemMessage(content=PROBLEM_SYSTEM + builtins_block()),
+        SystemMessage(content=PROBLEM_SYSTEM + builtins_block() + language_spec_block()),
         HumanMessage(
             content=PROBLEM_HUMAN.format(text=text.strip())
             + "\n\n"
@@ -539,7 +566,7 @@ def _extract_question_once(
     llm: Any, question: str, theory: Theory, source_text: str
 ) -> QuestionStructure:
     messages = [
-        SystemMessage(content=QUESTION_SYSTEM),
+        SystemMessage(content=QUESTION_SYSTEM + language_spec_block()),
         HumanMessage(
             content=QUESTION_HUMAN.format(
                 question=question.strip(),
@@ -563,7 +590,7 @@ def _repair_question_once(
     gaps: list[str],
 ) -> QuestionStructure:
     messages = [
-        SystemMessage(content=QUESTION_SYSTEM),
+        SystemMessage(content=QUESTION_SYSTEM + language_spec_block()),
         HumanMessage(
             content=QUESTION_HUMAN.format(
                 question=question.strip(),

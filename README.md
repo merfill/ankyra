@@ -127,6 +127,10 @@ untethered "reasoning". Committed gates:
 | L1 | explicit negation | ProntoQA tier b | **160/160 (100%)**, all `proven` |
 | L1 | disjointness, NAF, declared CWA | synthetic (LLM-free) | 40/40 |
 | L2 | disjunction, case split, finite-domain quantifiers, finite equality | synthetic (LLM-free) | 65/65 |
+| L2 | disjunction, quantifiers, equality | ProntoQA-OOD tier a | 41/42 (97.6%), 0 grounded false proofs |
+| L3 | finite-domain CSP (boolean composition, count_compare) | synthetic (LLM-free) | 27/27 |
+| L3 | finite-domain CSP | AR-LSAT gold-fed, 5 real games (LLM-free) | 21/21 |
+| L3 | finite-domain CSP | AR-LSAT eval tier (live) | 21/30, **0 `grounded_mismatch`** |
 | D | defeasible | synthetic (LLM-free) | 8/8 |
 
 The ProntoQA runs have **0 grounded false proofs** and every determinate answer is
@@ -146,6 +150,10 @@ uv run --with pyarrow python -m evals.build_prontoqa_sample --tier b
 uv run python -m evals.prontoqa --tier b     # live LLM run
 uv run python -m evals.l1_synthetic          # L1 synthetic gate (offline)
 uv run python -m evals.l2_synthetic          # L2 synthetic gate (offline)
+uv run python -m evals.l3_synthetic          # L3 CSP synthetic gate (offline)
+uv run python -m evals.l3_spike              # L3 feasibility spike (offline)
+uv run python -m evals.ar_lsat --gold evals/data/ar_lsat_gold.jsonl  # L3 gold-fed (offline)
+uv run python -m evals.ar_lsat --sample eval --live                  # L3 AR-LSAT live gate
 uv run python -m evals.defeasible_synthetic  # defeasible synthetic gate (offline)
 uv run python -m evals.routing_synthetic     # declared-fragment routing gate (offline)
 uv run python -m evals.build_prontoqa_ood_sample --tier a  # ProntoQA-OOD L2 sample
@@ -169,6 +177,8 @@ extraction, i.e. the FOLIO gap is coverage/extraction, not the engine core.
 - `docs/reasoning_roadmap.md` — staged formalisms and gates (the main axis).
 - `docs/fragment_routing.md` — declared-fragment contract (which procedure runs).
 - `docs/l2_plan.md` — L2 implementation plan (L2 is implemented).
+- `docs/l3_plan.md` — L3 implementation plan (finite-domain CSP engine; implemented).
+- `docs/ar_lsat.md` — AR-LSAT collection notes (the L3 gate).
 - `docs/implementation_plan.md` — roadmap and backlog.
 - `docs/quality_findings.md` — eval findings and open quality gaps.
 - `docs/defeasible_reasoning.md` — design note on exceptions/defaults.
@@ -193,9 +203,20 @@ The defeasible layer (D) is implemented behind `ANKYRA_DEFEASIBLE`. The
 declared-fragment contract (`docs/fragment_routing.md`) derives the required fragment
 from the built structure and refuses an unsupported one with a named
 `out_of_fragment`, instead of guessing; its LLM-free gate is **19/19**.
+**L3 is implemented and gated** as a separate engine behind `ANKYRA_CSP`: a general
+finite-domain CSP IR (boolean composition `all`/`any`/`not`, `count_compare`, declared
+topologies) and a bounded in-repo solver, orchestrated by the LLM. LLM-free gates:
+synthetic **27/27**, gold-fed real games **21/21**, both 0 `grounded_mismatch`. The
+**AR-LSAT live eval gate is green: 21/30, 0 `grounded_mismatch`** (the 9 misses are
+honest abstentions). The extraction ceiling there was raised not by sampling (rejected,
+`docs/l3_plan.md` D-L3-10) but by an **error-driven, per-collection language
+specification** (`ANKYRA_LANGUAGE_SPEC`, `docs/task.md` §0.6); the next increment is
+per-collection **skills** (`docs/implementation_plan.md` §8 item 28).
 
 Known open items: FOLIO L2 extraction (residual **G2** — missing premises; the deferred
-`A′` repair); Tier-2 **3b** bounded function terms (deferred — no function terms in the
+`A′` repair); the FOLIO **L1 slice is fragment-bound, not extraction-bound** (needs L2
+reductio/CWA — a language guide gave no gain there, `docs/implementation_plan.md` §8
+item 29); Tier-2 **3b** bounded function terms (deferred — no function terms in the
 available FOLIO splits); the reachable-but-absent **2a** `↔`/`⊕` lowering and **2c**
 multi-variable quantification; full first-order unification (deferred — grounding is
 sound and terminating on the committed finite domains); extraction robustness on real

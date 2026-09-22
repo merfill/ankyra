@@ -36,6 +36,9 @@ from evals.run import iter_run_many
 ROOT = Path(__file__).resolve().parent
 SAMPLE = ROOT / "data" / "folio_negation_tier_a.jsonl"
 OUT = ROOT / "out" / "folio"
+# FOLIO task-notation guide, injected into Phase 0 only for this harness
+# (docs/task.md §0.6, `ANKYRA_LANGUAGE_SPEC`). Not part of the engine.
+SPEC = ROOT / "prompts" / "folio.md"
 
 _LABEL_TO_KIND = {"True": "yes", "False": "no", "Uncertain": "unknown"}
 _SUBSETS = {"negation": "negation", "l2": "l2"}
@@ -144,6 +147,7 @@ def _to_problem(record: dict, *, allow_hypotheses: bool, logic: str = "off") -> 
         "allow_hypotheses": allow_hypotheses,
         "max_waves": 4,
         "world_assumption": "open",
+        "language_spec": str(SPEC) if SPEC.is_file() else "",
     }
 
 

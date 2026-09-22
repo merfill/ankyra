@@ -21,7 +21,7 @@ implementation plan), `docs/l2_plan.md` (the L2 implementation plan),
 `docs/t6_plan.md` (Tier-1 item T6: ground unit propagation, G4),
 `docs/equality_plan.md` (Tier-2 item 3a: finite equality),
 `docs/g1_g4_plan.md` (Phase 1 extraction G1–G4 on FOLIO L2, completed),
-`docs/ar_lsat.md`,
+`docs/ar_lsat.md`, `docs/l3_plan.md` (the L3 implementation plan),
 `docs/gsm8k.md`, `docs/defeasible_reasoning.md`, `docs/task.md`,
 `docs/implementation_plan.md`.
 
@@ -59,7 +59,7 @@ Every stage is defined by the same six items:
 | **L0** | Definite Horn, `is_a`, complementary-pair negation | `supported / insufficient / unsupported / refuted` (OWA) | semi-naive forward chaining | ProofWriter | — | **done** (Tier D 297/300) |
 | **L1** | Stratified negation / NAF, declared CWA | open/closed world per query; `¬atom` by failure | stratified closure | ProntoQA (negation/disjointness) | `ANKYRA_NEGATION_MODE` | implemented; gates green (synthetic 40/40, ProntoQA 208/208) |
 | **L2** | Positive FOL: disjunction, `∃/∀`, proof by cases | entailment / refutation in a bounded clausal search | bounded resolution | ProntoQA-OOD (compositional), FOLIO | `ANKYRA_LOGIC` | implemented; ProntoQA-OOD live 41/42 (0 grounded false proofs); FOLIO live extraction-bound |
-| **L3** | Finite-domain constraints (CSP/SAT) | `must` = true in all models, `could` = true in some | SAT/SMT or finite-domain search | AR-LSAT | — | planned (separate engine, low priority) |
+| **L3** | Finite-domain constraints (CSP/SAT) | `must` = true in all models, `could` = true in some | in-repo finite-domain search | AR-LSAT | `ANKYRA_CSP` | engine + synthetic + gold + live gate green (21/30, 0 grounded) (separate engine) |
 | **L4** | Arithmetic terms and equations | numeric answer, not entailment | evaluation / equation solving | GSM8K | — | low priority (separate engine / tool-use) |
 | **D** | Defaults with specificity via `is_a` | answer plus resolved/undecided conflict | `engine/defeasible.py` | defeasible-NLI / αNLI | `ANKYRA_DEFEASIBLE` | implemented + synthetic gate |
 
@@ -189,6 +189,22 @@ Every stage is defined by the same six items:
   adapter; Ankyra orchestrates the formalization, not the inference.
 - **Risk:** extracting constraints is the hard part, and positional specifics
   tempt a hardcoded ontology (forbidden by `docs/task.md` §3.8). Low priority.
+- **Plan:** `docs/l3_plan.md` (approved; decisions `D-L3-1`…`D-L3-7`).
+- **Status:** milestones 1–3 **done and green** (LLM-free). A general CSP IR +
+  in-repo finite-domain solver (`engine/csp/`) decide five hand-encoded games covering
+  linear/circular ordering, grouping and a conditional, and all four question
+  semantics (`evals.l3_spike` 5/5); the committed synthetic gate
+  `evals.l3_synthetic` is **27/27** (every constraint kind — including boolean
+  composition `all`/`any`/`not` and `count_compare` — and every question semantics,
+  plus negative controls), with 0 confidently-wrong answers. The Phase-0 CSP extraction path
+  (schema + deterministic builder + prompt) and the gold-fed tier are in place, validated
+  LLM-free (gold **21/21**, 0 `grounded_mismatch`, 5 real games); the dev/eval samples are
+  committed and routing/answer/explanation are wired (`ANKYRA_CSP`, `Answer.kind
+  "choice"`, the `model` explanation step). The live gates ran once (budgeted): dev
+  9/12, 0 `grounded_mismatch`; **eval 21/30, 0 `grounded_mismatch` → gate GREEN**
+  (method green, gold 21/21; interface/prompt fixes, a bounded question-repair pass, a
+  duplicate-option guard and an error-driven language-spec block landed; sampling is
+  not used, D-L3-10). The provider stays nondeterministic (C1).
 
 ### L4 — Arithmetic and numeric terms — *separate engine or tool-use*
 
@@ -261,6 +277,6 @@ honest `out_of_fragment`, never a guess.
 | L0 | ProofWriter | Tier D 300 | 0 grounded false proofs; determinate all `proven`; ≥95% | done (297/300 re-run) |
 | L1 | ProntoQA (negation), FOLIO negation subset | ProntoQA tier a/b | same + declared CWA | implemented (engine) + synthetic gate; ProntoQA green and closed |
 | L2 | ProntoQA-OOD (compositional), then FOLIO | ProntoQA-OOD tier a (44), FOLIO L2 tier a (45) | same; FOLIO stratified by construct | implemented; ProntoQA-OOD live 41/42 (0 grounded false proofs), FOLIO live extraction-bound (26/44); Tier-1 T1 (shared-witness ∃), T3 (universal clause goal), T5 (head-only universal premise), T4 (non-flat ground goal), T2 (nested-disjunction premise) and T6 (G4 ground unit propagation) raise gold-fed coverage to 44/45, 42/45 correct (`docs/t1_plan.md`, `docs/t3_plan.md`, `docs/t5_plan.md`, `docs/t4_t2_plan.md`, `docs/t6_plan.md`); Tier-2 3a finite equality (synthetic gate) `docs/equality_plan.md` |
-| L3 | AR-LSAT | to build | per-option solver check | planned (separate engine) |
+| L3 | AR-LSAT | dev/eval + gold committed | per-option solver check | engine + synthetic + gold green; live eval 21/30, 0 grounded_mismatch (gate green) |
 | L4 | GSM8K | to build | numeric match | low priority |
 | D | defeasible-NLI | to choose | resolved/undecided conflict reported | implemented + synthetic gate |

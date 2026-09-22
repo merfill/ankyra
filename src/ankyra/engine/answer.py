@@ -14,6 +14,7 @@ _ANSWER_LABELS = {
         "unknown": "Unknown",
         "contradiction": "Inconsistent (both the claim and its negation hold)",
         "binding": "Value: {value}",
+        "choice": "Choice: {value}",
         "instruction": "No question to answer",
         "under": "under hypotheses: {h}",
         "default": "by default",
@@ -25,6 +26,7 @@ _ANSWER_LABELS = {
         "unknown": "Не определено",
         "contradiction": "Противоречие (выводимы и утверждение, и его отрицание)",
         "binding": "Значение: {value}",
+        "choice": "Вариант: {value}",
         "instruction": "Вопрос не задан",
         "under": "при гипотезах: {h}",
         "default": "по умолчанию",
@@ -53,7 +55,7 @@ def render_answer(answer: Answer, language: str | None = None) -> str:
     labels = _ANSWER_LABELS[lang]
     kind = answer.kind
     text = labels[kind]
-    if kind == "binding" and answer.value:
+    if kind in ("binding", "choice") and answer.value:
         text = text.format(value=answer.value)
     qualifiers = []
     if answer.strength == "proven_under" and answer.hypotheses_used:

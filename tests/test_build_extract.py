@@ -11,7 +11,9 @@ from ankyra.build.extract import (
     extract_problem_structure,
     extract_question_structure,
     format_theory_for_llm,
+    language_spec_block,
 )
+from ankyra.config.settings import setting_overrides
 from ankyra.core.models import Morphism, Object, Rule, Theory
 from ankyra.core.schemas import ProblemStructure, QuestionStructure
 
@@ -240,3 +242,23 @@ def test_question_prompt_teaches_the_ground_cnf_goal_form():
 def test_question_prompt_teaches_shared_witness_and_named_constants():
     assert "SHARED witness" in extract_mod.QUESTION_SYSTEM
     assert "CONJUNCTION (AND)" in extract_mod.QUESTION_SYSTEM
+
+
+def test_language_spec_block_is_empty_by_default():
+    assert language_spec_block() == ""
+    with setting_overrides(LANGUAGE_SPEC=""):
+        assert language_spec_block() == ""
+
+
+def test_language_spec_block_reads_inline_text_and_files(tmp_path):
+    with setting_overrides(LANGUAGE_SPEC="read positions left to right"):
+        inline = language_spec_block()
+    assert "ADDITIONAL LANGUAGE SPECIFICATION" in inline
+    assert "read positions left to right" in inline
+
+    guide = tmp_path / "guide.md"
+    guide.write_text("a per-object list is ordered", encoding="utf-8")
+    with setting_overrides(LANGUAGE_SPEC=str(guide)):
+        from_file = language_spec_block()
+    assert "a per-object list is ordered" in from_file
+    assert "guide.md" in from_file

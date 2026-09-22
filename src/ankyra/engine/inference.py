@@ -16,10 +16,13 @@ of *which* semantics runs stays there); ``classify`` uses the Horn closure.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Literal, Protocol
+from typing import TYPE_CHECKING, Literal, Protocol
 
 from ankyra.config.settings import get_setting
 from ankyra.core.models import FactKey, Query, Theory, Verdict
+
+if TYPE_CHECKING:
+    from ankyra.engine.csp.models import CspQuestion
 
 
 # Expressiveness the built structure needs, before any procedure runs. The fragment
@@ -38,6 +41,7 @@ FragmentFeature = Literal[
     "clause_goal",
     "existential_disjunction",
     "equality",
+    "csp",
 ]
 
 # The features whose presence makes the clausal (L2) procedure the required one.
@@ -194,7 +198,39 @@ def capabilities() -> frozenset[str]:
         caps.add("builtin")
     if bool(get_setting("DEFEASIBLE", False)):
         caps.add("defeasible")
+    if bool(get_setting("CSP", False)):
+        caps.add("csp")
     return frozenset(caps)
+
+
+def analyze_csp_routing(question: "CspQuestion") -> RoutingDecision:
+    """Route a CSP game/question to the separate L3 engine (``docs/l3_plan.md`` D-L3-4).
+
+    The CSP structures are not ``Theory``/``Query``, so this is a dedicated entry: the
+    fragment is ``csp``, the procedure is ``csp``, and the capability is ``ANKYRA_CSP``
+    (off by default). A run without it is ``out_of_fragment:csp_off`` — never decided
+    by the Horn/clausal engine.
+    """
+    caps = capabilities()
+    if "csp" not in caps:
+        return RoutingDecision(
+            fragment=frozenset({"csp"}),
+            procedure="horn",
+            capabilities=caps,
+            world_assumption="open",
+            defeasible=False,
+            refusal="out_of_fragment:csp_off",
+            reasons=("csp", "out_of_fragment:csp_off"),
+        )
+    return RoutingDecision(
+        fragment=frozenset({"csp"}),
+        procedure="csp",
+        capabilities=caps,
+        world_assumption="open",
+        defeasible=False,
+        refusal=None,
+        reasons=("csp",),
+    )
 
 
 def analyze_routing(theory: Theory, query: Query) -> RoutingDecision:
