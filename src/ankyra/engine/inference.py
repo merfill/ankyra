@@ -26,7 +26,13 @@ from ankyra.core.models import FactKey, Query, Theory, Verdict
 # is *derived* from ``Theory``/``Query``; the semantics is *declared* by the query
 # and the run config (docs/fragment_routing.md).
 FragmentFeature = Literal[
-    "horn", "negation", "disjunction", "existential", "builtin", "compound_goal"
+    "horn",
+    "negation",
+    "disjunction",
+    "existential",
+    "builtin",
+    "compound_goal",
+    "shared_witness",
 ]
 
 # The features whose presence makes the clausal (L2) procedure the required one.
@@ -76,6 +82,15 @@ def _has_negation(theory: Theory) -> bool:
     return False
 
 
+def _has_shared_witness(query: Query) -> bool:
+    """True when conjunctive goals share a variable (an existential witness, T1)."""
+    from ankyra.build.normalize import is_var
+
+    if query.goal_mode != "all":
+        return False
+    return any(is_var(goal.subject) or is_var(goal.object) for goal in query.goals)
+
+
 def _has_builtin(theory: Theory) -> bool:
     from ankyra.engine.builtins import is_builtin
 
@@ -106,6 +121,8 @@ def _fragment(theory: Theory, query: Query) -> frozenset[str]:
         features.add("builtin")
     if query.goal_mode != "single":
         features.add("compound_goal")
+    if _has_shared_witness(query):
+        features.add("shared_witness")
     return frozenset(features)
 
 

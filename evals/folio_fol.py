@@ -8,10 +8,11 @@ the L1/L2 models, so the number isolates the method from extraction errors
 
 The parser covers the reachable L2 shape — universal/implication formulas, ``∧``/``∨``,
 negation (pushed to literals by NNF), conjunctive existential premises (``∃x (φ ∧ …)``),
-ground or open goals and flat compound goals. A formula outside the committed
-fragment raises :class:`FolParseError` (an honest ``out_of_fragment``), never a guessed
-encoding: universal/conditional goals, an existential conjunction with a shared witness
-(``∃x (A(x) ∧ B(x))``), nested quantifiers and function terms stay outside L2.
+ground or open goals, flat compound goals and a conjunctive existential conclusion with a
+shared witness (``∃x (A(x) ∧ B(x))``, decided jointly, ``docs/t1_plan.md``). A formula
+outside the committed fragment raises :class:`FolParseError` (an honest
+``out_of_fragment``), never a guessed encoding: universal/conditional goals, nested
+quantifiers and function terms stay outside L2.
 """
 
 from __future__ import annotations
@@ -325,27 +326,18 @@ def _existential_premise(formula) -> tuple[list, list, list[Existential]]:
     return [], [], [Existential(variable=variable, atoms=atoms)]
 
 
-def _mentions(literal, variable: str) -> bool:
-    atom = literal[1] if literal[0] == "not" else literal
-    return variable in atom[2]
-
-
 def _conclusion(formula):
     """Return ``(target, goals, goal_mode)`` for the annotated conclusion."""
     if formula[0] == "forall":
         raise FolParseError("universal conclusion has no goal form (L2 target form pending)")
     if formula[0] == "exists":
-        variable = formula[1]
         body = _nnf(formula[2])
         if _is_literal(body):
             literal = body
             target = _morphism(literal)
             return target, [], "single"
         if body[0] == "and" and all(_is_literal(part) for part in body[1]):
-            literals = list(body[1])
-            if sum(_mentions(literal, variable) for literal in literals) > 1:
-                raise FolParseError("existential conclusion with a shared witness is out of fragment")
-            goals = [_morphism(literal) for literal in literals]
+            goals = [_morphism(literal) for literal in body[1]]
             return goals[0], goals, "all"
         if body[0] == "or" and all(_is_literal(part) for part in body[1]):
             goals = [_morphism(literal) for literal in body[1]]

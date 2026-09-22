@@ -300,6 +300,85 @@ def _disjunctive_fact_cases() -> list[dict]:
     ]
 
 
+def _shared_witness_cases() -> list[dict]:
+    goals = [_is_a("?x", "p"), _is_a("?x", "q")]
+    one_witness = _theory(
+        objects=["rex"], morphisms=[_is_a("rex", "p"), _is_a("rex", "q")]
+    )
+    two_witnesses = _theory(
+        objects=["a", "b"], morphisms=[_is_a("a", "p"), _is_a("b", "q")]
+    )
+    refuting = _theory(
+        objects=["a", "b"],
+        morphisms=[_is_a("a", "p"), _is_a("b", "p")],
+        rules=[_rule([_is_a("?x", "p")], _is_a("?x", "q", neg=True))],
+    )
+    partial = _theory(objects=["a"], morphisms=[_is_a("a", "p")])
+    budgeted = _theory(
+        objects=["rex"],
+        morphisms=[_is_a("rex", "p"), _is_a("rex", "r")],
+        rules=[_rule([_is_a("?x", "r")], _is_a("?x", "q"))],
+    )
+    return [
+        _case(
+            "shared-witness-01",
+            "shared_witness",
+            one_witness,
+            _query(_is_a("?x", "p"), goals=goals, goal_mode="all", answer_type="open"),
+            "supported",
+            "binding",
+            note="one witness satisfies every conjunct",
+        ),
+        _case(
+            "shared-witness-02",
+            "shared_witness",
+            two_witnesses,
+            _query(_is_a("?x", "p"), goals=goals, goal_mode="all", answer_type="open"),
+            "insufficient",
+            "unknown",
+            note="negative control: independent witnesses do not satisfy a shared one",
+        ),
+        _case(
+            "shared-witness-03",
+            "shared_witness",
+            refuting,
+            _query(_is_a("?x", "p"), goals=goals, goal_mode="all"),
+            "refuted",
+            "no",
+            note="every witness makes the conjunction unsatisfiable",
+        ),
+        _case(
+            "shared-witness-04",
+            "shared_witness",
+            partial,
+            _query(_is_a("?x", "p"), goals=goals, goal_mode="all", answer_type="open"),
+            "insufficient",
+            "unknown",
+            note="negative control: no witness satisfies both conjuncts",
+        ),
+        _case(
+            "shared-witness-05",
+            "shared_witness",
+            budgeted,
+            _query(_is_a("?x", "p"), goals=goals, goal_mode="all", answer_type="open"),
+            "insufficient",
+            "unknown",
+            budget=1,
+            note="negative control: an exhausted budget is never a proof",
+        ),
+        _case(
+            "shared-witness-06",
+            "shared_witness",
+            one_witness,
+            _query(_is_a("?x", "p"), goals=goals, goal_mode="all", answer_type="open"),
+            "out_of_fragment",
+            "unknown",
+            logic="off",
+            note="negative control: with L2 off a compound goal is out_of_fragment",
+        ),
+    ]
+
+
 def _budget_cases() -> list[dict]:
     theory = _theory(morphisms=[_is_a("rex", "p")], rules=[_rule([_is_a("?x", "p")], _is_a("?x", "q"))])
     return [
@@ -426,6 +505,7 @@ def cases() -> list[dict]:
         + _disjunctive_fact_cases()
         + _existential_cases()
         + _open_goal_cases()
+        + _shared_witness_cases()
         + _budget_cases()
         + _out_of_fragment_cases()
         + _control_cases()

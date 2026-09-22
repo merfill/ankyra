@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from ankyra.core.models import Constraint, Morphism, Rule, Theory
 from ankyra.engine.clause import clausify, literal_of
-from ankyra.engine.resolution import prove
+from ankyra.engine.resolution import prove, refute_conjunction
 
 
 def _lit(predicate, subject="", obj="", *, neg=False):
@@ -105,6 +105,16 @@ def test_proof_derivation_is_premises_first():
     origins = {source for key in derivation for source in result.proof.origins[key]}
     assert "axiom:p()" in origins
     assert "goal" in origins
+
+
+def test_a_conjunction_can_be_unsatisfiable_without_either_conjunct():
+    # ``q → ¬p`` refutes the conjunction ``p ∧ q`` while neither ``¬p`` nor ``¬q``
+    # alone is entailed (the shared-witness refutation, docs/t1_plan.md §4.2).
+    theory = Theory(rules=[_rule([_m("q")], _m("p", neg=True))])
+    clausification = clausify(theory)
+    assert prove(theory, _lit("p")).status == "not_entailed"
+    assert prove(theory, _lit("q")).status == "not_entailed"
+    assert refute_conjunction(clausification, [_lit("p"), _lit("q")]).status == "entailed"
 
 
 def test_literal_of_matches_the_morphism():

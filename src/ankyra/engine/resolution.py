@@ -41,7 +41,7 @@ Node = tuple[ClauseKey | None, ClauseKey | None, Literal | None]
 class Proof:
     """A refutation: the empty clause and the resolution DAG that produced it."""
 
-    goal: Literal
+    assumed: list[Clause]
     steps: int
     nodes: dict[ClauseKey, Node] = field(default_factory=dict)
     origins: dict[ClauseKey, list[str]] = field(default_factory=dict)
@@ -68,6 +68,22 @@ class Proof:
 
         visit(())
         return order
+
+
+@dataclass
+class MergedProof:
+    """Several independent refutations presented as one trace (T1).
+
+    A conjunctive goal with a shared witness is proved by one refutation per
+    conjunct over the same witness (``docs/t1_plan.md`` §4.2); :func:`engine.explain._l2_steps`
+    flattens the parts into a single ordered step list.
+    """
+
+    parts: list[Proof] = field(default_factory=list)
+
+    @property
+    def steps(self) -> int:
+        return sum(part.steps for part in self.parts)
 
 
 @dataclass
@@ -99,16 +115,20 @@ def _subsumes(general: Clause, specific: Clause) -> bool:
     return general <= specific
 
 
-def refute(
-    clausification: Clausification, goal: Literal, *, budget: int = DEFAULT_BUDGET
+def refute_support(
+    clausification: Clausification,
+    assumed: list[Clause],
+    *,
+    budget: int = DEFAULT_BUDGET,
 ) -> ProverResult:
-    """Refute ``¬goal`` by bounded set-of-support resolution.
+    """Refute a set of assumed clauses by bounded set-of-support resolution.
 
-    Only clauses in the set of support — starting from the negated goal — drive new
-    resolutions, so the search stays goal-directed instead of saturating the whole
-    theory. Set-of-support resolution is refutation-complete for a satisfiable theory;
-    only an actually derived empty clause is ``entailed``, so an incomplete search is
-    the honest ``not_entailed``/``budget``, never a false proof.
+    ``assumed`` is the clausification of the negated goal (a single unit for a
+    literal goal; one unit per conjunct for a conjunction, T1); every assumed clause
+    seeds the set of support. Only support clauses drive new resolutions, so the
+    search stays goal-directed; the base theory must be satisfiable for set-of-support
+    completeness. Only an actually derived empty clause is ``entailed``, so an
+    incomplete search is the honest ``not_entailed``/``budget``, never a false proof.
     """
     clauses: dict[ClauseKey, Clause] = {}
     nodes: dict[ClauseKey, Node] = {}
@@ -123,14 +143,17 @@ def refute(
         if key in clauses:
             origins[key] = list(sources)
 
-    goal_clause = frozenset({negate(goal)})
-    goal_key = clause_key(goal_clause)
-    clauses.setdefault(goal_key, goal_clause)
-    nodes.setdefault(goal_key, (None, None, None))
-    origins.setdefault(goal_key, ["goal"])
-
-    support: list[ClauseKey] = [goal_key]
-    in_support: set[ClauseKey] = {goal_key}
+    assumed_units = [frozenset(clause) for clause in assumed]
+    support: list[ClauseKey] = []
+    in_support: set[ClauseKey] = set()
+    for clause in assumed_units:
+        key = clause_key(clause)
+        clauses.setdefault(key, clause)
+        nodes.setdefault(key, (None, None, None))
+        origins.setdefault(key, ["goal"])
+        if key not in in_support:
+            in_support.add(key)
+            support.append(key)
     steps = 0
     while steps < budget:
         candidates: list[ClauseKey] = []
@@ -152,7 +175,7 @@ def refute(
                     if not resolvent:
                         nodes[()] = (support_key, key, pivot)
                         origins[()] = []
-                        proof = Proof(goal=goal, steps=steps, nodes=nodes, origins=origins)
+                        proof = Proof(assumed=assumed_units, steps=steps, nodes=nodes, origins=origins)
                         return ProverResult("entailed", proof, steps, budget)
                     resolvent_key = clause_key(resolvent)
                     if resolvent_key in clauses:
@@ -170,6 +193,28 @@ def refute(
                 in_support.add(candidate)
                 support.append(candidate)
     return ProverResult("budget", None, steps, budget)
+
+
+def refute(
+    clausification: Clausification, goal: Literal, *, budget: int = DEFAULT_BUDGET
+) -> ProverResult:
+    """Refute ``¬goal`` (the single-literal case of :func:`refute_support`)."""
+    return refute_support(
+        clausification, [frozenset({negate(goal)})], budget=budget
+    )
+
+
+def refute_conjunction(
+    clausification: Clausification, literals: list[Literal], *, budget: int = DEFAULT_BUDGET
+) -> ProverResult:
+    """Refute the conjunction of ``literals`` (T1's ``∃``/``∧`` negative check).
+
+    ``T ⊨ ¬(g₁ ∧ … ∧ gₙ)`` iff the units ``g₁ … gₙ`` are jointly unsatisfiable; each
+    literal is assumed as its own unit and an empty clause refutes the conjunction.
+    """
+    return refute_support(
+        clausification, [frozenset({literal}) for literal in literals], budget=budget
+    )
 
 
 def prove(

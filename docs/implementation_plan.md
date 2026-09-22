@@ -450,17 +450,23 @@ Source: `docs/quality_findings.md`. Ordered by priority.
     extraction on FOLIO (Phase 2 before Phase 1 in
     `docs/folio_extension_plan.md`). Tests `tests/test_evals_folio_fol.py`; full
     record `docs/folio_gold_fed.md`.
-26. **Coverage ceiling — explained, and the Tier-1 plan — NEXT.** The gold-fed
-    diagnostic (item 25) shows the FOLIO L2 wall is **coverage**, not extraction:
-    24/45 gold formulas are outside the committed fragment. `docs/coverage_ceiling.md`
-    explains the ceiling in plain terms and lays out the ordered Tier-1 backlog
-    (T1 shared-witness ∃ goal, T2 nested-∃ premise, T3 universal/conditional/`¬∃`
-    goal form, T4 non-flat compound goal, T5 head-only grounding `∀x (A(x) ∨ B(x))`
-    — the largest and soundness-sensitive, T6 G4 budget), each a named fragment
-    reusing `ANKYRA_LOGIC` with a synthetic gate in `evals.l2_synthetic` and a
-    re-measured gold-fed bound. Extraction G1–G4 runs in parallel on covered rows.
-    Open: T-D1 (domain for head-only grounding), T-D2 (goal-formula vs `goal_mode`),
-    T-D3 (one fragment or three).
+26. **Coverage ceiling — explained, and the Tier-1 plan — IN PROGRESS (T1 DONE).**
+    The gold-fed diagnostic (item 25) shows the FOLIO L2 wall is **coverage**, not
+    extraction: 24/45 gold formulas were outside the committed fragment.
+    `docs/coverage_ceiling.md` explains the ceiling in plain terms and lays out the
+    ordered Tier-1 backlog (T1 shared-witness ∃ goal, T2 nested-∃ premise, T3
+    universal/conditional/`¬∃` goal form, T4 non-flat compound goal, T5 head-only
+    grounding `∀x (A(x) ∨ B(x))` — the largest and soundness-sensitive, T6 G4 budget),
+    each a named fragment reusing `ANKYRA_LOGIC` with a synthetic gate in
+    `evals.l2_synthetic` and a re-measured gold-fed bound. Extraction G1–G4 runs in
+    parallel on covered rows. Open: T-D1 (domain for head-only grounding), T-D2
+    (goal-formula vs `goal_mode`), T-D3 (one fragment or three).
+    **T1 DONE** (`docs/t1_plan.md`): a shared-witness existential goal `∃x(A(x)∧B(x))`
+    is a joint `all` goal (one witness for every conjunct; `refute_conjunction` for
+    the per-witness negative check), feature `shared_witness`, no new flag. Gold-fed
+    on FOLIO L2 tier a: `out_of_fragment` 24→20, gold-fed 17→**21/45**, coverage
+    21→**25/45**, covered gold-fed 17/21→**21/25**, **0 grounded false proofs**;
+    LLM-free gates `evals.l2_synthetic` (29/29) and `evals.routing_synthetic` (13/13).
 
 ## 9. Reasoning roadmap (main axis)
 
@@ -545,8 +551,10 @@ multi-variable quantification).
   the engine the gold FOL formulas and measure method-only accuracy on the same
   slice. It exists for the L1 negation shape and now for L2: `evals/folio_fol`
   parses `∨`/`∃`, `evals.analyze_folio --subset l2` runs it LLM-free. On FOLIO L2
-  tier a (45): text-fed 25/45, gold-fed 17/45, **out_of_fragment 24/45** (coverage
-  21/45); on the covered rows gold-fed **17/21** versus text-fed **15/21**. So the
+  tier a (45), at the time of the diagnostic: text-fed 25/45, gold-fed 17/45,
+  **out_of_fragment 24/45** (coverage 21/45); on the covered rows gold-fed **17/21**
+  versus text-fed **15/21**. (After Tier-1 T1 the same measurements are gold-fed
+  21/45, `out_of_fragment` 20/45, coverage 25/45, covered 21/25; see item 26.) So the
   limit is the **method** (coverage), not the language — Tier-1 lowering comes
   before extraction (`docs/folio.md` §10, `docs/folio_ceilings.md` §4); the plan
   itself is `docs/coverage_ceiling.md`. This settles

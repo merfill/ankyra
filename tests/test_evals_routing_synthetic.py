@@ -8,7 +8,15 @@ from ankyra.config.settings import get_setting
 from evals import build_routing_synthetic
 from evals.routing_synthetic import SAMPLE, load_sample, run_all
 
-_FEATURES = {"horn", "negation", "disjunction", "existential", "builtin", "compound_goal"}
+_FEATURES = {
+    "horn",
+    "negation",
+    "disjunction",
+    "existential",
+    "builtin",
+    "compound_goal",
+    "shared_witness",
+}
 _REFUSALS = {
     "out_of_fragment:non_horn",
     "out_of_fragment:compound_goal",

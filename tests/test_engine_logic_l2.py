@@ -68,6 +68,73 @@ def test_l2_compound_goals_all_and_any():
         assert verify(partial, Query(target=_m("a"), goals=[_m("a"), _m("b")], goal_mode="all")).status == "insufficient"
 
 
+def test_l2_shared_witness_supported_with_binding():
+    theory = Theory(morphisms=[_m("is_a", "rex", "p"), _m("is_a", "rex", "q")])
+    query = Query(
+        target=_m("is_a", "?x", "p"),
+        goals=[_m("is_a", "?x", "p"), _m("is_a", "?x", "q")],
+        goal_mode="all",
+        answer_type="open",
+    )
+    with setting_overrides(LOGIC="ground"):
+        verdict = verify(theory, query)
+        answer = build_answer(theory, query, verdict, HypothesisLedger(), verdict.status)
+    assert verdict.status == "supported"
+    assert verdict.bindings["?x"] == "rex"
+    assert answer.kind == "binding"
+
+
+def test_l2_shared_witness_rejects_independent_witnesses():
+    theory = Theory(morphisms=[_m("is_a", "a", "p"), _m("is_a", "b", "q")])
+    query = Query(
+        target=_m("is_a", "?x", "p"),
+        goals=[_m("is_a", "?x", "p"), _m("is_a", "?x", "q")],
+        goal_mode="all",
+        answer_type="open",
+    )
+    with setting_overrides(LOGIC="ground"):
+        verdict = verify(theory, query)
+    assert verdict.status == "insufficient"
+
+
+def test_l2_shared_witness_explanation_merges_both_conjunct_proofs():
+    theory = Theory(morphisms=[_m("is_a", "rex", "p"), _m("is_a", "rex", "q")])
+    query = Query(
+        target=_m("is_a", "?x", "p"),
+        goals=[_m("is_a", "?x", "p"), _m("is_a", "?x", "q")],
+        goal_mode="all",
+        answer_type="open",
+    )
+    with setting_overrides(LOGIC="ground"):
+        verdict = verify(theory, query)
+        explanation = build_explanation(theory, query, verdict, HypothesisLedger())
+    assert len(explanation.steps) == 6
+    assert all(
+        premise < step.index
+        for step in explanation.steps
+        for premise in step.premises
+    )
+    statements = {step.statement for step in explanation.steps}
+    assert {"is_a(rex,p)", "NOT is_a(rex,p)", "is_a(rex,q)", "NOT is_a(rex,q)"} <= statements
+
+
+def test_l2_shared_witness_refutes_a_universal_negative():
+    theory = Theory(
+        morphisms=[_m("is_a", "a", "p"), _m("is_a", "b", "p")],
+        rules=[_rule([_m("is_a", "?x", "p")], _m("is_a", "?x", "q", neg=True))],
+    )
+    query = Query(
+        target=_m("is_a", "?x", "p"),
+        goals=[_m("is_a", "?x", "p"), _m("is_a", "?x", "q")],
+        goal_mode="all",
+    )
+    with setting_overrides(LOGIC="ground"):
+        verdict = verify(theory, query)
+        answer = build_answer(theory, query, verdict, HypothesisLedger(), verdict.status)
+    assert verdict.status == "refuted"
+    assert answer.kind == "no"
+
+
 def test_l2_budget_is_insufficient_with_a_gap():
     theory = Theory(morphisms=[_m("p")], rules=[_rule([_m("p")], _m("q"))])
     with setting_overrides(LOGIC="ground", LOGIC_BUDGET=1):

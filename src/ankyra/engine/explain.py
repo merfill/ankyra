@@ -357,6 +357,21 @@ def _classify_clause(origins, theory: Theory):
 
 def _l2_steps(proof, theory: Theory) -> list[ExplanationStep]:
     """Render a resolution refutation as premises-first explanation steps."""
+    parts = getattr(proof, "parts", None)
+    if parts:
+        merged: list[ExplanationStep] = []
+        for part in parts:
+            offset = len(merged)
+            for step in _l2_steps(part, theory):
+                merged.append(
+                    step.model_copy(
+                        update={
+                            "index": step.index + offset,
+                            "premises": [premise + offset for premise in step.premises],
+                        }
+                    )
+                )
+        return merged
     steps: list[ExplanationStep] = []
     index: dict = {}
     for key in proof.derivation():

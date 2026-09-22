@@ -32,6 +32,7 @@ def test_collection_covers_every_new_mechanism():
         "disjunctive_fact",
         "existential",
         "open_goal",
+        "shared_witness",
         "budget",
         "out_of_fragment",
         "control",

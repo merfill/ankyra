@@ -72,14 +72,16 @@ gold-fed closed 8/13 — i.e. **coverage-bound**: even the gold formulas need
 reductio (L2) or a closed-world step, so no single world assumption fits
 (`docs/folio.md` §9). The **L2** bound now exists (`docs/folio.md` §10):
 `evals/folio_fol` parses `∨`/`∃` and `evals.analyze_folio --subset l2` runs it
-LLM-free. On tier a (45): text-fed 25/45, gold-fed 17/45, **out_of_fragment 24/45**
-(so coverage is only 21/45). On the covered rows gold-fed is 17/21 versus text-fed
-15/21 — the dominant limit is the **method** (coverage), and where the committed L2
-procedure can express the gold formula it already beats the extractor. The 24
-out-of-fragment rows name the Tier-1 work: 12 the parser cannot represent
-(universal/conditional goals, shared-witness existential conjunctions, nested
-existentials, `¬∃`), 12 the engine refuses as `unsafe_rule` (a universal disjunctive
-fact `∀x (A(x) ∨ B(x))` grounds an unbounded head variable).
+LLM-free. On tier a (45), at the diagnostic's time: text-fed 25/45, gold-fed 17/45,
+**out_of_fragment 24/45** (so coverage was only 21/45). On the covered rows gold-fed
+was 17/21 versus text-fed 15/21 — the dominant limit is the **method** (coverage), and
+where the committed L2 procedure can express the gold formula it already beats the
+extractor. The 24 out-of-fragment rows named the Tier-1 work: 12 the parser could not
+represent (universal/conditional goals, shared-witness existential conjunctions,
+nested existentials, `¬∃`), 12 the engine refuses as `unsafe_rule` (a universal
+disjunctive fact `∀x (A(x) ∨ B(x))` grounds an unbounded head variable). **Tier-1 T1
+(shared-witness `∃x(A(x)∧B(x))`) is done** (`docs/t1_plan.md`): gold-fed 21/45,
+`out_of_fragment` 20/45, coverage 25/45, covered 21/25, 0 grounded false proofs.
 
 ## 5. Constructs: in fragment, reachable, out of reach
 
@@ -109,8 +111,9 @@ fact `∀x (A(x) ∨ B(x))` grounds an unbounded head variable).
 ## 7. Recommended order
 
 1. ~~**Gold-fed L2 bound** (LLM-free, cheap, decisive).~~ **DONE** (see §4): the
-   limit on the L2 slice is the **method** (coverage 21/45), not the language, so
-   Tier 1 (item 3) comes before extraction on FOLIO.
+   limit on the L2 slice is the **method** (coverage was 21/45), not the language, so
+   Tier 1 (item 3) comes before extraction on FOLIO. **Tier-1 T1 done** — coverage
+   25/45, gold-fed 21/45 (`docs/t1_plan.md`).
 2. **Extraction G1–G4** (`docs/quality_findings.md` §G) — still worth doing on the
    rows the method now covers.
 3. **Tier 1 engine extension** — justified by the gold-fed bound.

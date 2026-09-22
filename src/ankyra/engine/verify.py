@@ -20,7 +20,13 @@ from ankyra.engine.horn import (
     unify_pattern,
 )
 from ankyra.engine.inference import analyze_routing, select_inference
-from ankyra.engine.resolution import DEFAULT_BUDGET, refute
+from ankyra.engine.resolution import (
+    DEFAULT_BUDGET,
+    MergedProof,
+    ProverResult,
+    refute,
+    refute_conjunction,
+)
 
 
 def _ground(target: Morphism) -> bool:
@@ -340,6 +346,78 @@ def _goal_outcome(clausification, goal: Morphism, pool: list[str]):
     return "unknown", None, None, {}
 
 
+def _ground_goal(goal: Morphism, subst: dict[str, str]) -> Morphism:
+    """Instantiate a goal's variables under ``subst`` (no-op for the empty subst)."""
+    if not subst:
+        return goal
+    return goal.model_copy(
+        update={
+            "subject": subst.get(goal.subject, goal.subject),
+            "object": subst.get(goal.object, goal.object),
+        }
+    )
+
+
+def _conjunction_status(clausification, grounded: list[Morphism], budget: int) -> str:
+    """``refuted`` if ``T ⊨ ¬(g₁ ∧ … ∧ gₙ)``, ``budget`` on exhaustion, else ``open``.
+
+    The conjunction is unsatisfiable iff its ground literals are jointly refutable
+    (``docs/t1_plan.md`` §4.2).
+    """
+    literals = [literal_of(goal) for goal in grounded]
+    result = refute_conjunction(clausification, literals, budget=budget)
+    return {"entailed": "refuted", "budget": "budget"}.get(result.status, "open")
+
+
+def _conjunctive_outcome(
+    clausification, goals: list[Morphism], pool: list[str], budget: int
+):
+    """Joint decision of a conjunctive goal under one shared witness (T1).
+
+    One assignment is enumerated for all goal variables: if every conjunct is
+    entailed under it, the group is ``supported`` (with the witness as binding); if
+    the conjunction is unsatisfiable under it, that witness refutes the group. The
+    group is ``refuted`` only when every witness refutes it, and ``budget`` when a
+    decision exhausts the step budget. Returns
+    ``(outcome, binding, target_result, complement_result)``.
+    """
+    variables = sorted(
+        {
+            term
+            for goal in goals
+            for term in (goal.subject, goal.object)
+            if is_var(term)
+        }
+    )
+    any_budget = False
+    all_refuted = True
+    for combo in product(pool or [""], repeat=len(variables)):
+        subst = dict(zip(variables, combo))
+        grounded = [_ground_goal(goal, subst) for goal in goals]
+        results = [
+            refute(clausification, literal_of(goal), budget=budget) for goal in grounded
+        ]
+        if any(result.status == "budget" for result in results):
+            any_budget = True
+            all_refuted = False
+            continue
+        if all(result.status == "entailed" for result in results):
+            merged = MergedProof(parts=[result.proof for result in results if result.proof])
+            target = ProverResult("entailed", merged, merged.steps, budget)
+            return "supported", dict(subst), target, None
+        status = _conjunction_status(clausification, grounded, budget)
+        if status == "budget":
+            any_budget = True
+            all_refuted = False
+        elif status == "open":
+            all_refuted = False
+    if any_budget:
+        return "budget", {}, None, None
+    if all_refuted:
+        return "refuted", {}, None, None
+    return "unknown", {}, None, None
+
+
 def _l2_status(mode: str, kinds: list[str]) -> str:
     if "contradiction" in kinds:
         return "contradiction"
@@ -443,8 +521,14 @@ def l2_outcomes(theory: Theory, query: Query):
     if clausification.unsupported:
         return clausification, []
     pool = _witness_pool(theory, clausification)
+    goals = _goals_of(query)
+    if query.goal_mode == "all" and query.goals:
+        outcome, binding, target, complement = _conjunctive_outcome(
+            clausification, goals, pool, _logic_budget()
+        )
+        return clausification, [(goals[0], outcome, target, complement, binding)]
     return clausification, [
-        (goal, *_goal_outcome(clausification, goal, pool)) for goal in _goals_of(query)
+        (goal, *_goal_outcome(clausification, goal, pool)) for goal in goals
     ]
 
 

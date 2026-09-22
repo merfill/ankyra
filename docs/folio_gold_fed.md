@@ -40,8 +40,11 @@ method-only accuracy.
 
   A formula outside the committed shape raises `FolParseError` → an honest
   `out_of_fragment`, never a guessed encoding. Scope limits: universal/conditional
-  goals, a shared-witness existential conjunction `∃x (A(x) ∧ B(x))`, an existential
-  premise with a nested disjunction, nested quantifiers, function terms.
+  goals, an existential premise with a nested disjunction, nested quantifiers,
+  function terms. A conjunctive existential conclusion with a shared witness
+  (`∃x (A(x) ∧ B(x))`) was added to the fragment by Tier-1 item **T1**
+  (`docs/t1_plan.md`): it is a joint `all` goal, decided with one witness for all
+  conjuncts.
 - **`evals/analyze_folio.py`** — `--subset {negation,l2}`. The L2 gold pass runs
   under `setting_overrides(LOGIC="ground")` (the L2 clausal procedure); the negation
   pass stays on the Horn/L1 path. An `out_of_fragment` gold verdict is an abstention
@@ -74,32 +77,33 @@ labels need reductio/CWA), as recorded in `docs/folio.md` §9.
 | source | correct |
 |---|---|
 | text-fed (LLM extraction) | 25/45 |
-| gold-fed open (= closed) | 17/45 |
-| gold `out_of_fragment` | 24/45 |
+| gold-fed open (= closed) | 21/45 |
+| gold `out_of_fragment` | 20/45 |
 
-Coverage (rows the committed L2 procedure can express and decide) is **21/45**. On
-the covered rows:
+Coverage (rows the committed L2 procedure can express and decide) is **25/45** —
+Tier-1 item **T1** (`docs/t1_plan.md`) added four shared-witness rows
+(`0033`, `0058`, `0059`, `0069`). On the covered rows:
 
 | label | gold-fed | text-fed |
 |---|---|---|
-| True | 6/7 | 5/7 |
-| False | 5/8 | 4/8 |
-| Uncertain | 6/6 | 6/6 |
-| **total** | **17/21** | **15/21** |
+| True | 8/9 | 6/9 |
+| False | 6/9 | 4/9 |
+| Uncertain | 7/7 | 7/7 |
+| **total** | **21/25** | **17/25** |
 
 No grounded false proof: every wrong gold answer is an abstention — `insufficient`
 from the resolution budget (G4) or `unsupported`; none is a wrong determinate
 answer.
 
-The 24 out-of-fragment rows split evenly:
+The 20 remaining out-of-fragment rows:
 
-- **12 the parser cannot express:** compound/conditional conclusions (nested `∧`/`∨`
-  or an implication as the goal), an existential premise with a nested disjunction
-  (`∃x (A(x) ∧ (B(x) ∨ …))`), shared-witness existential conjunctions
-  (`∃x (A(x) ∧ B(x))`), a universal `¬∃` conclusion, and one malformed annotation.
+- **8 the parser cannot express:** compound/conditional conclusions (nested `∧`/`∨`
+  or an implication as the goal, T4), an existential premise with a nested
+  disjunction (`∃x (A(x) ∧ (B(x) ∨ …))`, T2), a universal `¬∃` conclusion (T3), and
+  one malformed annotation.
 - **12 the engine refuses as `unsafe_rule`:** a universal disjunctive fact
   `∀x (A(x) ∨ B(x))` grounds a head variable its body never binds
-  (`engine/clause.py`, `_groundings`).
+  (`engine/clause.py`, `_groundings`, T5).
 
 ## 4. Interpretation and decision
 

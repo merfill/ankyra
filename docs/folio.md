@@ -244,28 +244,30 @@ genuinely valid). No engine unsoundness was observed.
 
 **Gold-fed diagnostic on L2 (LLM-free, decisive; `docs/folio_ceilings.md` §4).**
 `evals/folio_fol` now parses the annotated FOL into the L1/L2 models — universal
-implications, `∧`/`∨` via NNF+CNF, conjunctive existentials, and ground/open/flat
-compound goals — and raises `FolParseError` for a formula outside the committed
-fragment (universal/conditional goals, an existential conjunction with a shared
-witness, an existential premise with a nested disjunction, function terms).
+implications, `∧`/`∨` via NNF+CNF, conjunctive existentials, ground/open/flat
+compound goals, and (since Tier-1 **T1**, `docs/t1_plan.md`) a conjunctive
+existential conclusion with a shared witness — and raises `FolParseError` for a
+formula outside the committed fragment (universal/conditional goals, an existential
+premise with a nested disjunction, function terms).
 `evals.analyze_folio --subset l2` runs it with `ANKYRA_LOGIC=ground` over the same
 committed tier a (45 problems):
 
 | verdict source | correct |
 |---|---|
 | text-fed (LLM extraction) | 25/45 |
-| gold-fed, open (= closed) | 17/45 |
-| gold `out_of_fragment` | 24/45 |
+| gold-fed, open (= closed) | 21/45 |
+| gold `out_of_fragment` | 20/45 |
 
-The raw gold-fed number is below text-fed only because 24 rows are honest
-abstentions. Coverage (what the method can express and decide) is **21/45**; on the
-covered rows gold-fed is **17/21** (True 6/7, False 5/8, Uncertain 6/6) versus
-text-fed **15/21** (True 5/7, False 4/8, Uncertain 6/6). The 24 out-of-fragment rows
-split evenly: **12** the parser cannot express (compound/conditional conclusions, an
-existential premise with a nested disjunction, existential conjunctions with a shared
-witness, a universal `¬∃` conclusion, one malformed annotation) and **12** the engine
-refuses as `unsafe_rule` — a universal disjunctive fact `∀x (A(x) ∨ B(x))` grounds a
-head variable its body never binds. The 4 covered misses are honest abstentions
+The raw gold-fed number is below text-fed only because 20 rows are honest
+abstentions. Coverage (what the method can express and decide) is **25/45**; on the
+covered rows gold-fed is **21/25** (True 8/9, False 6/9, Uncertain 7/7) versus
+text-fed **17/25** (True 6/9, False 4/9, Uncertain 7/7). Four of the covered rows were
+added by T1 (`0033`, `0058`, `0059`, `0069`). The 20 remaining out-of-fragment rows:
+**8** the parser cannot express (compound/conditional conclusions — T4, an
+existential premise with a nested disjunction — T2, a universal `¬∃` conclusion — T3,
+one malformed annotation) and **12** the engine refuses as `unsafe_rule` — a universal
+disjunctive fact `∀x (A(x) ∨ B(x))` grounds a head variable its body never binds (T5).
+The covered misses are honest abstentions
 (`insufficient` from the resolution budget — G4 — or `unsupported`), with no grounded
 false proof. **The dominant ceiling on this slice is coverage (the method), not
 language**: wherever the committed L2 procedure can represent the gold formula it

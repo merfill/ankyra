@@ -95,9 +95,12 @@ def test_existential_single_atom_conclusion_is_an_open_target():
     assert query.target.subject == "?x" and query.target.object == "a"
 
 
-def test_existential_conjunction_conclusion_is_out_of_fragment():
-    with pytest.raises(FolParseError):
-        to_theory_query(_record(["A(a)"], "∃x (P(x) ∧ Q(x))"))
+def test_existential_conjunction_conclusion_is_a_shared_witness_all_goal():
+    _, query = to_theory_query(_record(["A(a)"], "∃x (P(x) ∧ Q(x))"))
+    assert query.goal_mode == "all"
+    assert query.target is query.goals[0]
+    assert [goal.subject for goal in query.goals] == ["?x", "?x"]
+    assert [goal.object for goal in query.goals] == ["p", "q"]
 
 
 def test_universal_conclusion_is_out_of_fragment():
@@ -143,6 +146,26 @@ def test_gold_l2_ground_support(tmp_path: Path):
     result = analyze(_committed("l2", "0024"), tmp_path, logic="ground")
     assert result["gold_open"] == ("yes", "supported")
     assert result["gold_open_ok"]
+
+
+def test_gold_l2_shared_witness_support(tmp_path: Path):
+    result = analyze(_committed("l2", "0033"), tmp_path, logic="ground")
+    assert result["gold_open"] == ("yes", "supported")
+    assert result["gold_open_ok"] and not result["fragment"]
+
+
+def test_gold_l2_shared_witness_refutation(tmp_path: Path):
+    result = analyze(_committed("l2", "0058"), tmp_path, logic="ground")
+    assert result["gold_open"] == ("no", "refuted")
+    assert result["gold_open_ok"] and not result["fragment"]
+
+
+def test_gold_l2_shared_witness_with_a_nested_premise_is_fragment(tmp_path: Path):
+    # 0008's conclusion is a shared-witness conjunction, but its premise has a nested
+    # disjunction (T2), so it stays an honest out_of_fragment.
+    result = analyze(_committed("l2", "0008"), tmp_path, logic="ground")
+    assert result["fragment"]
+    assert result["gold_open"][1].startswith("out_of_fragment")
 
 
 def test_gold_l2_universal_conclusion_is_fragment(tmp_path: Path):

@@ -484,6 +484,15 @@ a contradiction shows both branches. `answer` is unchanged (`refuted` now carrie
 11. ~~Documentation and status updates.~~ **DONE** — plan, roadmap, implementation
     plan, collection notes, `quality_findings` §G (FOLIO backlog) and `README` are
     current.
+12. **Tier-1 lowering — T1 DONE** (`docs/coverage_ceiling.md` §6–§7,
+    `docs/t1_plan.md`). A conjunctive existential conclusion with a shared witness
+    `∃x (A(x) ∧ B(x))` is a **joint `all` goal**: one witness assignment for every
+    conjunct (`verify._conjunctive_outcome`), the negative check per witness
+    (`resolution.refute_conjunction`), and a merged proof for `explain`. Feature
+    `shared_witness` (`engine/inference.py`), no new flag; the gold parser no longer
+    refuses the shape. FOLIO L2 tier a gold-fed `out_of_fragment` 24→20, gold-fed
+    17→**21/45**, coverage 21→**25/45**, covered 21/25, 0 grounded false proofs.
+    Remaining Tier-1 items (T2–T6) stay open in `docs/coverage_ceiling.md`.
 
 Each milestone lands reviewable on its own; no milestone starts on a red soundness
 gate. Milestone 5 gates 2–4; milestone 3 (Horn path untouched) can proceed while the

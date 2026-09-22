@@ -503,6 +503,16 @@ Recon (§6) показывает, что доминирующие не-Horn фо
 11. ~~Обновления документации и статуса.~~ **СДЕЛАНО** — план, roadmap,
     implementation plan, заметки о коллекциях, `quality_findings` §G (backlog FOLIO)
     и `README` актуальны.
+12. **Tier-1 lowering — T1 СДЕЛАНО** (`docs/coverage_ceiling_ru.md` §6–§7,
+    `docs/t1_plan_ru.md`). Конъюнктивный экзистенциальный вывод с общим свидетелем
+    `∃x (A(x) ∧ B(x))` — **совместная цель `all`**: одна подстановка свидетеля для
+    всех конъюнктов (`verify._conjunctive_outcome`), отрицательная проверка по
+    свидетелю (`resolution.refute_conjunction`) и слитое доказательство для
+    `explain`. Признак `shared_witness` (`engine/inference.py`), нового флага нет;
+    gold-парсер больше не отвергает форму. FOLIO L2 тир a, gold-fed
+    `out_of_fragment` 24→20, gold-fed 17→**21/45**, охват 21→**25/45**, covered 21/25,
+    0 grounded false proofs. Остальные пункты Tier-1 (T2–T6) открыты
+    (`docs/coverage_ceiling_ru.md`).
 
 Каждый milestone ложится отдельно ревьюируемым; ни один не начинается на красном
 soundness-гейте. Milestone 5 гейтит 2–4; milestone 3 (Horn-путь нетронут) может

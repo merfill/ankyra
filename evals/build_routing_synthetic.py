@@ -7,7 +7,7 @@ and expected verdict. Run by ``evals.routing_synthetic``. No LLM, no natural
 language, zero provider variance.
 
 Coverage: every fragment feature (horn, negation, disjunction, existential,
-builtin, compound_goal) and every refusal code (non_horn, compound_goal,
+builtin, compound_goal, shared_witness) and every refusal code (non_horn, compound_goal,
 existential, naf_in_l2, defeasible_with_clausal_fragment), plus controls for the
 A1 policy (the L2 flag selects the clausal procedure even for a Horn structure)
 and the second refusal layer (clausification refuses a builtin).
@@ -159,6 +159,22 @@ def cases() -> list[dict]:
             status="supported",
             kind="yes",
             note="a compound goal requires the clausal procedure",
+        ),
+        _case(
+            "shared-witness-13",
+            "shared_witness",
+            _theory(morphisms=[_is_a("rex", "p"), _is_a("rex", "q")]),
+            _query(
+                _is_a("?x", "p"),
+                goals=[_is_a("?x", "p"), _is_a("?x", "q")],
+                goal_mode="all",
+                answer_type="open",
+            ),
+            fragment=["shared_witness", "compound_goal", "horn"],
+            procedure="clausal",
+            status="supported",
+            kind="binding",
+            note="a conjunctive goal with a shared variable is the shared_witness feature",
         ),
         _case(
             "refuse-non-horn-06",

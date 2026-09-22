@@ -14,6 +14,7 @@ implementation plan), `docs/l2_plan.md` (the L2 implementation plan),
 `docs/folio_ceilings.md` (coverage vs extraction ceilings),
 `docs/folio_extension_plan.md` (staged FOLIO extension, deferred),
 `docs/coverage_ceiling.md` (the coverage ceiling explained, and the Tier-1 plan),
+`docs/t1_plan.md` (Tier-1 item T1: shared-witness existential goal),
 `docs/ar_lsat.md`,
 `docs/gsm8k.md`, `docs/defeasible_reasoning.md`, `docs/task.md`,
 `docs/implementation_plan.md`.
@@ -132,11 +133,13 @@ Every stage is defined by the same six items:
   (97.6%), 0 grounded false proofs**), while FOLIO's L2 live gate is
   **extraction-bound** (26/44; the misses are no-target/out-of-fragment or a universal
   conclusion collapsed to a ground atom, not engine unsoundness). The LLM-free
-  gold-fed diagnostic for L2 (`docs/folio.md` §10) shows the deeper limit is
-  **coverage**: on FOLIO L2 tier a only 21/45 gold formulas are in the committed
+  gold-fed   diagnostic for L2 (`docs/folio.md` §10) shows the deeper limit is
+  **coverage**: on FOLIO L2 tier a only 21/45 gold formulas were in the committed
   fragment, but on those gold-fed (17/21) out-scores text-fed (15/21), pointing at
   Tier-1 lowering rather than extraction — the explained plan is
-  `docs/coverage_ceiling.md`. Full first-order
+  `docs/coverage_ceiling.md`. **Tier-1 T1 (shared-witness `∃x(A(x)∧B(x))`) is done**
+  (`docs/t1_plan.md`): a joint `all` goal with no new flag raised coverage to 25/45,
+  gold-fed to 21/45 (covered 21/25), 0 grounded false proofs. Full first-order
   **unification** is deferred: a prototype diverges on `not_entailed`
   (semi-decidability); the committed collections are finite named domains, where
   grounding is sound and terminating.
@@ -224,7 +227,7 @@ honest `out_of_fragment`, never a guess.
 |---|---|---|---|---|
 | L0 | ProofWriter | Tier D 300 | 0 grounded false proofs; determinate all `proven`; ≥95% | done (297/300 re-run) |
 | L1 | ProntoQA (negation), FOLIO negation subset | ProntoQA tier a/b | same + declared CWA | implemented (engine) + synthetic gate; ProntoQA green and closed |
-| L2 | ProntoQA-OOD (compositional), then FOLIO | ProntoQA-OOD tier a (44), FOLIO L2 tier a (45) | same; FOLIO stratified by construct | implemented; ProntoQA-OOD live 41/42 (0 grounded false proofs), FOLIO live extraction-bound (26/44) |
+| L2 | ProntoQA-OOD (compositional), then FOLIO | ProntoQA-OOD tier a (44), FOLIO L2 tier a (45) | same; FOLIO stratified by construct | implemented; ProntoQA-OOD live 41/42 (0 grounded false proofs), FOLIO live extraction-bound (26/44); Tier-1 T1 (shared-witness ∃, `docs/t1_plan.md`) raises gold-fed coverage to 25/45, 21/45 correct |
 | L3 | AR-LSAT | to build | per-option solver check | planned (separate engine) |
 | L4 | GSM8K | to build | numeric match | low priority |
 | D | defeasible-NLI | to choose | resolved/undecided conflict reported | implemented + synthetic gate |

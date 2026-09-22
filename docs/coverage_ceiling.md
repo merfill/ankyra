@@ -112,7 +112,7 @@ out-of-fragment rows whose *first* blocker is that item.
 
 | # | item | yield | locus | soundness note |
 |---|---|---|---|---|
-| T1 | shared-witness existential goal `∃x (A(x) ∧ B(x))` | 4 | `Query.goals` with one shared binding; `engine/verify.py` | negative of the goal is `∀x ¬(A∧B)` = `¬A ∨ ¬B` for all x; refute per witness |
+| T1 | shared-witness existential goal `∃x (A(x) ∧ B(x))` — **DONE** | 4 | `Query.goals` with one shared binding; `engine/verify.py` | negative of the goal is `∀x ¬(A∧B)` = `¬A ∨ ¬B` for all x; refute per witness |
 | T2 | existential premise with nested disjunction `∃x (A(x) ∧ (B∨C))` | 3 | `Existential` (a disjunctive part) + `engine/clause.py` | Skolemize, emit a disjunctive ground clause over the fresh constant |
 | T3 | universal / conditional / `¬∃` goal form (G3) | 2 | `QuestionStructure` + `Query` target form; `engine/verify.py` | negate the goal, Skolemize, refute (a universal goal is refuted by one witness) |
 | T4 | non-flat compound / conditional goal | 2 | target formula (CNF/DNF over literals), not only flat `all`/`any` | general flat-goal shape; keeps `proven` sound |
@@ -125,13 +125,23 @@ clauses / `(A∨B)∧(¬A∨¬B)`), **2c** multi-variable quantification over fi
 (generalize grounding/witness enumeration). Kept on the list so the fragment is
 declared once, not per-id.
 
+**T1 done.** A conjunctive existential conclusion with a shared witness is now a
+**joint `all` goal**: one witness assignment is enumerated and every conjunct must hold
+under it; the group is `refuted` when the conjunction is unsatisfiable for every
+witness (`engine/verify.py`, `refute_conjunction` in `engine/resolution.py`). FOLIO L2
+tier a gold-fed: `out_of_fragment` **24 → 20**, gold-fed **17 → 21/45**, coverage
+**21 → 25/45**, covered gold-fed **17/21 → 21/25**, **0 grounded false proofs**
+(`docs/t1_plan.md`, `docs/folio_gold_fed.md` §3). The feature is named `shared_witness`
+in the fragment (`docs/fragment_routing.md`), decided by the existing `clausal`
+capability (`ANKYRA_LOGIC`) with no new flag.
+
 ## 7. Order and open decisions
 
-- **Order (proposal).** Start with the *goal-form family* (T1, T3, T4: 8 rows), which
-  is IR-only and carries no new semantics (`D-FE-3`), then **T2** (3 rows), then
-  **T5** (12 rows, the largest but soundness-sensitive, so it waits for its design),
-  then **T6**. Extraction G1–G4 (`docs/quality_findings.md` §G) runs on the rows the
-  method already covers, in parallel, not first.
+- **Order (proposal).** Start with the *goal-form family* (T1 **done**, T3, T4: 8
+  rows), which is IR-only and carries no new semantics (`D-FE-3`), then **T2** (3
+  rows), then **T5** (12 rows, the largest but soundness-sensitive, so it waits for
+  its design), then **T6**. Extraction G1–G4 (`docs/quality_findings.md` §G) runs on
+  the rows the method already covers, in parallel, not first.
 - **Open decision T-D1.** T5's domain: keep the strict refusal, or split the pool into
   individuals vs class names and ground head-only variables over individuals only?
   Needs a soundness argument and a synthetic negative control before any live run.
