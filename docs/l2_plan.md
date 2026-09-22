@@ -493,6 +493,17 @@ a contradiction shows both branches. `answer` is unchanged (`refuted` now carrie
     refuses the shape. FOLIO L2 tier a gold-fed `out_of_fragment` 24→20, gold-fed
     17→**21/45**, coverage 21→**25/45**, covered 21/25, 0 grounded false proofs.
     Remaining Tier-1 items (T2–T6) stay open in `docs/coverage_ceiling.md`.
+13. **Tier-1 lowering — T3 DONE** (`docs/coverage_ceiling.md` §6–§7,
+    `docs/t3_plan.md`). A universal clause goal `∀x (l₁ ∨ … ∨ lₙ)`, subsuming
+    `∀x (A→B)` and `¬∃x φ`, is `Query.goal_mode="forall"`: **supported** by refuting
+    the negated clause at a **fresh constant** (universal generalization; `clausify`
+    gained an `extra_pool` and `verify._universal_outcome`), **refuted** by one named
+    witness (`resolution.refute` per literal, merged for `explain`). Feature
+    `universal_goal` (`engine/inference.py`), no new flag; the gold parser no longer
+    refuses the shape. FOLIO L2 tier a gold-fed `out_of_fragment` 20→18, gold-fed
+    21→**23/45**, coverage 25→**27/45**, covered 23/27, 0 grounded false proofs.
+    `evals.l2_synthetic` 36/36, `evals.routing_synthetic` 14/14. **T-D3 resolved:**
+    one `clausal` capability with per-item named fragments and synthetic gates.
 
 Each milestone lands reviewable on its own; no milestone starts on a red soundness
 gate. Milestone 5 gates 2–4; milestone 3 (Horn path untouched) can proceed while the

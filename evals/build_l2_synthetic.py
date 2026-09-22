@@ -379,6 +379,103 @@ def _shared_witness_cases() -> list[dict]:
     ]
 
 
+def _universal_goal_cases() -> list[dict]:
+    chain = _theory(
+        rules=[
+            _rule([_is_a("?x", "a")], _is_a("?x", "b")),
+            _rule([_is_a("?x", "b")], _is_a("?x", "c")),
+        ]
+    )
+    forall_ac = _query(
+        _is_a("?x", "a", neg=True),
+        goals=[_is_a("?x", "a", neg=True), _is_a("?x", "c")],
+        goal_mode="forall",
+    )
+    forall_ab = _query(
+        _is_a("?x", "a", neg=True),
+        goals=[_is_a("?x", "a", neg=True), _is_a("?x", "b")],
+        goal_mode="forall",
+    )
+    forall_not_p = _query(
+        _is_a("?x", "p", neg=True),
+        goals=[_is_a("?x", "p", neg=True)],
+        goal_mode="forall",
+    )
+    return [
+        _case(
+            "universal-01",
+            "universal_goal",
+            chain,
+            forall_ac,
+            "supported",
+            "yes",
+            note="a universal chain A=>B=>C proves forall A=>C at a fresh constant",
+        ),
+        _case(
+            "universal-02",
+            "universal_goal",
+            _theory(objects=["rex"], morphisms=[_is_a("rex", "a"), _is_a("rex", "b")]),
+            forall_ab,
+            "insufficient",
+            "unknown",
+            note="soundness control: a named individual satisfying A=>B does not prove "
+            "the universal (the named-pool enumeration would say yes)",
+        ),
+        _case(
+            "universal-03",
+            "universal_goal",
+            _theory(objects=["rex"], morphisms=[_is_a("rex", "a"), _is_a("rex", "b", neg=True)]),
+            forall_ab,
+            "refuted",
+            "no",
+            note="a named witness falsifies every literal of the clause",
+        ),
+        _case(
+            "universal-04",
+            "universal_goal",
+            _theory(objects=["rex"], morphisms=[_is_a("rex", "p")]),
+            forall_not_p,
+            "refuted",
+            "no",
+            note="forall ~P (not exists P) is refuted by the named P",
+        ),
+        _case(
+            "universal-05",
+            "universal_goal",
+            _theory(
+                rules=[
+                    _rule([_is_a("?x", "p")], _is_a("?x", "q")),
+                    _rule([_is_a("?x", "p")], _is_a("?x", "q", neg=True)),
+                ]
+            ),
+            forall_not_p,
+            "supported",
+            "yes",
+            note="P=>Q and P=>~Q prove forall ~P at the fresh constant",
+        ),
+        _case(
+            "universal-06",
+            "universal_goal",
+            chain,
+            forall_ac,
+            "insufficient",
+            "unknown",
+            budget=1,
+            note="negative control: an exhausted budget is never a proof",
+        ),
+        _case(
+            "universal-07",
+            "universal_goal",
+            chain,
+            forall_ac,
+            "out_of_fragment",
+            "unknown",
+            logic="off",
+            note="negative control: with L2 off a compound goal is out_of_fragment",
+        ),
+    ]
+
+
 def _budget_cases() -> list[dict]:
     theory = _theory(morphisms=[_is_a("rex", "p")], rules=[_rule([_is_a("?x", "p")], _is_a("?x", "q"))])
     return [
@@ -506,6 +603,7 @@ def cases() -> list[dict]:
         + _existential_cases()
         + _open_goal_cases()
         + _shared_witness_cases()
+        + _universal_goal_cases()
         + _budget_cases()
         + _out_of_fragment_cases()
         + _control_cases()

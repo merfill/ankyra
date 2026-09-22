@@ -513,6 +513,17 @@ Recon (§6) показывает, что доминирующие не-Horn фо
     `out_of_fragment` 24→20, gold-fed 17→**21/45**, охват 21→**25/45**, covered 21/25,
     0 grounded false proofs. Остальные пункты Tier-1 (T2–T6) открыты
     (`docs/coverage_ceiling_ru.md`).
+13. **Tier-1 lowering — T3 СДЕЛАНО** (`docs/coverage_ceiling_ru.md` §6–§7,
+    `docs/t3_plan_ru.md`). Универсальная клаузальная цель `∀x (l₁ ∨ … ∨ lₙ)`,
+    покрывающая `∀x (A→B)` и `¬∃x φ`, — это `Query.goal_mode="forall"`: **supported**
+    опровержением отрицания клаузы на **свежей константе** (обобщение; `clausify`
+    получил `extra_pool`, а `verify._universal_outcome` — проверку), **refuted** одним
+    именованным свидетелем (`resolution.refute` по литералам, слито для `explain`).
+    Признак `universal_goal` (`engine/inference.py`), нового флага нет; gold-парсер
+    больше не отвергает форму. FOLIO L2 тир a, gold-fed `out_of_fragment` 20→18,
+    gold-fed 21→**23/45**, охват 25→**27/45**, covered 23/27, 0 grounded false proofs.
+    `evals.l2_synthetic` 36/36, `evals.routing_synthetic` 14/14. **T-D3 закрыто:** одна
+    capability `clausal` с именованными фрагментами и синтетическими гейтами на пункт.
 
 Каждый milestone ложится отдельно ревьюируемым; ни один не начинается на красном
 soundness-гейте. Milestone 5 гейтит 2–4; milestone 3 (Horn-путь нетронут) может

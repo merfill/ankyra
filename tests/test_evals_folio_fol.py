@@ -103,9 +103,22 @@ def test_existential_conjunction_conclusion_is_a_shared_witness_all_goal():
     assert [goal.object for goal in query.goals] == ["p", "q"]
 
 
-def test_universal_conclusion_is_out_of_fragment():
-    with pytest.raises(FolParseError):
-        to_theory_query(_record(["A(a)"], "∀x (P(x) → Q(x))"))
+def test_universal_clause_conclusion_is_a_forall_goal():
+    _, query = to_theory_query(_record(["A(a)"], "∀x (Pet(x) → ¬Cat(x))"))
+    assert query.goal_mode == "forall"
+    assert query.target is query.goals[0]
+    assert [goal.subject for goal in query.goals] == ["?x", "?x"]
+    assert [goal.object for goal in query.goals] == ["pet", "cat"]
+    assert [goal.negated for goal in query.goals] == [True, True]
+
+
+def test_negated_existential_conclusion_is_a_forall_goal():
+    _, query = to_theory_query(_record(["A(a)"], "¬(∃x (FinancialAid(x)))"))
+    assert query.goal_mode == "forall"
+    assert len(query.goals) == 1
+    assert query.goals[0].subject == "?x"
+    assert query.goals[0].object == "financialaid"
+    assert query.goals[0].negated
 
 
 def test_universal_fact_is_out_of_fragment():
@@ -168,10 +181,19 @@ def test_gold_l2_shared_witness_with_a_nested_premise_is_fragment(tmp_path: Path
     assert result["gold_open"][1].startswith("out_of_fragment")
 
 
-def test_gold_l2_universal_conclusion_is_fragment(tmp_path: Path):
+def test_gold_l2_universal_conclusion_is_covered(tmp_path: Path):
+    # 0045 concludes forall x (Pet(x) -> not Cat(x)); it is not entailed, so the
+    # faithful answer is the honest unknown (T3).
     result = analyze(_committed("l2", "0045"), tmp_path, logic="ground")
-    assert result["fragment"]
-    assert result["gold_open"][1].startswith("out_of_fragment")
+    assert not result["fragment"]
+    assert result["gold_open"][0] == "unknown"
+    assert result["gold_open_ok"]
+
+
+def test_gold_l2_negated_existential_is_refuted(tmp_path: Path):
+    result = analyze(_committed("l2", "0107"), tmp_path, logic="ground")
+    assert result["gold_open"] == ("no", "refuted")
+    assert result["gold_open_ok"] and not result["fragment"]
 
 
 def test_gold_l1_negation_unchanged(tmp_path: Path):

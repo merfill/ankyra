@@ -450,7 +450,7 @@ Source: `docs/quality_findings.md`. Ordered by priority.
     extraction on FOLIO (Phase 2 before Phase 1 in
     `docs/folio_extension_plan.md`). Tests `tests/test_evals_folio_fol.py`; full
     record `docs/folio_gold_fed.md`.
-26. **Coverage ceiling — explained, and the Tier-1 plan — IN PROGRESS (T1 DONE).**
+26. **Coverage ceiling — explained, and the Tier-1 plan — IN PROGRESS (T1, T3 DONE).**
     The gold-fed diagnostic (item 25) shows the FOLIO L2 wall is **coverage**, not
     extraction: 24/45 gold formulas were outside the committed fragment.
     `docs/coverage_ceiling.md` explains the ceiling in plain terms and lays out the
@@ -460,13 +460,21 @@ Source: `docs/quality_findings.md`. Ordered by priority.
     each a named fragment reusing `ANKYRA_LOGIC` with a synthetic gate in
     `evals.l2_synthetic` and a re-measured gold-fed bound. Extraction G1–G4 runs in
     parallel on covered rows. Open: T-D1 (domain for head-only grounding), T-D2
-    (goal-formula vs `goal_mode`), T-D3 (one fragment or three).
+    (goal-formula vs `goal_mode`).
     **T1 DONE** (`docs/t1_plan.md`): a shared-witness existential goal `∃x(A(x)∧B(x))`
     is a joint `all` goal (one witness for every conjunct; `refute_conjunction` for
     the per-witness negative check), feature `shared_witness`, no new flag. Gold-fed
     on FOLIO L2 tier a: `out_of_fragment` 24→20, gold-fed 17→**21/45**, coverage
     21→**25/45**, covered gold-fed 17/21→**21/25**, **0 grounded false proofs**;
     LLM-free gates `evals.l2_synthetic` (29/29) and `evals.routing_synthetic` (13/13).
+    **T3 DONE** (`docs/t3_plan.md`): a universal clause goal `∀x(l₁ ∨ … ∨ lₙ)` (subsuming
+    `∀x(A→B)`, `¬∃x φ`) is `goal_mode="forall"`, **supported** by refuting the negated
+    clause at a *fresh* constant (universal generalization) and **refuted** by one named
+    witness, feature `universal_goal`, no new flag. Gold-fed: `out_of_fragment` 20→18,
+    gold-fed 21→**23/45**, coverage 25→**27/45**, covered gold-fed 21/25→**23/27**,
+    **0 grounded false proofs**; LLM-free gates `evals.l2_synthetic` (36/36) and
+    `evals.routing_synthetic` (14/14). **T-D3 resolved:** one `clausal` capability with
+    per-item named fragments and synthetic gates (the T1 pattern, followed by T3).
 
 ## 9. Reasoning roadmap (main axis)
 

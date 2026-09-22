@@ -177,6 +177,26 @@ def cases() -> list[dict]:
             note="a conjunctive goal with a shared variable is the shared_witness feature",
         ),
         _case(
+            "universal-goal-14",
+            "universal_goal",
+            _theory(
+                rules=[
+                    _rule([_is_a("?x", "a")], _is_a("?x", "b")),
+                    _rule([_is_a("?x", "b")], _is_a("?x", "c")),
+                ]
+            ),
+            _query(
+                _is_a("?x", "a", neg=True),
+                goals=[_is_a("?x", "a", neg=True), _is_a("?x", "c")],
+                goal_mode="forall",
+            ),
+            fragment=["universal_goal", "compound_goal", "horn"],
+            procedure="clausal",
+            status="supported",
+            kind="yes",
+            note="a universal clause goal is the universal_goal feature and requires the clausal procedure",
+        ),
+        _case(
             "refuse-non-horn-06",
             "refusal",
             _disjunctive_theory(),

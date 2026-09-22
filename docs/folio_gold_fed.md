@@ -37,14 +37,17 @@ method-only accuracy.
   | `¬(A ∧ B)` / `¬(A ∨ B)` | De Morgan, pushed to literals |
   | `∃x (φ ∧ …)` premise | `Theory.existentials` |
   | ground / `∧` / `∨` / `∃x P(x)` conclusion | `Query.target`, or `Query.goals` + `goal_mode` |
+  | `∀x (l₁ ∨ … ∨ lₙ)` conclusion (`∀x(A→B)`, `¬∃x φ`) | `Query.goals` + `goal_mode="forall"` (T3) |
 
   A formula outside the committed shape raises `FolParseError` → an honest
-  `out_of_fragment`, never a guessed encoding. Scope limits: universal/conditional
+  `out_of_fragment`, never a guessed encoding. Scope limits: non-clause/conditional
   goals, an existential premise with a nested disjunction, nested quantifiers,
   function terms. A conjunctive existential conclusion with a shared witness
   (`∃x (A(x) ∧ B(x))`) was added to the fragment by Tier-1 item **T1**
   (`docs/t1_plan.md`): it is a joint `all` goal, decided with one witness for all
-  conjuncts.
+  conjuncts. A universal clause conclusion was added by **T3** (`docs/t3_plan.md`):
+  it is a `goal_mode="forall"` goal, supported at a fresh constant and refuted by one
+  named witness.
 - **`evals/analyze_folio.py`** — `--subset {negation,l2}`. The L2 gold pass runs
   under `setting_overrides(LOGIC="ground")` (the L2 clausal procedure); the negation
   pass stays on the Horn/L1 path. An `out_of_fragment` gold verdict is an abstention
@@ -77,30 +80,30 @@ labels need reductio/CWA), as recorded in `docs/folio.md` §9.
 | source | correct |
 |---|---|
 | text-fed (LLM extraction) | 25/45 |
-| gold-fed open (= closed) | 21/45 |
-| gold `out_of_fragment` | 20/45 |
+| gold-fed open (= closed) | 23/45 |
+| gold `out_of_fragment` | 18/45 |
 
-Coverage (rows the committed L2 procedure can express and decide) is **25/45** —
+Coverage (rows the committed L2 procedure can express and decide) is **27/45** —
 Tier-1 item **T1** (`docs/t1_plan.md`) added four shared-witness rows
-(`0033`, `0058`, `0059`, `0069`). On the covered rows:
+(`0033`, `0058`, `0059`, `0069`) and **T3** (`docs/t3_plan.md`) added the
+universal/`¬∃` rows (`0045`, `0107`). On the covered rows:
 
 | label | gold-fed | text-fed |
 |---|---|---|
 | True | 8/9 | 6/9 |
-| False | 6/9 | 4/9 |
-| Uncertain | 7/7 | 7/7 |
-| **total** | **21/25** | **17/25** |
+| False | 7/10 | 4/10 |
+| Uncertain | 8/8 | 7/8 |
+| **total** | **23/27** | **17/27** |
 
 No grounded false proof: every wrong gold answer is an abstention — `insufficient`
 from the resolution budget (G4) or `unsupported`; none is a wrong determinate
 answer.
 
-The 20 remaining out-of-fragment rows:
+The 18 remaining out-of-fragment rows:
 
-- **8 the parser cannot express:** compound/conditional conclusions (nested `∧`/`∨`
+- **6 the parser cannot express:** compound/conditional conclusions (nested `∧`/`∨`
   or an implication as the goal, T4), an existential premise with a nested
-  disjunction (`∃x (A(x) ∧ (B(x) ∨ …))`, T2), a universal `¬∃` conclusion (T3), and
-  one malformed annotation.
+  disjunction (`∃x (A(x) ∧ (B(x) ∨ …))`, T2), and one malformed annotation.
 - **12 the engine refuses as `unsafe_rule`:** a universal disjunctive fact
   `∀x (A(x) ∨ B(x))` grounds a head variable its body never binds
   (`engine/clause.py`, `_groundings`, T5).

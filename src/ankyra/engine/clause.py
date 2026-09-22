@@ -23,6 +23,7 @@ reported ``unsupported``; a head variable not bound by the body is an unsafe rul
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from itertools import product
 
@@ -234,9 +235,18 @@ def _add_existentials(result: Clausification, theory: Theory) -> None:
 
 
 def clausify(
-    theory: Theory, *, assumptions: list[Morphism] | None = None
+    theory: Theory,
+    *,
+    assumptions: list[Morphism] | None = None,
+    extra_pool: Iterable[str] = (),
 ) -> Clausification:
-    """Lower a theory (and the query's Gamma assumptions) into ground clauses."""
+    """Lower a theory (and the query's Gamma assumptions) into ground clauses.
+
+    ``extra_pool`` adds ground terms to the pool the rules are instantiated over. T3
+    uses it to ground a universal clause goal at a fresh constant (universal
+    generalization, ``docs/t3_plan.md`` §4); instantiating a universal rule at one more
+    term is a logical consequence of the theory, so this is sound.
+    """
     result = Clausification()
     for morphism in theory.morphisms:
         result.add(frozenset({literal_of(morphism)}), f"axiom:{label_of(literal_of(morphism))}")
@@ -244,7 +254,7 @@ def clausify(
         result.add(frozenset({literal_of(assumption)}), f"presupposition:{index}")
 
     _add_existentials(result, theory)
-    pool = sorted(set(build_context(theory).obj_pool) | set(result.skolems))
+    pool = sorted(set(build_context(theory).obj_pool) | set(result.skolems) | set(extra_pool))
 
     for index, rule in enumerate(theory.rules, 1):
         if any(canonical_builtin(condition.predicate) for condition in rule.conditions):

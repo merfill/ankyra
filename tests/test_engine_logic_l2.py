@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from ankyra.config.settings import setting_overrides
-from ankyra.core.models import Constraint, Existential, Morphism, Query, Rule, Theory
+from ankyra.core.models import Constraint, Existential, Morphism, Object, Query, Rule, Theory
 from ankyra.engine.answer import build_answer
 from ankyra.engine.explain import build_explanation
 from ankyra.engine.ledger import HypothesisLedger
@@ -133,6 +133,98 @@ def test_l2_shared_witness_refutes_a_universal_negative():
         answer = build_answer(theory, query, verdict, HypothesisLedger(), verdict.status)
     assert verdict.status == "refuted"
     assert answer.kind == "no"
+
+
+def _forall_ab_query() -> Query:
+    return Query(
+        target=_m("is_a", "?x", "a", neg=True),
+        goals=[_m("is_a", "?x", "a", neg=True), _m("is_a", "?x", "b")],
+        goal_mode="forall",
+    )
+
+
+def test_l2_universal_goal_supported_by_a_fresh_constant():
+    theory = Theory(
+        rules=[
+            _rule([_m("is_a", "?x", "a")], _m("is_a", "?x", "b")),
+            _rule([_m("is_a", "?x", "b")], _m("is_a", "?x", "c")),
+        ]
+    )
+    query = Query(
+        target=_m("is_a", "?x", "a", neg=True),
+        goals=[_m("is_a", "?x", "a", neg=True), _m("is_a", "?x", "c")],
+        goal_mode="forall",
+    )
+    with setting_overrides(LOGIC="ground"):
+        verdict = verify(theory, query)
+        answer = build_answer(theory, query, verdict, HypothesisLedger(), verdict.status)
+        explanation = build_explanation(theory, query, verdict, HypothesisLedger())
+    assert verdict.status == "supported"
+    assert answer.kind == "yes" and answer.strength == "proven"
+    assert explanation.steps and explanation.goal.startswith("∀")
+
+
+def test_l2_universal_goal_is_not_proved_by_a_named_witness():
+    # Soundness control: A(rex) and B(rex) do not prove forall x (A(x) -> B(x)),
+    # which the named-pool enumeration would wrongly accept.
+    theory = Theory(
+        objects=[Object(id="rex")],
+        morphisms=[_m("is_a", "rex", "a"), _m("is_a", "rex", "b")],
+    )
+    with setting_overrides(LOGIC="ground"):
+        verdict = verify(theory, _forall_ab_query())
+    assert verdict.status == "insufficient"
+
+
+def test_l2_universal_goal_refuted_by_a_named_witness():
+    theory = Theory(
+        objects=[Object(id="rex")],
+        morphisms=[_m("is_a", "rex", "a"), _m("is_a", "rex", "b", neg=True)],
+    )
+    query = _forall_ab_query()
+    with setting_overrides(LOGIC="ground"):
+        verdict = verify(theory, query)
+        answer = build_answer(theory, query, verdict, HypothesisLedger(), verdict.status)
+    assert verdict.status == "refuted"
+    assert answer.kind == "no" and answer.strength == "proven"
+
+
+def test_l2_negated_existential_is_refuted():
+    theory = Theory(objects=[Object(id="rex")], morphisms=[_m("is_a", "rex", "p")])
+    query = Query(
+        target=_m("is_a", "?x", "p", neg=True),
+        goals=[_m("is_a", "?x", "p", neg=True)],
+        goal_mode="forall",
+    )
+    with setting_overrides(LOGIC="ground"):
+        verdict = verify(theory, query)
+    assert verdict.status == "refuted"
+
+
+def test_l2_universal_goal_budget_is_insufficient():
+    theory = Theory(
+        rules=[
+            _rule([_m("is_a", "?x", "a")], _m("is_a", "?x", "b")),
+            _rule([_m("is_a", "?x", "b")], _m("is_a", "?x", "c")),
+        ]
+    )
+    query = Query(
+        target=_m("is_a", "?x", "a", neg=True),
+        goals=[_m("is_a", "?x", "a", neg=True), _m("is_a", "?x", "c")],
+        goal_mode="forall",
+    )
+    with setting_overrides(LOGIC="ground", LOGIC_BUDGET=1):
+        verdict = verify(theory, query)
+    assert verdict.status == "insufficient"
+    assert any(gap.startswith("logic_budget:") for gap in verdict.gaps)
+
+
+def test_l2_universal_goal_is_out_of_fragment_without_logic():
+    theory = Theory(rules=[_rule([_m("is_a", "?x", "a")], _m("is_a", "?x", "b"))])
+    with setting_overrides(LOGIC="off"):
+        verdict = verify(theory, _forall_ab_query())
+    assert verdict.status == "out_of_fragment"
+    assert "out_of_fragment:compound_goal" in verdict.gaps
 
 
 def test_l2_budget_is_insufficient_with_a_gap():

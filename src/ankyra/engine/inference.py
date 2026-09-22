@@ -33,6 +33,7 @@ FragmentFeature = Literal[
     "builtin",
     "compound_goal",
     "shared_witness",
+    "universal_goal",
 ]
 
 # The features whose presence makes the clausal (L2) procedure the required one.
@@ -91,6 +92,11 @@ def _has_shared_witness(query: Query) -> bool:
     return any(is_var(goal.subject) or is_var(goal.object) for goal in query.goals)
 
 
+def _has_universal_goal(query: Query) -> bool:
+    """True when the question is a universally quantified clause goal (T3)."""
+    return query.goal_mode == "forall"
+
+
 def _has_builtin(theory: Theory) -> bool:
     from ankyra.engine.builtins import is_builtin
 
@@ -123,6 +129,8 @@ def _fragment(theory: Theory, query: Query) -> frozenset[str]:
         features.add("compound_goal")
     if _has_shared_witness(query):
         features.add("shared_witness")
+    if _has_universal_goal(query):
+        features.add("universal_goal")
     return frozenset(features)
 
 

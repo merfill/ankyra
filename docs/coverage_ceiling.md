@@ -15,7 +15,8 @@ Canonical language: English; Russian mirror: `docs/coverage_ceiling_ru.md`.
 Related: `docs/folio_gold_fed.md` (the measurement this plan follows),
 `docs/folio_ceilings.md` (the ceiling model), `docs/folio_extension_plan.md`
 (the staged extension plan and decisions `D-FE-1`…`D-FE-7`), `docs/folio.md`
-(§9–§10), `docs/l2_plan.md` (the L2 procedure Tier 1 extends),
+(§9–§10), `docs/l2_plan.md` (the L2 procedure Tier 1 extends), `docs/t1_plan.md`
+(the shared-witness goal), `docs/t3_plan.md` (the universal/`¬∃` goal form),
 `docs/fragment_routing.md` (how a named fragment is declared),
 `docs/quality_findings.md` §G (G1–G4), `docs/implementation_plan.md` §8–§10,
 `docs/reasoning_roadmap.md`.
@@ -46,8 +47,9 @@ its logic. This is a deliberate choice: a silent drop would be a lie.
 
 ## 3. The FOLIO-L2 coverage wall, concretely
 
-On the committed L2 tier a (45 gold problems), **24/45 formulas are outside the
-committed fragment**. They fall into two families.
+On the committed L2 tier a (45 gold problems), **24/45 formulas were outside the
+committed fragment** when this plan was written (18/45 after Tier-1 T1 and T3, §6).
+They fall into two families.
 
 **(a) The engine refuses — 12 rows.** They all contain the same shape, a *universal
 disjunctive fact*:
@@ -70,9 +72,9 @@ from the IR:
 
 | sub-case | rows | example |
 |---|---|---|
-| shared-witness existential goal | 4 | `∃x (CityIn(butte, x) ∧ CityIn(pierre, x))` — *one* `x` satisfies both; splitting into two independent questions is weaker and wrong |
+| shared-witness existential goal — **T1 done** | 4 | `∃x (CityIn(butte, x) ∧ CityIn(pierre, x))` — *one* `x` satisfies both; splitting into two independent questions is weaker and wrong |
 | existential premise with a nested disjunction | 3 | `∃x (GetMonkeypox(x) ∧ (Fever(x) ∨ Headache(x) ∨ …))` |
-| universal / `¬∃` goal | 2 | `∀x (Pet(x) → ¬Cat(x))` ("no pets are cats"), `¬∃x (FinancialAid(x))` |
+| universal / `¬∃` goal — **T3 done** | 2 | `∀x (Pet(x) → ¬Cat(x))` ("no pets are cats"), `¬∃x (FinancialAid(x))` |
 | non-flat compound/conditional goal | 2 | `Cute(rock) ∧ Still(rock) → Turtle(rock) ∧ Skittish(rock)` (a conjunction of clauses, not flat `∧`/`∨`) |
 | malformed annotation | 1 | a stray `)` in the dataset — not our bug |
 
@@ -90,14 +92,15 @@ From `docs/folio_gold_fed.md` (FOLIO L2 tier a, 45):
 | verdict source | correct |
 |---|---|
 | text-fed (live LLM extraction) | 25/45 |
-| gold-fed (perfect formulas, L2 procedure) | 17/45 |
-| gold `out_of_fragment` | 24/45 |
+| gold-fed (perfect formulas, L2 procedure) | 23/45 |
+| gold `out_of_fragment` | 18/45 |
 
 `gold-fed < text-fed` is **not a paradox**. The live path sometimes "wins" hard rows
 by *simplifying the hard construct away* and answering — occasionally correctly,
-three times wrongly. The gold path refuses to guess on 24 rows. Restricted to the
-**21 rows the committed L2 procedure covers, gold-fed is 17/21 versus text-fed
-15/21**: wherever the engine *can* decide, it already beats the translator.
+three times wrongly. The gold path refuses to guess on 18 rows. Restricted to the
+**27 rows the committed L2 procedure covers, gold-fed is 23/27 versus text-fed
+17/27**: wherever the engine *can* decide, it already beats the translator. (Numbers
+after Tier-1 T1 and T3, `docs/t3_plan.md` §13.)
 
 So the dominant wall is **coverage**, not language.
 
@@ -114,7 +117,7 @@ out-of-fragment rows whose *first* blocker is that item.
 |---|---|---|---|---|
 | T1 | shared-witness existential goal `∃x (A(x) ∧ B(x))` — **DONE** | 4 | `Query.goals` with one shared binding; `engine/verify.py` | negative of the goal is `∀x ¬(A∧B)` = `¬A ∨ ¬B` for all x; refute per witness |
 | T2 | existential premise with nested disjunction `∃x (A(x) ∧ (B∨C))` | 3 | `Existential` (a disjunctive part) + `engine/clause.py` | Skolemize, emit a disjunctive ground clause over the fresh constant |
-| T3 | universal / conditional / `¬∃` goal form (G3) | 2 | `QuestionStructure` + `Query` target form; `engine/verify.py` | negate the goal, Skolemize, refute (a universal goal is refuted by one witness) |
+| T3 | universal / conditional / `¬∃` goal form (G3) — **DONE** | 2 | `Query.goal_mode="forall"` + `engine/verify.py` | supported at a *fresh* constant (universal generalization); refuted by one named witness |
 | T4 | non-flat compound / conditional goal | 2 | target formula (CNF/DNF over literals), not only flat `all`/`any` | general flat-goal shape; keeps `proven` sound |
 | T5 | head-only grounding `∀x (A(x) ∨ B(x))` | 12 | `engine/clause.py:_groundings` | **sensitive**: separate the individual domain from class names before instantiating head-only variables, or the extra instances can fabricate proofs |
 | T6 | G4 resolution budget / unit propagation | 2 covered (+ enables others) | `engine/resolution.py` | exhaustion stays an honest `insufficient` |
@@ -135,10 +138,22 @@ tier a gold-fed: `out_of_fragment` **24 → 20**, gold-fed **17 → 21/45**, cov
 in the fragment (`docs/fragment_routing.md`), decided by the existing `clausal`
 capability (`ANKYRA_LOGIC`) with no new flag.
 
+**T3 done.** A universal clause goal `∀x (l₁ ∨ … ∨ lₙ)` — subsuming `∀x (A→B)` and
+`¬∃x φ` — is now decided: **supported** by assuming the negated clause at a *fresh*
+constant and refuting it (universal generalization), **refuted** by one named witness
+that falsifies every literal (`engine/verify.py`, `_universal_outcome`;
+`Query.goal_mode="forall"`). The fresh constant is what keeps the positive direction
+sound: proving `∀` over the named pool alone would accept the non-entailed
+`A(rex) ∧ B(rex) ⊢ ∀x(A→B)`. FOLIO L2 tier a gold-fed: `out_of_fragment` **20 → 18**,
+gold-fed **21 → 23/45**, coverage **25 → 27/45**, covered gold-fed **21/25 → 23/27**,
+**0 grounded false proofs** (`docs/t3_plan.md`, `docs/folio_gold_fed.md` §3). The feature
+is named `universal_goal` in the fragment, decided by the existing `clausal` capability
+(`ANKYRA_LOGIC`) with no new flag.
+
 ## 7. Order and open decisions
 
-- **Order (proposal).** Start with the *goal-form family* (T1 **done**, T3, T4: 8
-  rows), which is IR-only and carries no new semantics (`D-FE-3`), then **T2** (3
+- **Order (proposal).** Start with the *goal-form family* (T1 **done**, T3 **done**,
+  T4: 8 rows), which is IR-only and carries no new semantics (`D-FE-3`), then **T2** (3
   rows), then **T5** (12 rows, the largest but soundness-sensitive, so it waits for
   its design), then **T6**. Extraction G1–G4 (`docs/quality_findings.md` §G) runs on
   the rows the method already covers, in parallel, not first.
@@ -147,8 +162,9 @@ capability (`ANKYRA_LOGIC`) with no new flag.
   Needs a soundness argument and a synthetic negative control before any live run.
 - **Open decision T-D2.** T4's goal form: a general goal *formula* (CNF/DNF) versus
   more `goal_mode` values. The former is more expressive but touches `Query` broadly.
-- **Open decision T-D3.** Whether T1/T2/T3 land as one fragment or three, given they
-  all extend `ANKYRA_LOGIC` (a single flag) but each needs its own synthetic gate.
+- **Open decision T-D3 (resolved).** One `clausal` capability with per-item named
+  fragments and synthetic gates — the pattern set by T1 and followed by T3
+  (`docs/t1_plan.md` T1-D3, `docs/t3_plan.md` T3-D3).
 
 ## 8. Guardrails
 

@@ -8,11 +8,12 @@ the L1/L2 models, so the number isolates the method from extraction errors
 
 The parser covers the reachable L2 shape — universal/implication formulas, ``∧``/``∨``,
 negation (pushed to literals by NNF), conjunctive existential premises (``∃x (φ ∧ …)``),
-ground or open goals, flat compound goals and a conjunctive existential conclusion with a
-shared witness (``∃x (A(x) ∧ B(x))``, decided jointly, ``docs/t1_plan.md``). A formula
-outside the committed fragment raises :class:`FolParseError` (an honest
-``out_of_fragment``), never a guessed encoding: universal/conditional goals, nested
-quantifiers and function terms stay outside L2.
+ground or open goals, flat compound goals, a conjunctive existential conclusion with a
+shared witness (``∃x (A(x) ∧ B(x))``, decided jointly, ``docs/t1_plan.md``) and a
+universal clause conclusion (``∀x (l₁ ∨ … ∨ lₙ)``, which subsumes ``∀x (A→B)`` and
+``¬∃x φ``, ``docs/t3_plan.md``). A formula outside the committed fragment raises
+:class:`FolParseError` (an honest ``out_of_fragment``), never a guessed encoding:
+non-clause/conditional goals, nested quantifiers and function terms stay outside L2.
 """
 
 from __future__ import annotations
@@ -326,12 +327,36 @@ def _existential_premise(formula) -> tuple[list, list, list[Existential]]:
     return [], [], [Existential(variable=variable, atoms=atoms)]
 
 
+def _universal_conclusion(formula):
+    """A universal clause goal ``∀x (l₁ ∨ … ∨ lₙ)`` (T3) → ``goals`` + ``"forall"``.
+
+    ``formula`` is in negation normal form. The body must be a flat disjunction of
+    literals over exactly one bound variable; nested quantifiers and non-clause bodies
+    stay ``out_of_fragment``.
+    """
+    variable = f"?{formula[1]}"
+    literals = _head_literals(formula[2])
+    if literals is None:
+        raise FolParseError("universal conclusion is not a flat clause")
+    goals = [_morphism(literal) for literal in literals]
+    free = {
+        term
+        for goal in goals
+        for term in (goal.subject, goal.object)
+        if term and term.startswith("?")
+    }
+    if free != {variable}:
+        raise FolParseError("universal conclusion must bind exactly one variable")
+    return goals[0], goals, "forall"
+
+
 def _conclusion(formula):
     """Return ``(target, goals, goal_mode)`` for the annotated conclusion."""
-    if formula[0] == "forall":
-        raise FolParseError("universal conclusion has no goal form (L2 target form pending)")
-    if formula[0] == "exists":
-        body = _nnf(formula[2])
+    normal = _nnf(formula)
+    if normal[0] == "forall":
+        return _universal_conclusion(normal)
+    if normal[0] == "exists":
+        body = normal[2]
         if _is_literal(body):
             literal = body
             target = _morphism(literal)
@@ -343,7 +368,6 @@ def _conclusion(formula):
             goals = [_morphism(literal) for literal in body[1]]
             return goals[0], goals, "any"
         raise FolParseError("existential conclusion is not a flat literal combination")
-    normal = _nnf(formula)
     if _is_literal(normal):
         target = _morphism(normal)
         return target, [], "single"

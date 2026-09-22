@@ -307,6 +307,15 @@ def _witness_pool(theory: Theory, clausification) -> list[str]:
     return sorted(set(build_context(theory).obj_pool) | set(clausification.skolems))
 
 
+def _fresh_constant(theory: Theory) -> str:
+    """A constant that occurs nowhere in the theory (universal generalization, T3)."""
+    taken = set(build_context(theory).obj_pool)
+    index = 0
+    while f"uf{index}" in taken:
+        index += 1
+    return f"uf{index}"
+
+
 def _goal_outcome(clausification, goal: Morphism, pool: list[str]):
     """Outcome of a ground goal, or of an open goal by witness enumeration.
 
@@ -418,9 +427,55 @@ def _conjunctive_outcome(
     return "unknown", {}, None, None
 
 
+def _universal_outcome(
+    clausification, goals: list[Morphism], pool: list[str], fresh: str, budget: int
+):
+    """Joint decision of a universal clause goal ``∀x (l₁ ∨ … ∨ lₙ)`` (T3).
+
+    Supported when the negated clause, assumed at a fresh constant, is refutable
+    (universal generalization over ``fresh``); refuted when one named witness falsifies
+    every literal (``∃x ⋀¬lᵢ``); ``budget`` on exhaustion; else ``unknown``. Returns
+    ``(outcome, target_result, complement_result, binding)``.
+    """
+    variables = sorted(
+        {term for goal in goals for term in (goal.subject, goal.object) if is_var(term)}
+    )
+    fresh_subst = {variable: fresh for variable in variables}
+    units = [negate(literal_of(_ground_goal(goal, fresh_subst))) for goal in goals]
+    result = refute_conjunction(clausification, units, budget=budget)
+    if result.status == "entailed":
+        return "supported", result, None, {}
+    any_budget = result.status == "budget"
+
+    for combo in product(pool or [""], repeat=len(variables)):
+        subst = dict(zip(variables, combo))
+        grounded = [_ground_goal(goal, subst) for goal in goals]
+        results = [
+            refute(clausification, negate(literal_of(goal)), budget=budget)
+            for goal in grounded
+        ]
+        if any(item.status == "budget" for item in results):
+            any_budget = True
+            continue
+        if all(item.status == "entailed" for item in results):
+            merged = MergedProof(parts=[item.proof for item in results if item.proof])
+            complement = ProverResult("entailed", merged, merged.steps, budget)
+            return "refuted", None, complement, {}
+    if any_budget:
+        return "budget", None, None, {}
+    return "unknown", None, None, {}
+
+
 def _l2_status(mode: str, kinds: list[str]) -> str:
     if "contradiction" in kinds:
         return "contradiction"
+    if mode == "forall":
+        kind = kinds[0] if kinds else "unknown"
+        return {
+            "supported": "supported",
+            "refuted": "refuted",
+            "budget": "insufficient",
+        }.get(kind, "insufficient")
     if mode == "all":
         if kinds and all(kind == "supported" for kind in kinds):
             return "supported"
@@ -484,7 +539,7 @@ def _verify_l2(theory: Theory, query: Query, ctx) -> Verdict:
             gaps=[f"out_of_fragment:{item}" for item in clausification.unsupported],
             shelf="refused",
         )
-    mode = query.goal_mode if query.goal_mode in {"all", "any"} else "single"
+    mode = query.goal_mode if query.goal_mode in {"all", "any", "forall"} else "single"
     status = _l2_status(mode, [outcome for _, outcome, _, _, _ in outcomes])
     gaps: list[str] = []
     if any(outcome == "budget" for _, outcome, _, _, _ in outcomes):
@@ -498,7 +553,7 @@ def _verify_l2(theory: Theory, query: Query, ctx) -> Verdict:
         if outcome == "supported" and binding:
             bindings.update(binding)
             break
-    if status == "supported" and mode == "single":
+    if status == "supported" and mode in {"single", "forall"}:
         target_result = outcomes[0][2]
         unused = _unused_l2(theory, query, target_result.proof if target_result else None)
         if unused:
@@ -517,11 +572,21 @@ def l2_outcomes(theory: Theory, query: Query):
 
     Returns ``(clausification, [(goal, outcome, target_result, complement_result, binding)])``.
     """
-    clausification = clausify(theory, assumptions=query.conditions)
+    fresh = _fresh_constant(theory) if query.goal_mode == "forall" else None
+    clausification = clausify(
+        theory,
+        assumptions=query.conditions,
+        extra_pool=[fresh] if fresh is not None else (),
+    )
     if clausification.unsupported:
         return clausification, []
     pool = _witness_pool(theory, clausification)
     goals = _goals_of(query)
+    if fresh is not None and query.goals:
+        outcome, target, complement, binding = _universal_outcome(
+            clausification, goals, pool, fresh, _logic_budget()
+        )
+        return clausification, [(goals[0], outcome, target, complement, binding)]
     if query.goal_mode == "all" and query.goals:
         outcome, binding, target, complement = _conjunctive_outcome(
             clausification, goals, pool, _logic_budget()

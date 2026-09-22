@@ -15,6 +15,7 @@ implementation plan), `docs/l2_plan.md` (the L2 implementation plan),
 `docs/folio_extension_plan.md` (staged FOLIO extension, deferred),
 `docs/coverage_ceiling.md` (the coverage ceiling explained, and the Tier-1 plan),
 `docs/t1_plan.md` (Tier-1 item T1: shared-witness existential goal),
+`docs/t3_plan.md` (Tier-1 item T3: universal/`¬∃` goal form),
 `docs/ar_lsat.md`,
 `docs/gsm8k.md`, `docs/defeasible_reasoning.md`, `docs/task.md`,
 `docs/implementation_plan.md`.
@@ -128,7 +129,7 @@ Every stage is defined by the same six items:
 - **Status:** engine implemented behind `ANKYRA_LOGIC` — ground clause IR + bounded
   set-of-support resolution, disjunction/case split, finite-domain quantifiers
   (Skolemization + witness enumeration), compound/open goals, and the `Inference`
-  protocol seam. LLM-free synthetic gate `evals.l2_synthetic` is green (**23/23**, 0
+  protocol seam. LLM-free synthetic gate `evals.l2_synthetic` is green (**36/36**, 0
   grounded false proofs); the **ProntoQA-OOD tier-a live gate is green** (**41/42
   (97.6%), 0 grounded false proofs**), while FOLIO's L2 live gate is
   **extraction-bound** (26/44; the misses are no-target/out-of-fragment or a universal
@@ -139,8 +140,12 @@ Every stage is defined by the same six items:
   Tier-1 lowering rather than extraction — the explained plan is
   `docs/coverage_ceiling.md`. **Tier-1 T1 (shared-witness `∃x(A(x)∧B(x))`) is done**
   (`docs/t1_plan.md`): a joint `all` goal with no new flag raised coverage to 25/45,
-  gold-fed to 21/45 (covered 21/25), 0 grounded false proofs. Full first-order
-  **unification** is deferred: a prototype diverges on `not_entailed`
+  gold-fed to 21/45 (covered 21/25), 0 grounded false proofs. **Tier-1 T3 (universal
+  clause goal `∀x(l₁ ∨ … ∨ lₙ)`, subsuming `∀x(A→B)` and `¬∃x φ`) is done**
+  (`docs/t3_plan.md`): `goal_mode="forall"`, supported at a *fresh* constant and
+  refuted by one named witness, raised coverage to 27/45 and gold-fed to 23/45
+  (covered 23/27), 0 grounded false proofs; `evals.l2_synthetic` is now 36/36. Full
+  first-order **unification** is deferred: a prototype diverges on `not_entailed`
   (semi-decidability); the committed collections are finite named domains, where
   grounding is sound and terminating.
 
@@ -227,7 +232,7 @@ honest `out_of_fragment`, never a guess.
 |---|---|---|---|---|
 | L0 | ProofWriter | Tier D 300 | 0 grounded false proofs; determinate all `proven`; ≥95% | done (297/300 re-run) |
 | L1 | ProntoQA (negation), FOLIO negation subset | ProntoQA tier a/b | same + declared CWA | implemented (engine) + synthetic gate; ProntoQA green and closed |
-| L2 | ProntoQA-OOD (compositional), then FOLIO | ProntoQA-OOD tier a (44), FOLIO L2 tier a (45) | same; FOLIO stratified by construct | implemented; ProntoQA-OOD live 41/42 (0 grounded false proofs), FOLIO live extraction-bound (26/44); Tier-1 T1 (shared-witness ∃, `docs/t1_plan.md`) raises gold-fed coverage to 25/45, 21/45 correct |
+| L2 | ProntoQA-OOD (compositional), then FOLIO | ProntoQA-OOD tier a (44), FOLIO L2 tier a (45) | same; FOLIO stratified by construct | implemented; ProntoQA-OOD live 41/42 (0 grounded false proofs), FOLIO live extraction-bound (26/44); Tier-1 T1 (shared-witness ∃) and T3 (universal clause goal) raise gold-fed coverage to 27/45, 23/45 correct (`docs/t1_plan.md`, `docs/t3_plan.md`) |
 | L3 | AR-LSAT | to build | per-option solver check | planned (separate engine) |
 | L4 | GSM8K | to build | numeric match | low priority |
 | D | defeasible-NLI | to choose | resolved/undecided conflict reported | implemented + synthetic gate |

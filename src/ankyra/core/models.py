@@ -20,9 +20,11 @@ RuleStrength = Literal["strict", "defeasible"]
 WorldAssumption = Literal["open", "closed"]
 # How a decomposed question goal is read (L2, D-L2-7): ``single`` is the ordinary
 # one-target query; ``all`` requires every goal (a conjunctive question); ``any``
-# requires some goal (a disjunctive question). The goals are the decomposed
-# conjuncts/disjuncts; ``Query.target`` still names the first one for echo/answer use.
-GoalMode = Literal["single", "all", "any"]
+# requires some goal (a disjunctive question); ``forall`` is a universally quantified
+# clause goal "∀x (l₁ ∨ … ∨ lₙ)" (T3), whose goals are the clause literals. The goals
+# are the decomposed conjuncts/disjuncts/literals; ``Query.target`` still names the
+# first one for echo/answer use.
+GoalMode = Literal["single", "all", "any", "forall"]
 ConstraintKind = Literal["disjoint"]
 HypothesisKind = Literal["rule", "fact"]
 AnswerType = Literal["yes_no", "open", "instruction"]
@@ -249,7 +251,8 @@ class Query(BaseModel):
     )
     goal_mode: GoalMode = Field(
         default="single",
-        description="single | all (conjunctive) | any (disjunctive) over ``goals``.",
+        description="single | all (conjunctive) | any (disjunctive) | forall (a "
+        "universal clause over ``goals``).",
     )
     variables: dict[str, str] = Field(default_factory=dict)
     answer_type: AnswerType = Field(default="yes_no")

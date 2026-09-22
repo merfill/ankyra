@@ -15,6 +15,7 @@ from ankyra.core.models import (
     ExplanationStep,
     Fact,
     FactKey,
+    Morphism,
     Query,
     Theory,
     Verdict,
@@ -401,6 +402,25 @@ def _l2_steps(proof, theory: Theory) -> list[ExplanationStep]:
     return steps
 
 
+def _goal_label(query: Query, goal: Morphism, *, negated: bool = False) -> str:
+    """Readable goal label; a universal clause goal renders ``∀?x(l₁ OR …)`` (T3)."""
+    if query.goal_mode == "forall" and query.goals:
+        variables = sorted(
+            {
+                term
+                for literal in query.goals
+                for term in (literal.subject, literal.object)
+                if term and term.startswith("?")
+            }
+        )
+        literals = " OR ".join(render_atom(literal) for literal in query.goals)
+        label = f"∀{','.join(variables)}({literals})"
+        return f"¬{label}" if negated else label
+    if negated:
+        goal = goal.model_copy(update={"negated": not goal.negated})
+    return render_atom(goal)
+
+
 def _l2_explanation(theory: Theory, query: Query, verdict: Verdict) -> Explanation:
     """Build the explanation of an L2 verdict from the resolution proofs."""
     _, outcomes = l2_outcomes(theory, query)
@@ -427,7 +447,7 @@ def _l2_explanation(theory: Theory, query: Query, verdict: Verdict) -> Explanati
         for goal, outcome, target, _, _ in outcomes:
             if outcome == "supported" and target is not None and target.proof is not None:
                 return Explanation(
-                    goal=render_atom(goal),
+                    goal=_goal_label(query, goal),
                     binding=binding,
                     steps=_l2_steps(target.proof, theory),
                 )
@@ -435,9 +455,8 @@ def _l2_explanation(theory: Theory, query: Query, verdict: Verdict) -> Explanati
     if verdict.status == "refuted":
         for goal, outcome, _, complement, _ in outcomes:
             if outcome in {"refuted", "contradiction"} and complement is not None and complement.proof is not None:
-                negated_goal = goal.model_copy(update={"negated": not goal.negated})
                 return Explanation(
-                    goal=render_atom(negated_goal),
+                    goal=_goal_label(query, goal, negated=True),
                     binding=binding,
                     steps=_l2_steps(complement.proof, theory),
                 )

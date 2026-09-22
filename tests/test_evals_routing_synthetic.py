@@ -16,6 +16,7 @@ _FEATURES = {
     "builtin",
     "compound_goal",
     "shared_witness",
+    "universal_goal",
 }
 _REFUSALS = {
     "out_of_fragment:non_horn",
