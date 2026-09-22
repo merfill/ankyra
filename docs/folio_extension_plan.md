@@ -164,8 +164,10 @@ LLM-free. On tier a (45), at that time coverage was 21/45 and on the covered row
 gold-fed (17/21) led text-fed (15/21) — the limit is the **method**, so Phase 2
 (Tier-1 lowering) is justified ahead of Phase 1 (extraction). **Tier-1 complete**
 (T1/T3/T5/T4/T2/T6): coverage 44/45, gold-fed 42/45, only the malformed `0109` left
-`out_of_fragment`, 0 grounded false proofs (`docs/coverage_ceiling.md` §6–§7). The
-remaining phases (Phase 1 extraction G1–G4, Tier 2 equality/functions) are still
+`out_of_fragment`, 0 grounded false proofs (`docs/coverage_ceiling.md` §6–§7).
+**Phase 1 (extraction G1–G4) is now complete** — `docs/g1_g4_plan.md`: text-fed
+29–31/45, 0 grounded false proofs; the residual wall is G2 (missing premises), with
+`G-D2` measured non-selective and `A′` deferred. Tier 2 (equality/functions) remains
 draft and deferred.
 
 ## 12. References

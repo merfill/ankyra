@@ -458,7 +458,9 @@ declines 15 (`unknown`/`out_of_fragment`), and is wrong on 2 — both from extra
    undecided/out-of-fragment, not by engine unsoundness. Concretely: keep rules
    range-restricted (G1), retain all premises (G2), express universal/conditional/
    negated-existential conclusions as targets instead of ground atoms (G3), and speed
-   up ground saturation (G4). This is the highest-value extraction work now.
+   up ground saturation (G4). This was the highest-value extraction work; it is now
+   carried out and closed in `docs/g1_g4_plan.md` (Phase 1 extraction, complete:
+   text-fed 29–31/45, 0 grounded false proofs; the residual wall is G2).
 
 ## Results summary
 

@@ -173,6 +173,48 @@ def test_conjunctive_conclusion_splits_into_one_rule_per_conjunct():
     assert all(rule.is_horn for rule in theory.rules)
 
 
+def test_head_only_universal_disjunction_is_a_conditionless_clause():
+    theory = _theory(
+        source_text="Every thing is a or b.",
+        rules=[
+            {
+                "consequents": [
+                    {"predicate": "is_a", "subject": "?x", "object": "a"},
+                    {"predicate": "is_a", "subject": "?x", "object": "b"},
+                ],
+                "quote": "Every thing is a or b.",
+            }
+        ],
+    )
+    assert len(theory.rules) == 1
+    rule = theory.rules[0]
+    assert rule.conditions == []
+    assert not rule.is_horn
+    assert {literal.subject for literal in rule.head} == {"?x"}
+
+
+def test_head_only_disjunction_is_decided_over_individuals():
+    from ankyra.config.settings import setting_overrides
+
+    theory = _theory(
+        source_text="Every thing is a or b.",
+        facts=[{"predicate": "is_a", "subject": "rex", "object": "a", "negated": True}],
+        rules=[
+            {
+                "consequents": [
+                    {"predicate": "is_a", "subject": "?x", "object": "a"},
+                    {"predicate": "is_a", "subject": "?x", "object": "b"},
+                ],
+                "quote": "Every thing is a or b.",
+            }
+        ],
+    )
+    query = Query(target=Morphism(predicate="is_a", subject="rex", object="b"))
+    with setting_overrides(LOGIC="ground"):
+        verdict = verify(theory, query)
+    assert verdict.status == "supported"
+
+
 def test_existential_premise_unrolls_and_is_carried_by_enrichment():
     from ankyra.build.enrich import enrich_theory
 

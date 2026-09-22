@@ -144,3 +144,107 @@ def test_build_query_strips_domain_conditions():
     )
     query = build_query(question, domain=["person"])
     assert [cond.predicate for cond in query.conditions] == ["nice"]
+
+
+def test_phase0_universal_clause_goal_is_decided():
+    from ankyra.config.settings import setting_overrides
+
+    structure = ProblemStructure.model_validate(
+        {
+            "source_text": "All dogs are pets. No pet is wild.",
+            "rules": [
+                {
+                    "antecedent": [{"predicate": "is_a", "subject": "?x", "object": "dog"}],
+                    "consequent": {"predicate": "is_a", "subject": "?x", "object": "pet"},
+                    "quote": "All dogs are pets",
+                },
+                {
+                    "antecedent": [{"predicate": "is_a", "subject": "?x", "object": "pet"}],
+                    "consequent": {
+                        "predicate": "is_a",
+                        "subject": "?x",
+                        "object": "wild",
+                        "negated": True,
+                    },
+                    "quote": "No pet is wild",
+                },
+            ],
+        }
+    )
+    theory = build_theory(structure)
+    question = QuestionStructure.model_validate(
+        {
+            "ask_universal": [
+                {"predicate": "is_a", "subject": "?x", "object": "dog", "negated": True},
+                {"predicate": "is_a", "subject": "?x", "object": "wild", "negated": True},
+            ]
+        }
+    )
+    query = build_query(question)
+    assert query.goal_mode == "forall"
+    with setting_overrides(LOGIC="ground"):
+        verdict = verify(theory, query)
+    assert verdict.status == "supported"
+
+
+def test_phase0_ground_cnf_goal_is_decided():
+    from ankyra.config.settings import setting_overrides
+
+    structure = ProblemStructure.model_validate(
+        {
+            "source_text": "Ted is a cow. If Ted is a cow then Ted is not a pet.",
+            "facts": [{"predicate": "is_a", "subject": "ted", "object": "cow", "quote": "Ted is a cow"}],
+            "rules": [
+                {
+                    "antecedent": [
+                        {"predicate": "is_a", "subject": "ted", "object": "cow", "quote": "Ted is a cow"}
+                    ],
+                    "consequent": {
+                        "predicate": "is_a",
+                        "subject": "ted",
+                        "object": "pet",
+                        "negated": True,
+                        "quote": "Ted is not a pet",
+                    },
+                    "quote": "If Ted is a cow then Ted is not a pet",
+                }
+            ],
+        }
+    )
+    theory = build_theory(structure)
+    question = QuestionStructure.model_validate(
+        {
+            "ask_clauses": [
+                [
+                    {"predicate": "is_a", "subject": "ted", "object": "cow", "negated": True},
+                    {"predicate": "is_a", "subject": "ted", "object": "pet", "negated": True},
+                ]
+            ]
+        }
+    )
+    query = build_query(question)
+    assert query.goal_mode == "cnf"
+    with setting_overrides(LOGIC="ground"):
+        verdict = verify(theory, query)
+    assert verdict.status == "supported"
+
+
+def test_a_universal_goal_is_not_proven_from_a_ground_atom():
+    """The T3 trap: the ground ¬is_a(pet,cat) does not entail ∀x(Pet→¬Cat)."""
+    from ankyra.config.settings import setting_overrides
+
+    theory = Theory(
+        morphisms=[Morphism(predicate="is_a", subject="pet", object="cat", negated=True)]
+    )
+    question = QuestionStructure.model_validate(
+        {
+            "ask_universal": [
+                {"predicate": "is_a", "subject": "?x", "object": "pet", "negated": True},
+                {"predicate": "is_a", "subject": "?x", "object": "cat", "negated": True},
+            ]
+        }
+    )
+    query = build_query(question)
+    with setting_overrides(LOGIC="ground"):
+        verdict = verify(theory, query)
+    assert verdict.status != "supported"

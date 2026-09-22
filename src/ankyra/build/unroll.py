@@ -394,8 +394,38 @@ def unroll_query_structure(
             target = asks[0]
 
     goals: list[Morphism] = []
+    goal_clauses: list[list[Morphism]] = []
     goal_mode: GoalMode = "single"
-    if structure.ask_all:
+    if structure.ask_universal:
+        literals = [
+            morphism
+            for atom in structure.ask_universal
+            for morphism in atom_to_morphisms(atom, deontic_prefixes=deontic_prefixes)
+        ]
+        if any(
+            is_var(term)
+            for morphism in literals
+            for term in (morphism.subject, morphism.object)
+            if term
+        ):
+            goals = literals
+            goal_mode = "forall"
+        else:
+            # A universal clause over no variable is the ground clause itself (T4).
+            goal_clauses = [literals] if literals else []
+            goal_mode = "cnf" if goal_clauses else "single"
+    elif structure.ask_clauses:
+        goal_clauses = [
+            [
+                morphism
+                for atom in clause
+                for morphism in atom_to_morphisms(atom, deontic_prefixes=deontic_prefixes)
+            ]
+            for clause in structure.ask_clauses
+        ]
+        goal_clauses = [clause for clause in goal_clauses if clause]
+        goal_mode = "cnf" if goal_clauses else "single"
+    elif structure.ask_all:
         goals = [
             morphism
             for atom in structure.ask_all
@@ -411,6 +441,8 @@ def unroll_query_structure(
         goal_mode = "any"
     if goals:
         target = goals[0]
+    elif goal_clauses:
+        target = goal_clauses[0][0]
 
     variables: dict[str, str] = {}
     for key, value in (structure.variables or {}).items():
@@ -422,6 +454,7 @@ def unroll_query_structure(
         conditions=conditions,
         target=target,
         goals=goals,
+        goal_clauses=goal_clauses,
         goal_mode=goal_mode,
         variables=variables,
         answer_type=derive_answer_type(target, variables),

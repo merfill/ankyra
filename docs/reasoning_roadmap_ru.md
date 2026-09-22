@@ -18,6 +18,7 @@ L1), `docs/l2_plan_ru.md` (план реализации L2), `docs/proofwriter_
 `docs/t5_plan_ru.md` (пункт Tier-1 T5: универсальная посылка только по голове),
 `docs/t4_t2_plan_ru.md` (пункты Tier-1 T4/T2: неплоская ground-цель и посылка с вложенной дизъюнкцией),
 `docs/t6_plan_ru.md` (пункт Tier-1 T6: ground unit propagation, G4),
+`docs/g1_g4_plan_ru.md` (Фаза 1 извлечения G1–G4 на FOLIO L2, завершена),
 `docs/ar_lsat_ru.md`,
 `docs/gsm8k_ru.md`, `docs/defeasible_reasoning_ru.md`,
 `docs/task_ru.md`, `docs/implementation_plan_ru.md`.

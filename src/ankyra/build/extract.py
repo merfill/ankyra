@@ -79,6 +79,13 @@ RESERVED CONVENTIONS:
   "quote": …}; NEVER split it into separate facts and never use "facts" for it. A
   CONJUNCTION of conclusions ("Each X is A and B") stays one consequent whose extra
   members go in the slot's "set" — the builder emits one rule per conjunct.
+  A GENERIC disjunction that says every individual is one of several alternatives
+  ("Either A or B", "Every X is A or B", "There are N kinds: A, B, …") is a rule with
+  a DISJUNCTIVE HEAD ("consequents", the atoms over one variable "?x") and NO
+  consequent; when the statement restricts a class ("Every X is A or B") keep
+  is_a(?x,X) as the antecedent, and when it is a bare universe-wide dichotomy leave
+  the antecedent empty. Never emit it as a ground "disjunctions" fact and never as a
+  rule whose head is a single atom.
 - Existential premise (L2). A statement that some unnamed individual has a property
   ("There is an animal", "Some person has a license", "Symptoms include coughing")
   goes to "existentials" as [{"variable": "?x", "atoms": [atom over ?x, …],
@@ -112,6 +119,11 @@ RESERVED CONVENTIONS:
 - Extract facts/rules ONLY from the descriptive part (everything before the question).
   The question and any condition stated inside it ("given that ...", "assuming ...",
   "suppose ...") belong to the question and MUST NOT appear in facts or rules.
+- Retain EVERY atomic premise about a named individual. A ground statement is a
+  "fact" (a conjunction of ground statements is one fact per conjunct); never drop a
+  premise because it seems obvious, redundant with a rule, or hard to name. A ground
+  disjunction for a named individual ("Takeout(mary) or DiningHall(mary)") is a
+  "disjunctions" fact and must be kept. Omitting such premises is a defect.
 - Cross-references ("as defined above", "in accordance with ...") go to "references".
 - Every fact, rule and ask carries ONE minimal verbatim quote. Invent nothing.
 
@@ -208,11 +220,35 @@ How to decompose the question:
      POSITIVE form. Ask "Can Tweety fly?" as fly(tweety); never copy a negation or a
      fact-to-the-contrary from the text ("cannot fly") into the ask.
    - A question asking whether SEVERAL statements ALL hold ("is X both A and B?",
-     "Prove: A and B", "are A, B and C true?") goes to "ask_all" (a LIST of positive
-     atoms); a question asking whether SOME statement holds ("is X A or B?",
-     "Prove: A or B") goes to "ask_any" (a LIST of positive atoms). Both replace
-     "ask" and leave it null; use "ask" only for a single conclusion. Every listed
-     atom is in POSITIVE form with constants, exactly as for a single ask.
+     "Prove: A and B", "are A, B and C true?") goes to "ask_all" (a LIST of atoms); it
+     is a CONJUNCTION (AND) — never use it for a disjunction ("or"). A question asking
+     whether SOME statement holds ("is X A or B?", "Prove: A or B") goes to "ask_any"
+     (a LIST of atoms). Both replace "ask" and leave it null; use "ask" only for a
+     single conclusion. The listed atoms use CONSTANTS, except that ONE genuinely
+     unspecified participant is a SHARED witness variable: "Roderick leads a stable"
+     (which stable is unknown) is ask_all [leads(roderick, ?x), is_a(?x, stable)];
+     "Butte and Pierre are in the same state" is ask_all [state(butte, ?x),
+     state(pierre, ?x)]. A conjunction about a NAMED individual keeps its constant in
+     every conjunct ("a design by Max is evocative and dreamy" -> ask_all
+     [is_a(a_design_by_max, evocative), is_a(a_design_by_max, dreamy)]), never "?x".
+   - A UNIVERSALLY quantified conclusion — one that ranges over an unspecified
+     variable — goes to "ask_universal": a LIST of the literals of ONE clause over the
+     SAME variable, each positive or negated. "All X are Y" ("every X …") is
+     [X(?x) negated, Y(?x) positive] ("∀x(X→Y)"); "No X are Y" / "X never Y" /
+     "not every …" / "¬∃x …" is [X(?x) negated, Y(?x) negated] ("∀x(X→¬Y)"), or a
+     single negated literal for "¬∃x (φ)". Use it ONLY when the conclusion has a
+     variable: "All pets are not cats" is NOT the ground ¬is_a(pet,cat), while a
+     conclusion about a NAMED individual ("if Ted is a cow then Ted is not a pet") is
+     GROUND and must NOT use "ask_universal".
+   - A GROUND compound/conditional conclusion (about named individuals/constants) that
+     is neither a single literal nor a flat AND/OR goes to "ask_clauses": a LIST of
+     clauses, each clause a LIST of literal atoms (its disjunction); the goal is the
+     AND of those clauses (a CNF). "A → B" is one clause [A negated, B]; "A ∧ B → C ∧ D"
+     is [[A negated, B negated, C], [A negated, B negated, D]]; "¬(A ∧ B)" is one
+     clause [A negated, B negated]. Each literal is an atom with "negated" as needed.
+     A ground DISJUNCTION with negated or mixed literals ("neither A nor B" =
+     ¬A ∨ ¬B) is ONE clause [A negated, B negated] here — never "ask_all", which is an
+     AND. A flat ground "A and B" stays "ask_all" and a flat "A or B" stays "ask_any".
    - ONLY an imperative action request ("what should I do", "how do I proceed") has no
      single conclusion: set ask to null.
    Never turn "what type / which class / who / how many" into a null ask.
@@ -231,6 +267,14 @@ EXAMPLE (shape only):
   ask = null
   ask_any = [{"predicate":"is_a","subject":"rex","object":"a","quote":"a"},
              {"predicate":"is_a","subject":"rex","object":"b","quote":"b"}]
+"The conclusion: no pet is a cat."
+  ask = null
+  ask_universal = [{"predicate":"is_a","subject":"?x","object":"pet","negated":true,"quote":"no pet"},
+                   {"predicate":"is_a","subject":"?x","object":"cat","negated":true,"quote":"is a cat"}]
+"The conclusion: it is not true that Rose is a student and Jerry is a human."
+  ask = null
+  ask_clauses = [[{"predicate":"is_a","subject":"rose","object":"student","negated":true,"quote":"Rose is a student"},
+                  {"predicate":"is_a","subject":"jerry","object":"human","negated":true,"quote":"Jerry is a human"}]]
 The declarative clause is a question condition and MUST appear in presuppositions; the
 ask keeps only the interrogative part.
 Return ONLY valid JSON, no markdown fences."""

@@ -78,8 +78,9 @@ def score_record(record: dict, result: object) -> dict:
     query: Query | None = getattr(result, "query", None)
     target = query.target if query is not None else None
     goals = list(query.goals) if query is not None else []
+    goal_clauses = list(query.goal_clauses) if query is not None else []
     open_target = target is not None and (is_var(target.subject) or is_var(target.object))
-    compound = bool(goals) or open_target
+    compound = bool(goals) or bool(goal_clauses) or open_target
     statement_negative = bool(record["statement_negative"])
     if target is not None and compound:
         polarity_known = True

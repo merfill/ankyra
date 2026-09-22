@@ -322,3 +322,70 @@ def test_query_without_ask_is_an_instruction():
     )
     assert query.target is None
     assert query.answer_type == "instruction"
+
+
+def test_query_unroll_maps_a_universal_clause_goal():
+    structure = QuestionStructure.model_validate(
+        {
+            "ask_universal": [
+                {"predicate": "is_a", "subject": "?x", "object": "pet", "negated": True},
+                {"predicate": "is_a", "subject": "?x", "object": "cat", "negated": True},
+            ]
+        }
+    )
+    query = unroll_query_structure(structure)
+    assert query.goal_mode == "forall"
+    assert query.target == query.goals[0]
+    assert [(g.subject, g.object, g.negated) for g in query.goals] == [
+        ("?x", "pet", True),
+        ("?x", "cat", True),
+    ]
+
+
+def test_query_unroll_prefers_ask_universal_over_the_other_forms():
+    structure = QuestionStructure.model_validate(
+        {
+            "ask": {"predicate": "is_a", "subject": "a", "object": "b"},
+            "ask_universal": [
+                {"predicate": "is_a", "subject": "?x", "object": "p", "negated": True},
+            ],
+        }
+    )
+    query = unroll_query_structure(structure)
+    assert query.goal_mode == "forall"
+    assert [g.object for g in query.goals] == ["p"]
+
+
+def test_query_unroll_maps_a_ground_cnf_goal():
+    structure = QuestionStructure.model_validate(
+        {
+            "ask_clauses": [
+                [
+                    {"predicate": "is_a", "subject": "rose", "object": "student", "negated": True},
+                    {"predicate": "is_a", "subject": "jerry", "object": "human", "negated": True},
+                ]
+            ]
+        }
+    )
+    query = unroll_query_structure(structure)
+    assert query.goal_mode == "cnf"
+    assert query.goals == []
+    assert len(query.goal_clauses) == 1
+    assert [literal.negated for literal in query.goal_clauses[0]] == [True, True]
+    assert query.target == query.goal_clauses[0][0]
+
+
+def test_a_ground_ask_universal_falls_back_to_a_ground_clause():
+    # A "universal" clause with no variable is the ground clause itself (T4).
+    structure = QuestionStructure.model_validate(
+        {
+            "ask_universal": [
+                {"predicate": "is_a", "subject": "rose", "object": "student", "negated": True},
+                {"predicate": "is_a", "subject": "jerry", "object": "human", "negated": True},
+            ]
+        }
+    )
+    query = unroll_query_structure(structure)
+    assert query.goal_mode == "cnf"
+    assert len(query.goal_clauses) == 1
+    assert [literal.negated for literal in query.goal_clauses[0]] == [True, True]

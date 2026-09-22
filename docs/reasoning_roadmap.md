@@ -19,6 +19,7 @@ implementation plan), `docs/l2_plan.md` (the L2 implementation plan),
 `docs/t5_plan.md` (Tier-1 item T5: head-only universal premise),
 `docs/t4_t2_plan.md` (Tier-1 items T4/T2: non-flat ground goal, nested-disjunction premise),
 `docs/t6_plan.md` (Tier-1 item T6: ground unit propagation, G4),
+`docs/g1_g4_plan.md` (Phase 1 extraction G1–G4 on FOLIO L2, completed),
 `docs/ar_lsat.md`,
 `docs/gsm8k.md`, `docs/defeasible_reasoning.md`, `docs/task.md`,
 `docs/implementation_plan.md`.

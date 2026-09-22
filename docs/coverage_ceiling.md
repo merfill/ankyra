@@ -205,8 +205,8 @@ is internal; the row-level record is `docs/t6_plan.md`.
 
 - **Order.** Tier-1 is **complete** (T1, T3, T5, T4, T2, T6 done); the only remaining
   `out_of_fragment` row is the malformed annotation `0109`. Extraction
-  G1–G4 (`docs/quality_findings.md` §G) runs on the rows the method already covers, in
-  parallel, not first.
+  G1–G4 (`docs/quality_findings.md` §G) is now **complete** too —
+  `docs/g1_g4_plan.md` — on the rows the method covers, in parallel, not first.
 - **Open decision T-D1 (resolved).** T5's domain: ground head-only variables over the
   **individual domain** (`D_ind` = pool minus `is_a` objects), not the full pool. The
   soundness argument and the synthetic negative control (`head-only-03`) are in

@@ -62,6 +62,7 @@ def run_one(problem: dict) -> tuple[dict, object]:
         "text": problem["text"],
         "status": result.status,
         "structure": result.structure.model_dump() if result.structure else None,
+        "question_structure": result.question.model_dump() if result.question else None,
         "theory": result.theory.model_dump() if result.theory else None,
         "symbolic": asdict(symbolic_check(result.theory)) if result.theory else None,
         "query": result.query.model_dump() if result.query else None,

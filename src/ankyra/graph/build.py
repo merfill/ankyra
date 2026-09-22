@@ -25,7 +25,7 @@ from ankyra.core.models import (
     Verdict,
     WaveRecord,
 )
-from ankyra.core.schemas import ProblemStructure
+from ankyra.core.schemas import ProblemStructure, QuestionStructure
 from ankyra.engine.nodes import (
     GraphDeps,
     build_query_node,
@@ -84,6 +84,7 @@ def build_graph(deps: GraphDeps):
 @dataclass
 class ProblemResult:
     structure: ProblemStructure | None
+    question: QuestionStructure | None
     theory: Theory | None
     query: Query | None
     verdict: Verdict | None
@@ -133,6 +134,7 @@ def run_problem(
     )
     return ProblemResult(
         structure=final.get("structure"),
+        question=final.get("question"),
         theory=final.get("theory"),
         query=final.get("query"),
         verdict=final.get("verdict"),

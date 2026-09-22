@@ -30,6 +30,7 @@ class _FakeResult:
     def __init__(self) -> None:
         self.status = "unsupported"
         self.structure = None
+        self.question = None
         self.theory = None
         self.query = None
         self.verdict = None
@@ -70,6 +71,40 @@ def test_run_one_applies_per_problem_flags_as_context_overrides(monkeypatch):
         assert trace["id"] == "p1"
     finally:
         _reset_flags(previous)
+
+
+def test_run_one_persists_the_question_structure(monkeypatch):
+    from ankyra.core.schemas import QuestionStructure
+
+    question = QuestionStructure.model_validate(
+        {"ask": {"predicate": "is_wet", "object": "ground", "quote": "ground wet"}}
+    )
+
+    def fake_run_problem(*_args, **_kwargs):
+        result = _FakeResult()
+        result.question = question
+        return result
+
+    monkeypatch.setattr(run_mod, "run_problem", fake_run_problem)
+    trace, _ = run_mod.run_one({"id": "p1", "text": "x"})
+    assert trace["question_structure"] == question.model_dump()
+
+
+def test_analyze_folio_replay_reruns_the_saved_extraction(tmp_path):
+    from evals import analyze_folio
+
+    theory = Theory(morphisms=[Morphism(predicate="is_a", subject="a", object="b")])
+    query = Query(target=Morphism(predicate="is_a", subject="a", object="b"))
+    saved = {
+        "score": {"actual_kind": "unknown", "status": "unsupported"},
+        "trace": {"theory": theory.model_dump(), "query": query.model_dump()},
+    }
+    (tmp_path / "folio-x.json").write_text(json.dumps(saved), encoding="utf-8")
+    record = {"id": "folio-x", "label": "True", "statement_negative": False}
+
+    kind, status = analyze_folio._replay_kind(record, tmp_path, "ground")
+    assert kind == "yes"
+    assert status == "supported"
 
 
 def test_run_one_clears_overrides_when_the_run_raises(monkeypatch):

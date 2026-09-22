@@ -399,7 +399,41 @@ class QuestionStructure(BaseModel):
         "C?'). When non-empty it replaces 'ask'; the builder decomposes it into one "
         "goal per atom.",
     )
+    ask_universal: list[StructAtom] = Field(
+        default_factory=list,
+        description="Universal clause goal (L2/T3): ∀x(l₁ ∨ … ∨ lₙ). The listed atoms "
+        "are the disjuncts of ONE clause over the SAME variable; a disjunct may be "
+        "negated (an implication A(x)→B(x) is ¬A(x) ∨ B(x); a negative universal "
+        "'no X is Y' is ¬X(x) ∨ ¬Y(x); ¬∃x φ is ∀x ¬φ). When non-empty it replaces "
+        "'ask'/'ask_all'/'ask_any'. Use 'ask_all' only for a shared-witness "
+        "existential conjunction ∃x(g₁ ∧ … ∧ gₙ).",
+    )
+    ask_clauses: list[list[StructAtom]] = Field(
+        default_factory=list,
+        description="General GROUND goal formula in CNF (L2/T4): a LIST of clauses, "
+        "each clause a LIST of literal atoms (a disjunction); the formula is the AND of "
+        "the clauses. Use it for a compound/conditional conclusion about named things "
+        "that is not a single literal and not a flat ∧/∨ (e.g. '(A∧B)→(C∧D)', "
+        "'¬(A∧B)'), never for a universally quantified conclusion (that is "
+        "'ask_universal'). When non-empty it replaces the other ask forms.",
+    )
     variables: dict[str, str] = Field(default_factory=dict, description="Theory slot name (no '?') -> literal.")
+
+    @field_validator("ask_universal", mode="before")
+    @classmethod
+    def _wrap_ask_universal(cls, value: Any) -> Any:
+        if isinstance(value, dict):
+            return [value]
+        return value
+
+    @field_validator("ask_clauses", mode="before")
+    @classmethod
+    def _wrap_ask_clauses(cls, value: Any) -> Any:
+        if isinstance(value, dict):
+            return [[value]]
+        if isinstance(value, list) and value and all(isinstance(item, dict) for item in value):
+            return [value]
+        return value
 
 
 def llm_json_schema(model: type[BaseModel]) -> str:

@@ -215,6 +215,28 @@ def test_problem_prompt_teaches_the_l2_forms():
     assert "one rule per conjunct" in extract_mod.PROBLEM_SYSTEM
 
 
+def test_problem_prompt_teaches_the_generic_disjunction_head():
+    assert "GENERIC disjunction" in extract_mod.PROBLEM_SYSTEM
+    assert "DISJUNCTIVE HEAD" in extract_mod.PROBLEM_SYSTEM
+
+
+def test_problem_prompt_requires_retaining_every_ground_premise():
+    assert "Retain EVERY atomic premise" in extract_mod.PROBLEM_SYSTEM
+
+
 def test_question_prompt_teaches_compound_goals():
     assert '"ask_all"' in extract_mod.QUESTION_SYSTEM
     assert '"ask_any"' in extract_mod.QUESTION_SYSTEM
+
+
+def test_question_prompt_teaches_the_universal_goal_form():
+    assert '"ask_universal"' in extract_mod.QUESTION_SYSTEM
+
+
+def test_question_prompt_teaches_the_ground_cnf_goal_form():
+    assert '"ask_clauses"' in extract_mod.QUESTION_SYSTEM
+
+
+def test_question_prompt_teaches_shared_witness_and_named_constants():
+    assert "SHARED witness" in extract_mod.QUESTION_SYSTEM
+    assert "CONJUNCTION (AND)" in extract_mod.QUESTION_SYSTEM

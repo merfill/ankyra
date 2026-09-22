@@ -593,4 +593,7 @@ multi-variable quantification).
   limit is the **method** (coverage), not the language — Tier-1 lowering comes
   before extraction (`docs/folio.md` §10, `docs/folio_ceilings.md` §4); the plan
   itself is `docs/coverage_ceiling.md`. This settles
-  "model vs method" empirically rather than by intuition.
+  "model vs method" empirically rather than by intuition. The extraction ceiling
+  (backlog G1–G4) was then attacked as Phase 1 and closed in `docs/g1_g4_plan.md`
+  (text-fed 29–31/45, 0 grounded false proofs); its §22 model ablation confirms the
+  residual wall is the interface, not model capability.
