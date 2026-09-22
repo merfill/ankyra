@@ -37,10 +37,13 @@ FragmentFeature = Literal[
     "head_only_rule",
     "clause_goal",
     "existential_disjunction",
+    "equality",
 ]
 
 # The features whose presence makes the clausal (L2) procedure the required one.
-_CLAUSAL_FRAGMENT = frozenset({"disjunction", "existential", "compound_goal"})
+_CLAUSAL_FRAGMENT = frozenset(
+    {"disjunction", "existential", "compound_goal", "equality"}
+)
 
 
 @dataclass(frozen=True)
@@ -130,6 +133,13 @@ def _has_existential_disjunction(theory: Theory) -> bool:
     return any(existential.disjunctions for existential in theory.existentials)
 
 
+def _has_equality(theory: Theory, query: Query) -> bool:
+    """True when the structure uses the reserved equality predicate (Tier-2, 3a)."""
+    from ankyra.engine.clause import has_equality
+
+    return has_equality(theory, query)
+
+
 def _has_builtin(theory: Theory) -> bool:
     from ankyra.engine.builtins import is_builtin
 
@@ -170,6 +180,8 @@ def _fragment(theory: Theory, query: Query) -> frozenset[str]:
         features.add("clause_goal")
     if _has_existential_disjunction(theory):
         features.add("existential_disjunction")
+    if _has_equality(theory, query):
+        features.add("equality")
     return frozenset(features)
 
 
@@ -216,6 +228,10 @@ def analyze_routing(theory: Theory, query: Query) -> RoutingDecision:
             refusal = "out_of_fragment:stratification"
         elif theory.existentials:
             refusal = "out_of_fragment:existential"
+        elif _has_equality(theory, query):
+            # Equality is decided by the clausal/equality fragment, never by the Horn
+            # path (which would treat ``eq`` as an ordinary opaque predicate).
+            refusal = "out_of_fragment:equality"
     elif defeasible and (_CLAUSAL_FRAGMENT & fragment):
         # The defeasible layer ranges over the Horn closure and would be silently
         # dropped under the clausal procedure (D-FR-4).

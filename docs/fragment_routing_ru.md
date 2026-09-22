@@ -64,6 +64,9 @@ D-L1-4).
 - `compound_goal` — `query.goal_mode != "single"` (конъюнктивная или дизъюнктивная
   цель).
 - `builtin` — предикат сравнения (`engine/builtins.is_builtin`).
+- `equality` — reserved предикат `eq` в любом месте (`engine/clause.has_equality`,
+  `docs/equality_plan_ru.md`). Требует клаузальной процедуры; Horn-путь отклоняет
+  (иначе `eq` был бы непрозрачным предикатом).
 
 Замечание: дизъюнктивный **антецедент** уже расщепляется builder'ом на одно
 Horn-правило на атом (`(A ∨ B) → C ≡ (A → C) ∧ (B → C)`); он фрагмент **не**
@@ -117,7 +120,7 @@ class RoutingDecision:
   gap-кодом (никогда — тихий прогон не под той семантикой).
 
 Коды отказа: `out_of_fragment:non_horn`, `compound_goal`, `existential`,
-`stratification` и `naf_in_l2` (существующие коды, сохранены), плюс
+`equality`, `stratification` и `naf_in_l2` (существующие коды, сохранены), плюс
 `defeasible_with_clausal_fragment` (D-FR-4).
 
 Валидация происходит **до** решения; gaps не переинтерпретируются задним числом.
@@ -223,8 +226,8 @@ Ad-hoc отказы в `engine/verify.py` (`out_of_fragment:non_horn`, `compound
 **A1 реализован.** `analyze_routing` + `RoutingDecision` в `engine/inference.py`;
 `verify` смотрит на решение перед диспетчеризацией (существующие отказы сохраняют
 свои gap-коды, плюс `defeasible_with_clausal_fragment`); `explain` следует
-`decision.procedure`. LLM-free гейт `evals.routing_synthetic` зелёный (**12/12**;
-покрыты все фичи фрагмента и все коды отказа). Отложенный инкремент A2 (минимально
+`decision.procedure`. LLM-free гейт `evals.routing_synthetic` зелёный (**19/19**;
+покрыты все фичи фрагмента, включая `equality`, и все коды отказа). Отложенный инкремент A2 (минимально
 достаточная процедура внутри широкого набора возможностей) отслеживается здесь и
 является предпосылкой того, чтобы многопроцедурный продуктовый рантайм мог
 заявлять больше, чем пиннутый гейт.

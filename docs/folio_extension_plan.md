@@ -103,11 +103,19 @@ Each enters only as a named fragment under `docs/fragment_routing.md`: a
 `FragmentFeature`, a capability, a flag off by default, and its own synthetic
 soundness gate before any live run.
 
-- **3a — finite equality.** Finite congruence, or a ground equality builtin over
-  the finite domain.
-- **3b — bounded function terms.** Term representation (beyond the flat
+- **3a — finite equality — DONE (synthetic only).** Finite ground equality
+  (`=`/`≠`) as the named fragment `equality` on the clausal procedure:
+  canonicalization (substitution), reflexivity, symmetry, and the declared
+  unique-names reading over the finite domain (`docs/equality_plan.md`). Gated by
+  `evals.l2_synthetic` (65/65) and `evals.routing_synthetic` (19/19). **No external
+  gate exists**: FOLIO v0 has no equality and no function terms, and FOLIO v2's
+  equality is entangled with multi-variable quantification / nested `∃`
+  (`docs/equality_plan.md` §2).
+- **3b — bounded function terms — DEFERRED.** Term representation (beyond the flat
   `subject`/`object` strings), clausification support, and bounded finite
-  grounding; anything outside the finite range is `out_of_fragment`.
+  grounding; anything outside the finite range is `out_of_fragment`. No available
+  FOLIO split contains a function term (v0 and v2 measured 0), so there is no gate;
+  the classic semi-decidability trap stands.
 
 **Order.** Equality before functions (functions are harder and the classic
 semi-decidability trap). Neither is a "bug fix".
@@ -167,8 +175,10 @@ gold-fed (17/21) led text-fed (15/21) — the limit is the **method**, so Phase 
 `out_of_fragment`, 0 grounded false proofs (`docs/coverage_ceiling.md` §6–§7).
 **Phase 1 (extraction G1–G4) is now complete** — `docs/g1_g4_plan.md`: text-fed
 29–31/45, 0 grounded false proofs; the residual wall is G2 (missing premises), with
-`G-D2` measured non-selective and `A′` deferred. Tier 2 (equality/functions) remains
-draft and deferred.
+`G-D2` measured non-selective and `A′` deferred. **Phase 3 Tier-2 item 3a (finite
+equality) is implemented and gated synthetically** (`docs/equality_plan.md`); it moves
+no FOLIO number because FOLIO contains no equality. Item 3b (functions) stays deferred
+(no data; semi-decidability trap).
 
 ## 12. References
 

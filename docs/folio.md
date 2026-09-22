@@ -74,8 +74,8 @@ its FOL annotation actually uses:
 | explicit negation | `¬EasternWildTurkey(tom)` | **L1** |
 | disjunction | `A(x) ∨ B(x) ∨ …` | **L2** |
 | existential quantifier | `∃x(…)` | **L2** |
-| function / nested term | `f(x, y)` | fragment decision (beyond committed L2) |
-| equality | `x = y` | fragment decision (beyond committed L2) |
+| function / nested term | `f(x, y)` | fragment decision (beyond committed L2; no FOLIO split contains one) |
+| equality | `x = y` | **Tier-2 3a** — named fragment `equality`, synthetic gate only (`docs/equality_plan.md`); absent from v0 |
 | axiom schema | transitivity of `LocatedIn`, symmetry of `BeFamily` | fragment decision (explicit axioms) |
 
 Notes:

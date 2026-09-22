@@ -9,12 +9,13 @@ De Morgan, proof by contradiction/reductio, conjunctive and disjunctive goals (D
 a disjunctive ground fact with a case split, a shared-witness existential goal (T1), a
 universal clause goal (T3), a head-only universal premise grounded over the individual
 domain (T5), a general ground goal formula (T4), an existential premise with a nested
-disjunction (T2), a unit-propagation chain (T6), budget exhaustion, out-of-fragment
+disjunction (T2), a unit-propagation chain (T6), finite equality (Tier-2 item 3a),
+budget exhaustion, out-of-fragment
 constructs, and mandatory negative
 controls (the Horn flag must not consume a disjunctive clause; an exhausted budget must
 not yield a proof; a Horn theory gives the same answer under both engines; a class name
 must not be instantiated by a head-only universal; a disjunction is never decided by a
-disjunct).
+disjunct; a disequality-conditioned rule does not fire for the excluded individual).
 
 Usage:
     uv run python -m evals.build_l2_synthetic [--out PATH]
@@ -717,6 +718,119 @@ def _unit_propagation_cases() -> list[dict]:
     ]
 
 
+def _equality_cases() -> list[dict]:
+    """Finite equality (Tier-2 item 3a): substitution, reflexivity, unique names.
+
+    The fragment's declared semantics is the finite named domain (``docs/equality_plan.md``
+    EQ-D2): distinct ground names are distinct unless an asserted ground equality merged
+    them. The mandatory controls are ``eq-control-diseq-07`` (a disequality-conditioned
+    rule does not fire for the excluded individual) and ``eq-control-flag-off-08`` /
+    ``eq-control-budget-09`` (honest refusal / exhaustion, never a guess).
+    """
+    equality = _m("eq", "rex", "tom")
+    substitution = _theory(
+        morphisms=[_is_a("rex", "cat"), equality],
+        rules=[_rule([_is_a("?x", "cat")], _is_a("?x", "animal"))],
+    )
+    distinct = _theory(morphisms=[_is_a("rex", "cat"), _is_a("tom", "cat")])
+    disequality_rule = _theory(
+        morphisms=[_is_a("rex", "cat"), _is_a("tom", "cat")],
+        rules=[
+            _rule(
+                [_is_a("?x", "cat"), _m("eq", "?x", "rex", neg=True)],
+                _is_a("?x", "special"),
+            )
+        ],
+    )
+    return [
+        _case(
+            "eq-subst-01",
+            "equality",
+            substitution,
+            _query(_is_a("tom", "animal")),
+            "supported",
+            "yes",
+            note="an asserted ground equality canonicalizes terms, so the rule fires "
+            "for the merged individual",
+        ),
+        _case(
+            "eq-reflexive-02",
+            "equality",
+            substitution,
+            _query(_m("eq", "rex", "rex")),
+            "supported",
+            "yes",
+            note="reflexivity: every individual equals itself",
+        ),
+        _case(
+            "eq-unique-names-03",
+            "equality",
+            distinct,
+            _query(_m("eq", "rex", "tom", neg=True)),
+            "supported",
+            "yes",
+            note="distinct ground names are distinct (declared unique names)",
+        ),
+        _case(
+            "eq-distinct-refuted-04",
+            "equality",
+            distinct,
+            _query(_m("eq", "rex", "tom")),
+            "refuted",
+            "no",
+            note="two distinct names are not equal",
+        ),
+        _case(
+            "eq-symmetry-05",
+            "equality",
+            _theory(morphisms=[_is_a("rex", "cat"), equality]),
+            _query(_m("eq", "tom", "rex")),
+            "supported",
+            "yes",
+            note="equality is symmetric (canonicalization merges both names)",
+        ),
+        _case(
+            "eq-body-disequality-06",
+            "equality",
+            disequality_rule,
+            _query(_is_a("tom", "special")),
+            "supported",
+            "yes",
+            note="a rule body '?x != rex' fires for the other individual",
+        ),
+        _case(
+            "eq-control-diseq-07",
+            "equality",
+            disequality_rule,
+            _query(_is_a("rex", "special")),
+            "unsupported",
+            "unknown",
+            note="soundness control: the disequality excludes rex, so the rule does not "
+            "fire for it (never fabricated)",
+        ),
+        _case(
+            "eq-control-flag-off-08",
+            "equality",
+            substitution,
+            _query(_m("eq", "tom", "rex")),
+            "out_of_fragment",
+            "unknown",
+            logic="off",
+            note="negative control: with L2 off equality is out_of_fragment, not guessed",
+        ),
+        _case(
+            "eq-control-budget-09",
+            "equality",
+            substitution,
+            _query(_is_a("tom", "animal")),
+            "insufficient",
+            "unknown",
+            budget=1,
+            note="negative control: an exhausted budget is never a proof",
+        ),
+    ]
+
+
 def _budget_cases() -> list[dict]:
     theory = _theory(morphisms=[_is_a("rex", "p")], rules=[_rule([_is_a("?x", "p")], _is_a("?x", "q"))])
     return [
@@ -927,6 +1041,7 @@ def cases() -> list[dict]:
         + _head_only_cases()
         + _clause_goal_cases()
         + _existential_disjunction_cases()
+        + _equality_cases()
         + _unit_propagation_cases()
         + _budget_cases()
         + _out_of_fragment_cases()

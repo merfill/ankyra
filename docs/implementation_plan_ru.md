@@ -494,6 +494,19 @@
     **0 grounded false proofs**; LLM-free гейты `evals.l2_synthetic` (52→56/56) и
     `evals.routing_synthetic` (17/17); pytest 480 passed. **Tier-1 завершён**; только
     битая строка FOLIO `0109` остаётся `out_of_fragment`.
+27. **Tier-2 пункт 3a, конечное равенство — СДЕЛАНО (только синтетика).**
+    `=`/`≠` входит как named fragment `equality` на клаузальной процедуре
+    (`engine/clause.py`: ассертированное unit ground-равенство → union-find
+    каноникализация (подстановка) + аксиомы рефлексивности и unique names;
+    `engine/inference.py`: `FragmentFeature "equality"`, отказ
+    `out_of_fragment:equality`; каноникализация запроса/пула в `verify.l2_outcomes`).
+    Объявленная семантика — конечный именованный домен (`docs/equality_plan_ru.md`
+    EQ-D2). Не двигает **ни одного числа FOLIO**: в FOLIO v0 нет равенства и нет
+    функциональных термов, а в v2 равенство переплетено с многовеременной
+    квантификацией / вложенным `∃` — чистого внешнего гейта нет. LLM-free гейты
+    `evals.l2_synthetic` (56→**65/65**) и `evals.routing_synthetic` (17→**19/19**);
+    pytest **505 passed**. **3b (ограниченные функциональные термы) отложен**
+    (нет данных; ловушка полуразрешимости). План: `docs/equality_plan_ru.md`.
 
 ## 9. Дорожная карта рассуждений (главная ось)
 
@@ -533,6 +546,9 @@
   **Tier-1 завершён** (T1/T3/T5/T4/T2 плюс T6, ground unit propagation, G4): FOLIO L2
   тир a gold-fed охват **44/45**, верно 42/45, только битая `0109` остаётся
   `out_of_fragment` — разъяснение в `docs/coverage_ceiling_ru.md` (пункт 26).
+  **Tier-2 пункт 3a, конечное равенство** реализован как named fragment `equality`
+  с синтетическим гейтом (пункт 27, `docs/equality_plan_ru.md`); 3b (функции)
+  отложен.
   Полная первопорядковая унификация отложена (`docs/l2_plan_ru.md`).
 - **L3 — конечнодоменные CSP/SAT, отдельный движок.** Бенчмарк AR-LSAT.
 - **L4 — арифметика, отдельный числовой движок или tool-use.** Бенчмарк GSM8K.

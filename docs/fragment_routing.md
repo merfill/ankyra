@@ -63,6 +63,9 @@ structural predicates (`engine/horn.py`):
 - `existential` — non-empty `Theory.existentials` or an existential goal.
 - `compound_goal` — `query.goal_mode != "single"` (a conjunctive or disjunctive goal).
 - `builtin` — a comparison predicate (`engine/builtins.is_builtin`).
+- `equality` — the reserved `eq` predicate anywhere (`engine/clause.has_equality`,
+  `docs/equality_plan.md`). Requires the clausal procedure; refused by the Horn path
+  (which would treat `eq` as an opaque predicate).
 
 Note: a disjunctive **antecedent** is already split by the builder into one Horn
 rule per atom (`(A ∨ B) → C ≡ (A → C) ∧ (B → C)`); it does **not** raise the
@@ -116,7 +119,7 @@ class RoutingDecision:
   code (never a silent run under the wrong semantics).
 
 The refusal codes are `out_of_fragment:non_horn`, `compound_goal`, `existential`,
-`stratification` and `naf_in_l2` (the pre-existing codes, preserved), plus
+`equality`, `stratification` and `naf_in_l2` (the pre-existing codes, preserved), plus
 `defeasible_with_clausal_fragment` (D-FR-4).
 
 Validation happens **before** deciding; gaps are not re-interpreted afterwards.
@@ -222,7 +225,8 @@ Why a cascade over gaps is rejected, concretely:
 `verify` consults the decision before dispatching (the existing refusals keep their
 gap codes, plus `defeasible_with_clausal_fragment`); `explain` follows
 `decision.procedure`. The LLM-free gate `evals.routing_synthetic` is green
-(**12/12**; every fragment feature and refusal code covered). The deferred A2
+(**19/19**; every fragment feature, including `equality`, and every refusal code
+covered). The deferred A2
 increment (minimal sufficient procedure inside a broad capability set) is tracked
 here and is a prerequisite for a multi-capability product runtime being able to
 claim more than the pinned gate.

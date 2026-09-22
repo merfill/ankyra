@@ -28,7 +28,7 @@ from dataclasses import dataclass, field
 from itertools import product
 
 from ankyra.build.normalize import is_var
-from ankyra.core.models import FactKey, Morphism, Theory
+from ankyra.core.models import FactKey, Morphism, Query, Theory
 from ankyra.engine.builtins import canonical_builtin
 from ankyra.engine.horn import build_context
 
@@ -39,6 +39,9 @@ ClauseKey = tuple[tuple[str, str, str, bool, str], ...]
 
 _IS_A = "is_a"
 _NEUTRAL = "neutral"
+# The reserved binary equality predicate (fragment ``equality``, ``docs/equality_plan.md``).
+# Negation is ``Morphism.negated``; ``neq`` is never a separate predicate id.
+_EQUALITY = "eq"
 
 
 def literal_of(morphism: Morphism) -> Literal:
@@ -78,6 +81,9 @@ class Clausification:
     origins: dict[ClauseKey, list[str]] = field(default_factory=dict)
     unsupported: list[str] = field(default_factory=list)
     skolems: list[str] = field(default_factory=list)
+    # Equality representatives (term -> canonical term, fragment ``equality``); empty
+    # when no asserted ground equality merged terms.
+    canon: dict[str, str] = field(default_factory=dict)
 
     def add(self, clause: Clause, origin: str) -> None:
         key = clause_key(clause)
@@ -318,11 +324,229 @@ def _add_existentials(result: Clausification, theory: Theory) -> None:
                 result.add(clause, f"skolem:{index}")
 
 
+# --- equality fragment (``docs/equality_plan.md``) ---------------------------------
+
+
+def _is_equality(morphism: Morphism) -> bool:
+    return morphism.predicate == _EQUALITY
+
+
+def _ground_equality(morphism: Morphism) -> bool:
+    return (
+        _is_equality(morphism)
+        and not morphism.negated
+        and bool(morphism.subject)
+        and bool(morphism.object)
+        and not is_var(morphism.subject)
+        and not is_var(morphism.object)
+    )
+
+
+def _find(parent: dict[str, str], term: str) -> str:
+    parent.setdefault(term, term)
+    root = term
+    while parent[root] != root:
+        root = parent[root]
+    while parent[term] != root:
+        parent[term], term = root, parent[term]
+    return root
+
+
+def equality_partition(theory: Theory) -> dict[str, str]:
+    """Union-find of terms merged by **asserted** positive ground equalities.
+
+    Only asserted facts (``theory.morphisms``) and Skolemized existential atoms define
+    the partition; a conditional or disjunctive equality is not an assertion and is left
+    to the prover. The result maps every mentioned term to its representative; empty when
+    no ground equality was asserted.
+    """
+    parent: dict[str, str] = {}
+    # Class names are lowered predicates, not individuals (T5), so an equality over a
+    # class name is outside the fragment: it must never rewrite an ``is_a`` membership.
+    classes = _class_names(theory)
+
+    def union(left: str | None, right: str | None) -> None:
+        if not left or not right or left in classes or right in classes:
+            return
+        left_root, right_root = _find(parent, left), _find(parent, right)
+        if left_root != right_root:
+            parent[left_root] = right_root
+
+    for morphism in theory.morphisms:
+        if _ground_equality(morphism):
+            union(morphism.subject, morphism.object)
+    for index, existential in enumerate(theory.existentials):
+        constant = f"sk{index}"
+        for atom in existential.atoms:
+            grounded = _ground_existential_atom(atom, existential.variable, constant)
+            if _ground_equality(grounded):
+                union(grounded.subject, grounded.object)
+    return {term: _find(parent, term) for term in parent}
+
+
+def _canonical_term(term: str | None, canon: dict[str, str]) -> str | None:
+    return canon.get(term, term) if term else term
+
+
+def canonicalize_morphism(morphism: Morphism, canon: dict[str, str]) -> Morphism:
+    if not canon:
+        return morphism
+    return morphism.model_copy(
+        update={
+            "subject": _canonical_term(morphism.subject, canon),
+            "object": _canonical_term(morphism.object, canon),
+        }
+    )
+
+
+def canonicalize_rule(rule, canon: dict[str, str]):
+    if not canon:
+        return rule
+    return rule.model_copy(
+        update={
+            "conditions": [canonicalize_morphism(c, canon) for c in rule.conditions],
+            "consequence": canonicalize_morphism(rule.consequence, canon),
+            "alternatives": [canonicalize_morphism(a, canon) for a in rule.alternatives],
+        }
+    )
+
+
+def _canonicalize_existential(existential, canon: dict[str, str]):
+    if not canon:
+        return existential
+    return existential.model_copy(
+        update={
+            "atoms": [canonicalize_morphism(a, canon) for a in existential.atoms],
+            "disjunctions": [
+                [canonicalize_morphism(a, canon) for a in group]
+                for group in existential.disjunctions
+            ],
+        }
+    )
+
+
+def canonicalize_theory(theory: Theory, canon: dict[str, str]) -> Theory:
+    if not canon:
+        return theory
+    return theory.model_copy(
+        update={
+            "morphisms": [canonicalize_morphism(m, canon) for m in theory.morphisms],
+            "rules": [canonicalize_rule(r, canon) for r in theory.rules],
+            "existentials": [
+                _canonicalize_existential(e, canon) for e in theory.existentials
+            ],
+        }
+    )
+
+
+def canonicalize_query(query: Query, canon: dict[str, str]) -> Query:
+    if not canon:
+        return query
+    return query.model_copy(
+        update={
+            "conditions": [canonicalize_morphism(c, canon) for c in query.conditions],
+            "target": canonicalize_morphism(query.target, canon) if query.target else None,
+            "goals": [canonicalize_morphism(g, canon) for g in query.goals],
+            "goal_clauses": [
+                [canonicalize_morphism(l, canon) for l in clause]
+                for clause in query.goal_clauses
+            ],
+        }
+    )
+
+
+def has_equality(theory: Theory, query: Query | None = None) -> bool:
+    """True when the structure uses the reserved equality predicate anywhere."""
+    atoms: list[Morphism] = [*theory.morphisms]
+    for rule in theory.rules:
+        atoms.extend(rule.conditions)
+        atoms.extend(rule.head)
+    for existential in theory.existentials:
+        atoms.extend(existential.atoms)
+        for group in existential.disjunctions:
+            atoms.extend(group)
+    if query is not None:
+        atoms.extend(query.conditions)
+        atoms.extend(query.goals)
+        if query.target is not None:
+            atoms.append(query.target)
+        for clause in query.goal_clauses:
+            atoms.extend(clause)
+    return any(_is_equality(m) for m in atoms)
+
+
+def _equality_terms(morphisms: Iterable[Morphism]) -> set[str]:
+    terms: set[str] = set()
+    for morphism in morphisms:
+        if not _is_equality(morphism):
+            continue
+        for term in (morphism.subject, morphism.object):
+            if term and not is_var(term):
+                terms.add(term)
+    return terms
+
+
+def query_equality_terms(query: Query) -> set[str]:
+    """Ground terms occurring in the query's equality literals (query side of UNA)."""
+    atoms: list[Morphism] = [*query.conditions, *query.goals]
+    if query.target is not None:
+        atoms.append(query.target)
+    for clause in query.goal_clauses:
+        atoms.extend(clause)
+    return _equality_terms(atoms)
+
+
+def _theory_equality_terms(
+    theory: Theory, assumptions: list[Morphism], extra: Iterable[str]
+) -> set[str]:
+    atoms: list[Morphism] = [*theory.morphisms, *assumptions]
+    for rule in theory.rules:
+        atoms.extend(rule.conditions)
+        atoms.extend(rule.head)
+    for existential in theory.existentials:
+        atoms.extend(existential.atoms)
+        for group in existential.disjunctions:
+            atoms.extend(group)
+    return _equality_terms(atoms) | {term for term in extra if term}
+
+
+def _add_equality_axioms(
+    result: Clausification, canon: dict[str, str], terms: set[str]
+) -> None:
+    """Reflexivity ``eq(t,t)`` and unique-names ``neq(a,b)`` over the equality terms.
+
+    The equality fragment's declared semantics is the finite named domain: a term
+    denotes its own name, so distinct names are distinct unless an asserted ground
+    equality merged them (``docs/equality_plan.md`` EQ-D2). Both axioms are ordinary
+    ground units resolved by the existing prover, so a goal that rests on them is a
+    real resolution refutation, never a guess.
+    """
+    representatives = sorted({canon.get(term, term) for term in terms})
+    for term in representatives:
+        result.add(
+            frozenset({(_EQUALITY, term, term, False, _NEUTRAL)}),
+            "equality:reflexive",
+        )
+    for index, left in enumerate(representatives):
+        for right in representatives[index + 1 :]:
+            # Both orientations, so a disequality resolves whichever way the clause
+            # happens to spell it (no separate symmetry axiom is needed).
+            result.add(
+                frozenset({(_EQUALITY, left, right, True, _NEUTRAL)}),
+                "equality:unique_names",
+            )
+            result.add(
+                frozenset({(_EQUALITY, right, left, True, _NEUTRAL)}),
+                "equality:unique_names",
+            )
+
+
 def clausify(
     theory: Theory,
     *,
     assumptions: list[Morphism] | None = None,
     extra_pool: Iterable[str] = (),
+    equality_terms: Iterable[str] = (),
 ) -> Clausification:
     """Lower a theory (and the query's Gamma assumptions) into ground clauses.
 
@@ -332,9 +556,14 @@ def clausify(
     term is a logical consequence of the theory, so this is sound.
     """
     result = Clausification()
+    canon = equality_partition(theory)
+    result.canon = canon
+    theory = canonicalize_theory(theory, canon)
+    assumptions = [canonicalize_morphism(a, canon) for a in (assumptions or ())]
+
     for morphism in theory.morphisms:
         result.add(frozenset({literal_of(morphism)}), f"axiom:{label_of(literal_of(morphism))}")
-    for index, assumption in enumerate(assumptions or ()):
+    for index, assumption in enumerate(assumptions):
         result.add(frozenset({literal_of(assumption)}), f"presupposition:{index}")
 
     _add_existentials(result, theory)
@@ -342,7 +571,11 @@ def clausify(
     individuals = _individual_pool(theory, pool)
 
     for index, rule in enumerate(theory.rules, 1):
-        if any(canonical_builtin(condition.predicate) for condition in rule.conditions):
+        if any(
+            canonical_builtin(condition.predicate)
+            and condition.predicate != _EQUALITY
+            for condition in rule.conditions
+        ):
             result.unsupported.append(f"builtin:rule:{index}")
             continue
         groundings = _groundings(rule, pool, individuals)
@@ -356,4 +589,11 @@ def clausify(
 
     _add_transitivity(result)
     _add_constraints(result, theory)
+    equality_terms_found = _theory_equality_terms(theory, assumptions, equality_terms)
+    if equality_terms_found:
+        # The equality fragment's unique-names reading ranges over the individual
+        # domain, so a rule body ``x != c`` is decided for every individual. Class
+        # names are lowered predicates, not individuals, and stay out (T5).
+        axiom_terms = (equality_terms_found | set(individuals)) - _class_names(theory)
+        _add_equality_axioms(result, canon, axiom_terms)
     return result

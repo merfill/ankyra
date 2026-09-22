@@ -7,7 +7,14 @@ from itertools import product
 from ankyra.build.normalize import is_var
 from ankyra.config.settings import get_setting
 from ankyra.core.models import Fact, FactKey, Morphism, Query, Theory, Verdict
-from ankyra.engine.clause import clausify, literal_of, negate
+from ankyra.engine.clause import (
+    canonicalize_morphism,
+    canonicalize_query,
+    clausify,
+    literal_of,
+    negate,
+    query_equality_terms,
+)
 from ankyra.engine.horn import (
     AtomStore,
     GoalHit,
@@ -304,8 +311,15 @@ def _l2_outcome(clausification, goal: Morphism) -> tuple[str, object, object]:
 
 
 def _witness_pool(theory: Theory, clausification) -> list[str]:
-    """Ground terms the L2 procedure can use as witnesses (objects + Skolem constants)."""
-    return sorted(set(build_context(theory).obj_pool) | set(clausification.skolems))
+    """Ground terms the L2 procedure can use as witnesses (objects + Skolem constants).
+
+    Under the equality fragment, merged terms are canonicalized so a witness enumeration
+    matches the canonical clause set (``docs/equality_plan.md``).
+    """
+    pool = set(build_context(theory).obj_pool) | set(clausification.skolems)
+    if clausification.canon:
+        pool = {clausification.canon.get(term, term) for term in pool}
+    return sorted(pool)
 
 
 def _fresh_constant(theory: Theory) -> str:
@@ -557,7 +571,9 @@ def _unused_l2(theory: Theory, query: Query, proof) -> list[int]:
     for index, condition in enumerate(query.conditions):
         if f"presupposition:{index}" in used:
             continue
-        result = refute(clausify(theory), literal_of(condition), budget=_logic_budget())
+        clausification = clausify(theory, equality_terms=query_equality_terms(query))
+        literal = literal_of(canonicalize_morphism(condition, clausification.canon))
+        result = refute(clausification, literal, budget=_logic_budget())
         if result.status == "entailed":
             continue
         unused.append(index)
@@ -630,9 +646,12 @@ def l2_outcomes(theory: Theory, query: Query):
         theory,
         assumptions=query.conditions,
         extra_pool=[fresh] if fresh is not None else (),
+        equality_terms=query_equality_terms(query),
     )
     if clausification.unsupported:
         return clausification, []
+    if clausification.canon:
+        query = canonicalize_query(query, clausification.canon)
     pool = _witness_pool(theory, clausification)
     goals = _goals_of(query)
     if query.goal_mode == "cnf" and query.goal_clauses:

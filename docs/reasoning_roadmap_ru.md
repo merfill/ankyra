@@ -18,6 +18,7 @@ L1), `docs/l2_plan_ru.md` (план реализации L2), `docs/proofwriter_
 `docs/t5_plan_ru.md` (пункт Tier-1 T5: универсальная посылка только по голове),
 `docs/t4_t2_plan_ru.md` (пункты Tier-1 T4/T2: неплоская ground-цель и посылка с вложенной дизъюнкцией),
 `docs/t6_plan_ru.md` (пункт Tier-1 T6: ground unit propagation, G4),
+`docs/equality_plan_ru.md` (пункт Tier-2 3a: конечное равенство),
 `docs/g1_g4_plan_ru.md` (Фаза 1 извлечения G1–G4 на FOLIO L2, завершена),
 `docs/ar_lsat_ru.md`,
 `docs/gsm8k_ru.md`, `docs/defeasible_reasoning_ru.md`,
@@ -167,7 +168,13 @@ Ankyra — не «решатель Хорна», а **оркестратор ф�
   реальное resolution-ребро, тот же бюджет) решает две строки с исчерпанным бюджетом,
   поднимая gold-fed до **42/45** (covered 42/44), 0 grounded false proofs;
   `evals.l2_synthetic` 56/56, `evals.routing_synthetic` 17/17. Tier-1 завершён;
-  только битая строка FOLIO `0109` остаётся `out_of_fragment`. Полная
+  только битая строка FOLIO `0109` остаётся `out_of_fragment`. **Tier-2 пункт 3a
+  (конечное равенство)** реализован как named fragment `equality` на клаузальной
+  процедуре — каноникализация (подстановка), рефлексивность, симметрия и объявленное
+  прочтение unique-names над конечным доменом (`docs/equality_plan_ru.md`), гейт
+  только синтетический (`evals.l2_synthetic` 65/65, `evals.routing_synthetic` 19/19):
+  в FOLIO v0 равенства нет, а в v2 равенство переплетено с многовеременной
+  квантификацией / вложенным `∃`; пункт 3b (функции) отложен (нет данных). Полная
   первопорядковая
   **унификация** отложена: прототип расходится на `not_entailed` (полуразрешимость);
   заявленные коллекции — конечные именованные домены, где grounding sound и
@@ -255,7 +262,7 @@ Ankyra — не «решатель Хорна», а **оркестратор ф�
 |---|---|---|---|---|
 | L0 | ProofWriter | этап D 300 | 0 grounded false proofs; детерминированные все `proven`; ≥95% | готово (перепрогон 297/300) |
 | L1 | ProntoQA (negation), подмножество отрицаний FOLIO | ProntoQA тир a/b | то же + объявленный CWA | реализовано (движок) + синтетический гейт; ProntoQA зелёный и закрыт |
-| L2 | ProntoQA-OOD (compositional), затем FOLIO | ProntoQA-OOD тир a (44), FOLIO L2 тир a (45) | то же; FOLIO стратифицирован по конструкции | реализовано; ProntoQA-OOD live 41/42 (0 grounded false proofs), FOLIO live ограничен извлечением (26/44); Tier-1 T1 (общий свидетель `∃`), T3 (универсальная клаузальная цель), T5 (универсальная посылка только по голове), T4 (неплоская ground-цель), T2 (посылка с вложенной дизъюнкцией) и T6 (ground unit propagation, G4) поднимают gold-fed охват до 44/45, верно 42/45 (`docs/t1_plan_ru.md`, `docs/t3_plan_ru.md`, `docs/t5_plan_ru.md`, `docs/t4_t2_plan_ru.md`, `docs/t6_plan_ru.md`) |
+| L2 | ProntoQA-OOD (compositional), затем FOLIO | ProntoQA-OOD тир a (44), FOLIO L2 тир a (45) | то же; FOLIO стратифицирован по конструкции | реализовано; ProntoQA-OOD live 41/42 (0 grounded false proofs), FOLIO live ограничен извлечением (26/44); Tier-1 T1 (общий свидетель `∃`), T3 (универсальная клаузальная цель), T5 (универсальная посылка только по голове), T4 (неплоская ground-цель), T2 (посылка с вложенной дизъюнкцией) и T6 (ground unit propagation, G4) поднимают gold-fed охват до 44/45, верно 42/45 (`docs/t1_plan_ru.md`, `docs/t3_plan_ru.md`, `docs/t5_plan_ru.md`, `docs/t4_t2_plan_ru.md`, `docs/t6_plan_ru.md`); Tier-2 3a конечное равенство (синтетический гейт) `docs/equality_plan_ru.md` |
 | L3 | AR-LSAT | предстоит собрать | проверка опций решателем | в планах (отдельный движок) |
 | L4 | GSM8K | предстоит собрать | числовое совпадение | низкий приоритет |
 | D | defeasible-NLI | предстоит выбрать | разрешённый/неразрешённый конфликт отражён | реализовано + синтетический гейт |

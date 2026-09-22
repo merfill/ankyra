@@ -17,11 +17,15 @@ _FEATURES = {
     "compound_goal",
     "shared_witness",
     "universal_goal",
+    "clause_goal",
+    "existential_disjunction",
+    "equality",
 }
 _REFUSALS = {
     "out_of_fragment:non_horn",
     "out_of_fragment:compound_goal",
     "out_of_fragment:existential",
+    "out_of_fragment:equality",
     "out_of_fragment:naf_in_l2",
     "out_of_fragment:defeasible_with_clausal_fragment",
 }
@@ -60,6 +64,10 @@ def test_negative_controls():
     # A1: the L2 flag selects clausal even for a Horn structure; the fragment stays horn.
     assert results["control-horn-logic-on-11"]["actual"]["procedure"] == "clausal"
     assert results["control-horn-logic-on-11"]["actual"]["fragment"] == ["horn"]
+    # Equality requires the clausal procedure and is refused by name with L2 off.
+    assert results["equality-18"]["actual"]["procedure"] == "clausal"
+    assert results["equality-18"]["actual"]["fragment"] == ["equality", "horn"]
+    assert results["refuse-equality-19"]["actual"]["refusal"] == "out_of_fragment:equality"
 
 
 def test_runner_restores_the_flags():

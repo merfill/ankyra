@@ -48,8 +48,10 @@ Concretely, L2 must enable answers that are out of the current fragment:
   scored; functions, equality and axiom schemas are reported `out_of_fragment`.
 - **Out of scope:** full undecidable FOL. Entailment is only semi-decidable, so the
   search stays **bounded** and exhaustion is the honest `insufficient`/`budget`
-  (`docs/reasoning_roadmap.md` L2 risk). Functions/equality remain a later fragment
-  decision, not a bug fix.
+  (`docs/reasoning_roadmap.md` L2 risk). Function terms (and equality outside the
+  finite ground fragment) remain a later fragment decision, not a bug fix; finite
+  equality itself landed as the named fragment `equality` (milestone 17,
+  `docs/equality_plan.md`).
 - **Out of scope:** L3 (CSP/SAT) and L4 (arithmetic) — separate engines.
 - No full-collection runs (no free LLM access; §17).
 - No NL heuristics: disjunction and quantifier structure are **structurally**
@@ -542,6 +544,16 @@ a contradiction shows both branches. `answer` is unchanged (`refuted` now carrie
     40→**42/45**, covered 40/44→**42/44**, `out_of_fragment` **1** (malformed `0109`),
     0 grounded false proofs. `evals.l2_synthetic` 56/56, `evals.routing_synthetic`
     17/17; pytest 480 passed. Tier-1 is complete.
+17. **Tier-2 item 3a — finite equality DONE (synthetic only)**
+    (`docs/equality_plan.md`). The reserved `eq` predicate enters as a named fragment on
+    the clausal procedure: an asserted unit ground equality builds a union-find
+    partition, terms are canonicalized (substitution), and reflexivity plus
+    unique-names units are added over the individual domain (declared finite named
+    domain, EQ-D2). `FragmentFeature "equality"`, refusal `out_of_fragment:equality`,
+    no new flag. It moves no FOLIO number (FOLIO v0 has no equality; v2's is entangled
+    with multi-variable quantification / nested `∃`). `evals.l2_synthetic`
+    56→**65/65**, `evals.routing_synthetic` 17→**19/19**; pytest **505 passed**. Item
+    3b (functions) stays deferred.
 
 Each milestone lands reviewable on its own; no milestone starts on a red soundness
 gate. Milestone 5 gates 2–4; milestone 3 (Horn path untouched) can proceed while the

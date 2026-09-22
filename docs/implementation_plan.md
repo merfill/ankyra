@@ -501,6 +501,18 @@ Source: `docs/quality_findings.md`. Ordered by priority.
     proofs**; LLM-free gates `evals.l2_synthetic` (52→56/56) and
     `evals.routing_synthetic` (17/17); pytest 480 passed. **Tier-1 is complete**;
     only the malformed FOLIO row `0109` stays `out_of_fragment`.
+27. **Tier-2 item 3a finite equality — DONE (synthetic only).**
+    `=`/`≠` enters as the named fragment `equality` on the clausal procedure
+    (`engine/clause.py`: asserted unit ground equality → union-find canonicalization
+    (substitution) + reflexivity + unique-names units; `engine/inference.py`:
+    `FragmentFeature "equality"`, refusal `out_of_fragment:equality`; query/pool
+    canonicalization in `verify.l2_outcomes`). Declared semantics is the finite named
+    domain (`docs/equality_plan.md` EQ-D2). It moves **no FOLIO number**: measurement
+    shows FOLIO v0 has 0 equality and 0 function terms, and v2's equality is entangled
+    with multi-variable quantification / nested `∃` — there is no clean external gate.
+    LLM-free gates `evals.l2_synthetic` (56→**65/65**) and `evals.routing_synthetic`
+    (17→**19/19**); pytest **505 passed**. **3b (bounded function terms) deferred**
+    (no data; semi-decidability trap). Plan: `docs/equality_plan.md`.
 
 ## 9. Reasoning roadmap (main axis)
 
@@ -539,7 +551,9 @@ Stages:
   `docs/quality_findings.md` §G). **Tier-1 is complete** (T1/T3/T5/T4/T2 plus T6, the
   G4 ground unit propagation in `refute_support`): FOLIO L2 tier a gold-fed coverage
   **44/45**, 42/45 correct, only the malformed `0109` left `out_of_fragment` — the
-  explained plan is `docs/coverage_ceiling.md` (item 26).
+  explained plan is `docs/coverage_ceiling.md` (item 26). **Tier-2 item 3a finite
+  equality** is implemented as the named fragment `equality` with a synthetic gate
+  (item 27, `docs/equality_plan.md`); 3b (functions) is deferred.
   Full first-order unification is deferred (`docs/l2_plan.md`).
 - **L3 — finite-domain CSP/SAT, a separate engine.** Benchmark AR-LSAT.
 - **L4 — arithmetic, a separate numeric engine or tool-use.** Benchmark GSM8K.

@@ -132,7 +132,9 @@ out-of-fragment rows whose *first* blocker is that item.
 Reachable but absent from the committed L2 sample: **2a** `↔`/`⊕` lowering (two
 clauses / `(A∨B)∧(¬A∨¬B)`), **2c** multi-variable quantification over finite domains
 (generalize grounding/witness enumeration). Kept on the list so the fragment is
-declared once, not per-id.
+declared once, not per-id. **Tier-2 item 3a (finite equality)** was implemented as the
+named fragment `equality` and gated synthetically (`docs/equality_plan.md`), because no
+available collection exercises equality in a clean slice; 3b (functions) stays deferred.
 
 **T1 done.** A conjunctive existential conclusion with a shared witness is now a
 **joint `all` goal**: one witness assignment is enumerated and every conjunct must hold
@@ -207,6 +209,15 @@ is internal; the row-level record is `docs/t6_plan.md`.
   `out_of_fragment` row is the malformed annotation `0109`. Extraction
   G1–G4 (`docs/quality_findings.md` §G) is now **complete** too —
   `docs/g1_g4_plan.md` — on the rows the method covers, in parallel, not first.
+- **Tier-2, item 3a finite equality — DONE (synthetic only).** `=`/`≠` is a named
+  fragment `equality` on the clausal procedure (`docs/equality_plan.md`), gated by
+  `evals.l2_synthetic` (65/65) and `evals.routing_synthetic` (19/19). It moves **no**
+  FOLIO number: measurement (`docs/equality_plan.md` §2) shows FOLIO v0 has **no**
+  equality and no function terms, and FOLIO v2's equality is entangled with
+  multi-variable quantification / nested `∃` — so there is no clean external gate.
+  **3b (bounded function terms) stays deferred** (no function term in any available
+  FOLIO split; the semi-decidability trap of `docs/l2_plan.md` §8). This corrects the
+  earlier "reachable but absent from the committed sample" reading.
 - **Open decision T-D1 (resolved).** T5's domain: ground head-only variables over the
   **individual domain** (`D_ind` = pool minus `is_a` objects), not the full pool. The
   soundness argument and the synthetic negative control (`head-only-03`) are in

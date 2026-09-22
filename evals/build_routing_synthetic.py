@@ -8,8 +8,8 @@ language, zero provider variance.
 
 Coverage: every fragment feature (horn, negation, disjunction, existential,
 builtin, compound_goal, shared_witness, universal_goal, head_only_rule, clause_goal,
-existential_disjunction) and every
-refusal code (non_horn, compound_goal, existential, naf_in_l2,
+existential_disjunction, equality) and every
+refusal code (non_horn, compound_goal, existential, equality, naf_in_l2,
 defeasible_with_clausal_fragment), plus controls for the A1 policy (the L2 flag
 selects the clausal procedure even for a Horn structure) and the second refusal
 layer (clausification refuses a builtin).
@@ -260,6 +260,38 @@ def cases() -> list[dict]:
             status="refuted",
             kind="no",
             note="an existential with a nested disjunction is the existential_disjunction feature",
+        ),
+        _case(
+            "equality-18",
+            "equality",
+            _theory(
+                morphisms=[_is_a("rex", "cat"), _m("eq", "rex", "tom")],
+                rules=[_rule([_is_a("?x", "cat")], _is_a("?x", "animal"))],
+            ),
+            _query(_is_a("tom", "animal")),
+            fragment=["equality", "horn"],
+            procedure="clausal",
+            status="supported",
+            kind="yes",
+            note="an asserted ground equality is the equality feature and requires the "
+            "clausal procedure (canonicalization)",
+        ),
+        _case(
+            "refuse-equality-19",
+            "refusal",
+            _theory(
+                morphisms=[_is_a("rex", "cat"), _m("eq", "rex", "tom")],
+                rules=[_rule([_is_a("?x", "cat")], _is_a("?x", "animal"))],
+            ),
+            _query(_is_a("tom", "animal")),
+            fragment=["equality", "horn"],
+            procedure="horn",
+            status="out_of_fragment",
+            kind="unknown",
+            refusal="out_of_fragment:equality",
+            logic="off",
+            note="negative control: with L2 off equality is refused, never treated as "
+            "an opaque predicate by the Horn path",
         ),
         _case(
             "refuse-non-horn-06",

@@ -126,7 +126,7 @@ untethered "reasoning". Committed gates:
 | L1 | explicit negation | ProntoQA tier a | 48/48 (100%), all `proven` |
 | L1 | explicit negation | ProntoQA tier b | **160/160 (100%)**, all `proven` |
 | L1 | disjointness, NAF, declared CWA | synthetic (LLM-free) | 40/40 |
-| L2 | disjunction, case split, finite-domain quantifiers | synthetic (LLM-free) | 23/23 |
+| L2 | disjunction, case split, finite-domain quantifiers, finite equality | synthetic (LLM-free) | 65/65 |
 | D | defeasible | synthetic (LLM-free) | 8/8 |
 
 The ProntoQA runs have **0 grounded false proofs** and every determinate answer is
@@ -152,15 +152,15 @@ uv run python -m evals.build_prontoqa_ood_sample --tier a  # ProntoQA-OOD L2 sam
 uv run python -m evals.analyze_folio         # FOLIO fragment-vs-extraction diagnostic
 ```
 
-**L2** (disjunction, case split, finite-domain quantifiers) is implemented behind
-`ANKYRA_LOGIC` (default `off`). It is gated LLM-free by the synthetic collection
-**23/23** (0 grounded false proofs), and its first live gate — **ProntoQA-OOD tier a —
-is green: 41/42 (97.6%), 0 grounded false proofs** (`evals.prontoqa_ood`). FOLIO's L2
-live gate (45 problems) is **extraction-bound: 26/44**, with no engine unsoundness —
-the misses are no-target/`out_of_fragment` or a universal/conditional conclusion
-collapsed to a ground atom. The earlier FOLIO L1 negation slice scored 7/13, and the
-gold-FOL diagnostic (`evals.analyze_folio`) showed text-fed equals gold-fed, i.e. the
-gap is logic/extraction, not the engine core.
+**L2** (disjunction, case split, finite-domain quantifiers, finite equality) is
+implemented behind `ANKYRA_LOGIC` (default `off`). It is gated LLM-free by the synthetic
+collection **65/65** (0 grounded false proofs), and its first live gate —
+**ProntoQA-OOD tier a — is green: 41/42 (97.6%), 0 grounded false proofs**
+(`evals.prontoqa_ood`). On FOLIO L2 tier a the method covers **44/45** (gold-fed 42/45,
+0 grounded false proofs); text-fed is **extraction-bound (29–31/45)**, backlog G1–G4
+complete, residual wall G2 (missing premises). The earlier FOLIO L1 negation slice
+scored 7/13; the gold-FOL diagnostic (`evals.analyze_folio`) separated method from
+extraction, i.e. the FOLIO gap is coverage/extraction, not the engine core.
 
 ## Documentation
 
@@ -183,19 +183,20 @@ constraints and the per-query declared closed world (`ANKYRA_NEGATION_MODE`), wi
 ProntoQA 208/208 (tiers a+b, all `proven`, 0 grounded false proofs; the collection
 is considered closed) and LLM-free synthetic gates 40/40 (L1) and 8/8 (defeasible).
 **L2 is implemented and gated** behind `ANKYRA_LOGIC`: disjunction and case splits,
-conjunctive/disjunctive and open goals, and finite-domain quantifiers (Skolemization
-plus witness enumeration). The LLM-free synthetic gate is **23/23** with 0 grounded
-false proofs, and the **ProntoQA-OOD tier-a live gate is green: 41/42 (97.6%), 0
-grounded false proofs**. FOLIO's L2 live gate is **extraction-bound (26/44)** with no
-engine unsoundness (backlog G1–G4 in `docs/quality_findings.md` §G). The defeasible
-layer (D) is implemented behind `ANKYRA_DEFEASIBLE`. The declared-fragment contract
-(`docs/fragment_routing.md`) derives the required fragment from the built structure
-and refuses an unsupported one with a named `out_of_fragment`, instead of guessing;
-its LLM-free gate is **12/12**.
+conjunctive/disjunctive and open goals, finite-domain quantifiers (Skolemization plus
+witness enumeration) and finite equality (`=`/`≠`, fragment `equality`). The LLM-free
+synthetic gate is **65/65** with 0 grounded false proofs, and the **ProntoQA-OOD tier-a
+live gate is green: 41/42 (97.6%), 0 grounded false proofs**. On FOLIO L2 tier a the
+method covers **44/45** (gold-fed 42/45, 0 grounded false proofs); text-fed is
+extraction-bound (29–31/45, backlog G1–G4 complete, residual wall G2 missing premises).
+The defeasible layer (D) is implemented behind `ANKYRA_DEFEASIBLE`. The
+declared-fragment contract (`docs/fragment_routing.md`) derives the required fragment
+from the built structure and refuses an unsupported one with a named
+`out_of_fragment`, instead of guessing; its LLM-free gate is **19/19**.
 
-Known open items: FOLIO L2 formalization (backlog **G1–G4** in
-`docs/quality_findings.md` §G — range-restriction, retained premises, universal/
-conditional conclusions as targets, ground-saturation budget); the gold-fed L2
-diagnostic parser (`∨`/`∃`); full first-order unification (deferred — grounding is
+Known open items: FOLIO L2 extraction (residual **G2** — missing premises; the deferred
+`A′` repair); Tier-2 **3b** bounded function terms (deferred — no function terms in the
+available FOLIO splits); the reachable-but-absent **2a** `↔`/`⊕` lowering and **2c**
+multi-variable quantification; full first-order unification (deferred — grounding is
 sound and terminating on the committed finite domains); extraction robustness on real
 text (`docs/folio.md` §9); and the items in `docs/quality_findings.md`.

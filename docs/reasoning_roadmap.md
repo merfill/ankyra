@@ -19,6 +19,7 @@ implementation plan), `docs/l2_plan.md` (the L2 implementation plan),
 `docs/t5_plan.md` (Tier-1 item T5: head-only universal premise),
 `docs/t4_t2_plan.md` (Tier-1 items T4/T2: non-flat ground goal, nested-disjunction premise),
 `docs/t6_plan.md` (Tier-1 item T6: ground unit propagation, G4),
+`docs/equality_plan.md` (Tier-2 item 3a: finite equality),
 `docs/g1_g4_plan.md` (Phase 1 extraction G1–G4 on FOLIO L2, completed),
 `docs/ar_lsat.md`,
 `docs/gsm8k.md`, `docs/defeasible_reasoning.md`, `docs/task.md`,
@@ -164,7 +165,14 @@ Every stage is defined by the same six items:
   resolution edge, same budget) decides the two budget-exhausted rows, raising
   gold-fed to **42/45** (covered 42/44), 0 grounded false proofs; `evals.l2_synthetic`
   56/56, `evals.routing_synthetic` 17/17. Tier-1 is
-  complete; only the malformed FOLIO row `0109` stays `out_of_fragment`. Full
+  complete; only the malformed FOLIO row `0109` stays `out_of_fragment`. **Tier-2 item
+  3a (finite equality)** is implemented as the named fragment `equality` on the clausal
+  procedure — canonicalization (substitution), reflexivity, symmetry and the declared
+  unique-names reading over the finite domain (`docs/equality_plan.md`), gated
+  synthetically only (`evals.l2_synthetic` 65/65, `evals.routing_synthetic` 19/19),
+  because FOLIO v0 has no equality and v2's equality is entangled with
+  multi-variable quantification / nested `∃`; item 3b (functions) is deferred (no data).
+  Full
   first-order **unification** is
   deferred: a prototype diverges on `not_entailed` (semi-decidability); the committed
   collections are finite named domains, where grounding is sound and terminating.
@@ -252,7 +260,7 @@ honest `out_of_fragment`, never a guess.
 |---|---|---|---|---|
 | L0 | ProofWriter | Tier D 300 | 0 grounded false proofs; determinate all `proven`; ≥95% | done (297/300 re-run) |
 | L1 | ProntoQA (negation), FOLIO negation subset | ProntoQA tier a/b | same + declared CWA | implemented (engine) + synthetic gate; ProntoQA green and closed |
-| L2 | ProntoQA-OOD (compositional), then FOLIO | ProntoQA-OOD tier a (44), FOLIO L2 tier a (45) | same; FOLIO stratified by construct | implemented; ProntoQA-OOD live 41/42 (0 grounded false proofs), FOLIO live extraction-bound (26/44); Tier-1 T1 (shared-witness ∃), T3 (universal clause goal), T5 (head-only universal premise), T4 (non-flat ground goal), T2 (nested-disjunction premise) and T6 (G4 ground unit propagation) raise gold-fed coverage to 44/45, 42/45 correct (`docs/t1_plan.md`, `docs/t3_plan.md`, `docs/t5_plan.md`, `docs/t4_t2_plan.md`, `docs/t6_plan.md`) |
+| L2 | ProntoQA-OOD (compositional), then FOLIO | ProntoQA-OOD tier a (44), FOLIO L2 tier a (45) | same; FOLIO stratified by construct | implemented; ProntoQA-OOD live 41/42 (0 grounded false proofs), FOLIO live extraction-bound (26/44); Tier-1 T1 (shared-witness ∃), T3 (universal clause goal), T5 (head-only universal premise), T4 (non-flat ground goal), T2 (nested-disjunction premise) and T6 (G4 ground unit propagation) raise gold-fed coverage to 44/45, 42/45 correct (`docs/t1_plan.md`, `docs/t3_plan.md`, `docs/t5_plan.md`, `docs/t4_t2_plan.md`, `docs/t6_plan.md`); Tier-2 3a finite equality (synthetic gate) `docs/equality_plan.md` |
 | L3 | AR-LSAT | to build | per-option solver check | planned (separate engine) |
 | L4 | GSM8K | to build | numeric match | low priority |
 | D | defeasible-NLI | to choose | resolved/undecided conflict reported | implemented + synthetic gate |

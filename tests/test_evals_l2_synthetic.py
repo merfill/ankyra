@@ -33,6 +33,7 @@ def test_collection_covers_every_new_mechanism():
         "existential",
         "open_goal",
         "shared_witness",
+        "equality",
         "budget",
         "out_of_fragment",
         "control",
@@ -46,6 +47,10 @@ def test_collection_has_negative_controls():
     assert results["control-flag-off-01"]["actual"]["status"] == "out_of_fragment"
     # An exhausted budget must not yield a proof.
     assert results["budget-01"]["actual"]["strength"] == "not_proven"
+    # A disequality-conditioned rule must not fire for the excluded individual.
+    assert results["eq-control-diseq-07"]["actual"]["status"] == "unsupported"
+    # Equality with L2 off is refused, never treated as an opaque predicate.
+    assert results["eq-control-flag-off-08"]["actual"]["status"] == "out_of_fragment"
 
 
 def test_evaluate_reports_a_mismatch():
