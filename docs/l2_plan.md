@@ -400,6 +400,13 @@ a contradiction shows both branches. `answer` is unchanged (`refuted` now carrie
 - Extend `evals/build_folio_sample.py` and `evals/folio.py` with L2 constructs;
   stratify by construct (`docs/folio.md` §4). The `evals/folio_fol.py` gold-fed mode
   is the diagnostic that separates fragment from extraction. Budgeted (§17).
+- The **negation slice** (13 rows, L1 fragment by construction) is also decided by
+  the clausal procedure: its residual is reductio/contrapositive, so gold-fed open is
+  **12/13** under `ANKYRA_LOGIC=ground` versus 7/13 Horn (live text-fed **11/13**),
+  with the four `Uncertain` rows still `unknown` and no grounded false proof. Both
+  committed subsets therefore
+  use the clausal path (`evals.folio.default_logic`); no CWA is mixed in
+  (`docs/folio.md` §9, `docs/implementation_plan.md` §8 item 29).
 
 ## 13. Config and flags
 

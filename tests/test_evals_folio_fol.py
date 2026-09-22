@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from evals.analyze_folio import SAMPLES, analyze, load_sample
+from evals.analyze_folio import SAMPLES, analyze, load_sample, run_all
 from evals.folio_fol import FolParseError, to_theory_query
 
 
@@ -223,3 +223,22 @@ def test_gold_l1_negation_unchanged(tmp_path: Path):
     result = analyze(_committed("negation", "0074"), tmp_path, logic="off")
     assert result["gold_open"] == ("yes", "supported")
     assert result["gold_open_ok"] and not result["fragment"]
+
+
+def test_gold_negation_slice_is_decided_by_l2(tmp_path: Path):
+    # The negation slice's residual is reductio/contrapositive (docs/folio.md §9,
+    # docs/implementation_plan.md §8 item 29): the clausal L2 procedure decides
+    # 12/13 gold-fed open, with no grounded mismatch. 0027 is labelled False but its
+    # annotated premises entail neither Alien(marvin) nor its negation, so it stays an
+    # honest abstention; closing it would need a per-row CWA (tuning) and a global one
+    # would wrongly refute the four Uncertain rows.
+    results = run_all(load_sample(SAMPLES["negation"]), tmp_path, logic="ground")
+    assert sum(r["gold_open_ok"] for r in results) == 12
+    assert not any(r["fragment"] for r in results)
+    assert not any(
+        not r["gold_open_ok"] and r["gold_open"][1] in {"refuted", "supported"}
+        for r in results
+    )
+    misses = [r for r in results if not r["gold_open_ok"]]
+    assert [r["id"][-4:] for r in misses] == ["0027"]
+    assert misses[0]["gold_open"] == ("unknown", "unsupported")

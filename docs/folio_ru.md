@@ -223,6 +223,39 @@ target), т.е. **прироста нет — как и предсказывае
 непроверенное продолжение, дороже по токенам. Сэмплирование не используется
 (`docs/l3_plan.md` D-L3-10).
 
+**Остаток закрыт через L2 (item 29b).** Пять строк, которые `analyze_folio` метит
+`semantics` (`0050`, `0075`, `0157`, `0051`, `0158`), — это **доказательства от
+противного / контрапозиция** (например, `0051` опровергает
+`StreamingService(y1984)`, выводя одновременно `Analog` и `¬Analog`), а не пробелы
+извлечения. Клаузальная процедура L2 уже решает их: gold-fed open под
+`ANKYRA_LOGIC=ground` — **12/13** (против **7/13** на Horn-пути), четыре строки
+`Uncertain` остаются честно `unknown`, каждое решение `proven`, **0 grounded false
+proofs**. **Живой прогон (text-fed, `--subset negation --jobs 5`):** переклассифи-
+цированный гейт даёт **11/13** (против **7/13** на Horn-пути), **0 grounded false
+proofs** — все семь ответов `proven` верны — с двумя `undecided_mismatch`: `0027`
+(проблема метки ниже) и `0050`, где извлечение **потеряло отрицательную посылку**
+(«No digital media are analog», `Digital → ¬Analog`), и reductio нечему
+противоречить — это потеря извлечения (стена G2 «missing premises»,
+`docs/g1_g4_plan.md`), а не логика. Повторный прогон не нужен
+(`docs/reasoning_roadmap.md` §4: прогон повторяется только при подозрении на
+недетерминизм, а здесь каждый детерминированный ответ верен). Срез сохраняет свою
+L1-конструкцию (`build_folio_sample.in_l1_negation`) и
+имя; меняется только **процедура гейта**: оба закоммиченных подмножества идут по
+клаузальному пути (`evals.folio.default_logic`, используется в `evals.folio` и
+`evals.analyze_folio`). Это и есть решение «закрыть L1-остаток через L2, а не через
+извлечение» (`docs/implementation_plan.md` §8 item 29).
+
+Единственная оставшаяся строка — `0027`: её аннотированные посылки не влекут ни
+`Alien(marvin)`, ни его отрицание (при `¬FromEarth(marvin)`, `¬FromMars(marvin)` и
+`¬FromEarth → Extraterrestrial` и `Alien(marvin)`, и `¬Alien(marvin)` совместны), так
+что метка `False` классически не обоснована и ответ остаётся честным abstention.
+**Глобальный** закрытый мир её бы решил, но неверно опроверг бы четыре строки
+`Uncertain` (единой world-политики нет); **построчный** мир был бы подгонкой под id.
+Ни то, ни другое не применяется (`docs/l2_plan_ru.md` §3: L2 классический и не
+смешивает L1 CWA). Воспроизвести:
+`uv run python -m evals.analyze_folio --subset negation`; зафиксировано
+`tests/test_evals_folio_fol.py::test_gold_negation_slice_is_decided_by_l2`.
+
 ## 10. Recon L2 (LLM-free)
 
 Воспроизводится командой `uv run python -m evals.recon_l2 --folio-only`. По

@@ -222,6 +222,10 @@ deterministic collection is the real gate for the new semantics.
 - Only the negation subset, as a cross-check on real text. Extraction is LLM-costly,
   so the sample is small and explicitly budgeted (§17); the synthetic gate must not
   wait on it. `docs/folio.md` has the construct stratification.
+- The slice is **L1-fragment by construction but fragment-bound**: its residual is
+  reductio/contrapositive, so it is scored by the clausal L2 procedure
+  (`ANKYRA_LOGIC=ground`, gold-fed **12/13**, live **11/13**, `docs/folio.md` §9,
+  `docs/implementation_plan.md` §8 item 29). It is no longer a live L1 gate.
 
 ### 12.4 Defeasible parity (D)
 
@@ -290,7 +294,10 @@ ProntoQA L0/L1 live gates are green (tier a 48/48, tier b 160/160, all `proven`,
 grounded false proofs). The FOLIO negation subset is built (13 in-fragment) and run
 (7/13, all `Uncertain` correct, no grounded mismatch); the gold-FOL diagnostic shows
 text-fed = gold-fed open, so the remaining gap is the L2 fragment boundary, not
-extraction.
+extraction. **Resolved (item 29b):** scored by the clausal L2 procedure the same slice
+is gold-fed **12/13** (four `Uncertain` still `unknown`, 0 grounded false proofs, only
+`0027` an honest abstention), so the FOLIO residual is L2, not an L1 extraction task
+(`docs/folio.md` §9).
 
 ## 17. Budget
 

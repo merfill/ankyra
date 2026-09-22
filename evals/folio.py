@@ -1,4 +1,4 @@
-"""FOLIO eval adapter over the committed negation-subset sample (L1 cross-check).
+"""FOLIO eval adapter over the committed negation-subset sample (L2 cross-check).
 
 Source: Han et al., FOLIO, ``github.com/Yale-LILY/FOLIO`` (MIT), ``data/v0.0``.
 ``evals/data/folio_negation_tier_a.jsonl`` is the deterministic L1 slice (explicit
@@ -13,8 +13,11 @@ The FOLIO label is three-way with an open-world ``Uncertain``:
     Uncertain -> neither       -> answer.kind "unknown"
 
 The world stays open: ``Uncertain`` must never be turned into a decision by closing
-the world. This is the secondary L1 gate (real text); the primary gate is the
-synthetic collection. Running the adapter invokes the LLM extractor and costs
+the world. Both committed subsets are decided by the clausal L2 procedure
+(``ANKYRA_LOGIC=ground``): the negation slice is inside the L1 fragment *by
+construction*, but its residual — proofs by contradiction and contrapositive — is
+not Horn-decidable, and L2 subsumes L1 (``docs/folio.md`` §9). The primary L1 gate
+is the synthetic collection. Running the adapter invokes the LLM extractor and costs
 tokens.
 
 Usage:
@@ -44,6 +47,16 @@ COLLECTION = "folio"
 
 _LABEL_TO_KIND = {"True": "yes", "False": "no", "Uncertain": "unknown"}
 _SUBSETS = {"negation": "negation", "l2": "l2"}
+
+
+def default_logic(subset: str) -> str:
+    """The procedure a committed subset is decided by (both run the clausal L2 path).
+
+    The negation slice stays inside L1 by construction, but the residual is
+    reductio/contrapositive, which the Horn path cannot decide and L2 subsumes
+    (``docs/folio.md`` §9, ``docs/implementation_plan.md`` §8 item 29).
+    """
+    return "ground" if subset in _SUBSETS else "off"
 
 
 def sample_path(subset: str = "negation", tier: str = "a") -> Path:
@@ -183,7 +196,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Run the FOLIO eval (L1 negation or L2).")
     parser.add_argument("--subset", default="negation", choices=sorted(_SUBSETS), help="Committed subset (default: negation).")
     parser.add_argument("--tier", default="a", help="Committed tier (default: a).")
-    parser.add_argument("--logic", default="", help="Logic level override (default: ground for the L2 subset, off otherwise).")
+    parser.add_argument("--logic", default="", help="Logic level override (default: ground; see default_logic).")
     parser.add_argument("--ids", default="", help="Comma-separated ids (default: all).")
     parser.add_argument("--limit", type=int, default=0, help="Run at most N problems.")
     parser.add_argument("--out", default=str(OUT), help="Directory for per-problem traces.")
@@ -192,7 +205,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--jobs", type=int, default=1, help="Run up to N problems concurrently (default: 1).")
     args = parser.parse_args(argv)
 
-    logic = args.logic or ("ground" if args.subset == "l2" else "off")
+    logic = args.logic or default_logic(args.subset)
     wanted = {item.strip() for item in args.ids.split(",") if item.strip()}
     records = [r for r in load_sample(sample_path(args.subset, args.tier)) if not wanted or r["id"] in wanted]
     if args.limit:

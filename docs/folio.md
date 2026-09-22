@@ -221,6 +221,39 @@ is the untested follow-up, at a higher token cost. No sampling is used
 (`docs/l3_plan.md` D-L3-10). Tracked as a research item in
 `docs/implementation_plan.md` §8 item 29.
 
+**Residual closed by L2 (item 29b).** The five rows `analyze_folio` tags `semantics`
+(`0050`, `0075`, `0157`, `0051`, `0158`) are **proofs by contradiction /
+contrapositive** — e.g. `0051` refutes `StreamingService(y1984)` by deriving both
+`Analog` and `¬Analog` from it — not extraction gaps. The clausal L2 procedure
+already decides them: gold-fed open under `ANKYRA_LOGIC=ground` is **12/13** (versus
+**7/13** on the Horn path), the four `Uncertain` rows stay honestly `unknown`, every
+decision is `proven`, and there are **0 grounded false proofs**. **Live (text-fed,
+`--subset negation --jobs 5`):** the reclassified gate scores **11/13** (versus
+**7/13** on the Horn path), **0 grounded false proofs** — all seven `proven` answers
+are correct — with two `undecided_mismatch` abstentions: `0027` (the label issue
+below) and `0050`, whose extraction **dropped the negative premise** ("No digital
+media are analog", `Digital → ¬Analog`), leaving the reductio with nothing to
+contradict — an extraction loss (the G2 "missing premises" wall,
+`docs/g1_g4_plan.md`), not a logic gap. No re-run is needed (`docs/reasoning_roadmap.md`
+§4: a run is repeated only on a nondeterminism suspicion, and every determinate answer
+here is correct). The slice keeps its
+L1-fragment construction (`build_folio_sample.in_l1_negation`) and name; only the
+**gate's procedure** changes: both committed subsets run the clausal path
+(`evals.folio.default_logic`, used by `evals.folio` and `evals.analyze_folio`). This
+is the "close the L1 residual through L2, not extraction" decision
+(`docs/implementation_plan.md` §8 item 29).
+
+The one remaining row is `0027`: its annotated premises entail neither
+`Alien(marvin)` nor its negation (with `¬FromEarth(marvin)`, `¬FromMars(marvin)` and
+`¬FromEarth → Extraterrestrial`, both `Alien(marvin)` and `¬Alien(marvin)` are
+consistent), so the `False` label is not classically supported and the answer stays
+an honest abstention. A **global** closed world would decide it but would wrongly
+refute the four `Uncertain` rows (no single world assumption fits); a **per-row**
+world would be id tuning. Neither is applied (`docs/l2_plan.md` §3: L2 is classical
+and does not mix in the L1 CWA). Reproduce with
+`uv run python -m evals.analyze_folio --subset negation`; locked by
+`tests/test_evals_folio_fol.py::test_gold_negation_slice_is_decided_by_l2`.
+
 ## 10. L2 recon (LLM-free)
 
 Reproduce with `uv run python -m evals.recon_l2 --folio-only`. Over the v0.0

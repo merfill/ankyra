@@ -94,13 +94,23 @@ Every stage is defined by the same six items:
   benchmark manufactures false refutations. The mode must be attached to the
   query/benchmark, never guessed from wording.
 - **Benchmark:** ProntoQA (`docs/prontoqa.md`), negation/disjointness subset; the
-  negated-premise subset of **FOLIO** (`docs/folio.md`) is a secondary L1 stress.
+  negated-premise subset of **FOLIO** (`docs/folio.md`) is a secondary L1 stress,
+  **scored at L2** — its residual is reductio/contrapositive, not explicit negation
+  (see the status below).
 - **Plan:** `docs/l1_plan.md` (working plan; open decisions `D-L1-1`…`D-L1-5`).
 - **Status:** engine implemented (disjointness constraints, stratified NAF, declared
   CWA) and gated LLM-free by `evals.l1_synthetic` (**40/40**); the ProntoQA L0/L1
   live gates are green (tier a 48/48, tier b 160/160, all `proven`, 0 grounded false
-  proofs), and the FOLIO negation subset was run as a secondary cross-check (6/13;
-  mismatches are formalization/fragment, not unsoundness). ProntoQA v1 itself
+  proofs). The FOLIO negation subset (13 rows) was run as a secondary cross-check: it
+  is an L1-fragment slice by construction but **fragment-bound** — on the Horn path
+  gold-fed == text-fed == 7/13, and the residual is reductio/contrapositive, not
+  explicit negation. It is therefore scored by the **clausal L2 procedure**
+  (`ANKYRA_LOGIC=ground`): gold-fed open **12/13** (live text-fed **11/13**), four
+  `Uncertain` still `unknown`, **0 grounded false proofs**; the only gold-fed
+  abstention is `0027` (a `False` label the annotated premises do not entail) and the
+  live residual is extraction (`0050`, a dropped negative premise — the G2 wall). No
+  CWA is mixed in (`docs/folio.md` §9, `docs/implementation_plan.md` §8 item 29).
+  ProntoQA v1 itself
   exercises only explicit negation, which was already supported (see
   `docs/prontoqa.md` §8). **ProntoQA is closed**: tested at L1, both tiers green,
   no further runs unless a later stage specifically needs the collection (then as
@@ -275,7 +285,7 @@ honest `out_of_fragment`, never a guess.
 | Stage | Benchmark | Committed sample | Gate | Status |
 |---|---|---|---|---|
 | L0 | ProofWriter | Tier D 300 | 0 grounded false proofs; determinate all `proven`; ≥95% | done (297/300 re-run) |
-| L1 | ProntoQA (negation), FOLIO negation subset | ProntoQA tier a/b | same + declared CWA | implemented (engine) + synthetic gate; ProntoQA green and closed |
+| L1 | ProntoQA (negation), FOLIO negation subset | ProntoQA tier a/b | same + declared CWA | implemented (engine) + synthetic gate; ProntoQA green and closed; the FOLIO negation slice is fragment-bound and scored at L2 (gold-fed 12/13, live 11/13, `docs/folio.md` §9) |
 | L2 | ProntoQA-OOD (compositional), then FOLIO | ProntoQA-OOD tier a (44), FOLIO L2 tier a (45) | same; FOLIO stratified by construct | implemented; ProntoQA-OOD live 41/42 (0 grounded false proofs), FOLIO live extraction-bound (26/44); Tier-1 T1 (shared-witness ∃), T3 (universal clause goal), T5 (head-only universal premise), T4 (non-flat ground goal), T2 (nested-disjunction premise) and T6 (G4 ground unit propagation) raise gold-fed coverage to 44/45, 42/45 correct (`docs/t1_plan.md`, `docs/t3_plan.md`, `docs/t5_plan.md`, `docs/t4_t2_plan.md`, `docs/t6_plan.md`); Tier-2 3a finite equality (synthetic gate) `docs/equality_plan.md` |
 | L3 | AR-LSAT | dev/eval + gold committed | per-option solver check | engine + synthetic + gold green; live eval 21/30, 0 grounded_mismatch (gate green) |
 | L4 | GSM8K | to build | numeric match | low priority |

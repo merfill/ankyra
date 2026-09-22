@@ -163,6 +163,12 @@ pools and query bindings. `unify_pattern` matches a pattern against a ground fac
   rule applications resolved by specificity over `is_a`; NFA (strict overrides),
   undecided conflicts (Nixon diamond) accepted by neither branch. See
   `docs/defeasible_reasoning.md`.
+- **L1 (behind `ANKYRA_NEGATION_MODE`, off by default).** Still the Horn spine:
+  `_apply_constraints` enforces the disjointness `Theory.constraints`, and under a
+  query-declared closed world (`Query.world_assumption`) a negated goal is derived by
+  **negation-as-failure** in stratified order; a non-stratifiable program is
+  `out_of_fragment`. The world assumption is a per-query semantic choice, never read
+  off the wording (`docs/l1_plan.md`).
 - **L2 (behind `ANKYRA_LOGIC`, off by default).** A separate, non-Horn procedure:
   - `clause.py` — lowers a theory into **ground clauses** over its finite domain
     (axioms → units; rules → `¬body ∨ head…` per grounding; transitive `is_a` and
@@ -189,6 +195,16 @@ pools and query bindings. `unify_pattern` matches a pattern against a ground fac
   over the finite pool (`out_of_fragment:naf_in_l2` if a closed-world NAF query
   would mix the two semantics). `verify` keeps the policy and delegates the
   decision to the selected `Inference`.
+- **L3 (behind `ANKYRA_CSP`, off by default).** A separate **finite-domain
+  constraint** engine, not the clause prover. `build/csp.py` (with
+  `build/extract_csp.py`) validates an LLM-proposed `CspGame`/`CspQuestion`
+  structurally — known variables, declared value domains, and composite shape
+  (`all`/`any`/`not`/`conditional`), refusing a malformed one instead of letting it
+  evaluate vacuously. `engine/csp/` holds the declarative IR (`models.py`,
+  `schemas.py`), the bounded solver (`solver.py`, `ANKYRA_CSP_BUDGET`), the
+  answer/explanation builders (`answer.py`) and `decide.decide`, reached through
+  `analyze_csp_routing` (`engine/inference.py`). AR-LSAT is the gate
+  (`docs/l3_plan.md`, `docs/ar_lsat.md`); benchmark semantics stay in the harness.
 
 Gap codes: `target_unmatched:`, `condition_unmatched:`, `unused_premise:`,
 `contradiction:`, `target_refuted:`, `inconsistent_theory:`, `undecided_conflict:`.
@@ -263,8 +279,9 @@ the end-to-end entry point; `engine/cycle.run_cycle` is the reasoning-only API.
 Dynaconf, env prefix `ANKYRA`, from `.env`. Provider: `API_URL`, `API_KEY`, `MODEL`,
 `TEMPERATURE`, `MAX_TOKENS`, `MAX_TOKENS_EXTRACT`, `EXTRA_BODY`,
 `REASONING_EFFORT`. Engine: `MAX_WAVES`, `ALLOW_HYPOTHESES`, `BUILTINS`,
-`DEFEASIBLE`, `NEGATION_MODE`, `LOGIC`, `LOGIC_BUDGET`, `LANG`,
-`DEONTIC_PREFIXES`, `EXTRACT_SAMPLES`, `EXTRACT_REPAIRS`. Tests: `LIVE`.
+`DEFEASIBLE`, `NEGATION_MODE`, `LOGIC`, `LOGIC_BUDGET`, `CSP`, `CSP_BUDGET`,
+`CSP_REPAIRS`, `LANG`, `DEONTIC_PREFIXES`, `EXTRACT_SAMPLES`, `EXTRACT_PARALLEL`,
+`EXTRACT_REPAIRS`, `LANGUAGE_SPEC`. Tests: `LIVE`.
 
 ## 9. LLM layer (`llm/`)
 
@@ -286,6 +303,20 @@ Dynaconf, env prefix `ANKYRA`, from `.env`. Provider: `API_URL`, `API_KEY`, `MOD
   `ExpectationEvaluator` (soft; compares `status`, `kind`, `strength`, `value`).
 - `narrate.py` — reads saved traces and prints readable reasoning.
 - `tests/test_evals_live.py` asserts invariants only; expectations are metrics.
+- `skills.py` / `skills/<collection>/` — a per-collection **skill** (source notation
+  plus task specifics) composed into one block and auto-loaded by a harness through
+  the `ANKYRA_LANGUAGE_SPEC` seam; the loader takes only a collection name, never a
+  record, so per-id tuning is structurally impossible (`docs/task.md` §0.6).
+- Benchmark adapters — `proofwriter.py` (L0), `prontoqa.py` (L1), `prontoqa_ood.py`
+  and `folio.py` (L2), `ar_lsat.py` (L3). Each scores a collection against its
+  **declared** fragment and maps the dataset label to the engine's `(kind, strength)`;
+  benchmark semantics live here, never in the engine.
+- LLM-free synthetic gates — `l1_synthetic.py`, `l2_synthetic.py`, `l3_synthetic.py`,
+  `defeasible_synthetic.py`, `routing_synthetic.py` — built directly on engine models
+  (no extraction, no provider variance).
+- `folio_fol.py` / `analyze_folio.py` — the gold-FOL diagnostic that separates method
+  (fragment coverage) from extraction; `recon_l2.py` sizes a collection's fragment
+  slice from its FOL annotations.
 
 ## 11. Invariants and open items
 
@@ -294,9 +325,13 @@ may change and is then recorded as a `Revision`); freedom in proposal, determini
 in classification; theory and question are separate artifacts; every explanation
 step maps to a real edge or a hypothesis; answer strength is explicit.
 
-Open items (`docs/quality_findings.md`): explanation fidelity for refuted goals
-and rule provenance in traces; question-presupposition capture; LLM variance;
-non-monotonic exceptions (`docs/defeasible_reasoning.md` — design note ready).
+Open items (canonical list: `docs/implementation_plan.md` §8): FOLIO L2 extraction
+(residual **G2** — missing premises); the per-collection skill task-specific content
+(item 28) and the FOLIO language guide on the extraction-bound L2 tier a (item 29a);
+Tier-2 **3b** bounded function terms, **2a** `↔`/`⊕` lowering, **2c** multi-variable
+quantification; full first-order unification (deferred — grounding is sound and
+terminating on the committed finite domains). Design notes:
+`docs/defeasible_reasoning.md`, `docs/statement_sources.md`, `docs/logic_layer.md`.
 
 Future direction: the inference semantics are now pluggable. `docs/logic_layer.md`
 §10 describes the extracted `Inference` protocol (`engine/inference.py`, with

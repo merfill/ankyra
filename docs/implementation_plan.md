@@ -546,14 +546,23 @@ Source: `docs/quality_findings.md`. Ordered by priority.
     rules against a **dev-validated** case — the dev sample has no `count_compare` row,
     so it cannot be iterated without new data; extend the dev sample first, then re-try,
     never tuning on the eval gate (D-L3-10). Details: `docs/ar_lsat.md` §8.
-29. **FOLIO — fragment-bound vs extraction-bound (research).** The L1 negation slice
-    is **fragment-bound** (gold-fed == text-fed = 7/13; `docs/folio.md` §9): it needs
-    **L2 (reductio / declared CWA)**, not better text reading. The language guide
-    confirmed this — applied to L1 it gave **no gain** (7/12 ≈ 7/13) while injecting
-    correctly end-to-end. Open work: (a) test the guide on the **extraction-bound L2
-    tier a** slice (text-fed 29–31/45, `docs/g1_g4_plan.md`); (b) close the L1 residual
-    through L2 reductio/CWA rather than extraction. Do not sample
-    (`docs/l3_plan.md` D-L3-10).
+29. **FOLIO — fragment-bound vs extraction-bound (research).** **(b) DONE; (a) open.**
+    The L1 negation slice is **fragment-bound** (Horn gold-fed == text-fed = 7/13;
+    `docs/folio.md` §9), not extraction-bound. **(b)** The residual is reductio /
+    contrapositive, and the clausal L2 procedure already decides it: gold-fed open under
+    `ANKYRA_LOGIC=ground` is **12/13** (the 4 `Uncertain` rows stay honestly `unknown`,
+    every decision is `proven`, **0 grounded false proofs**), so both committed FOLIO
+    subsets now run the clausal path (`evals.folio.default_logic`); no engine change and
+    no CWA. **Live (text-fed): 11/13**, 0 grounded false proofs, two `undecided_mismatch`
+    (`0027`, the label row below; `0050`, an extraction loss — the negative premise
+    `Digital → ¬Analog` was dropped, the G2 "missing premises" wall), so the residual is
+    now extraction, not logic. The lone row `0027` is labelled `False` but its annotated
+    premises entail neither the conclusion nor its negation — a global closed world would
+    wrongly refute the four `Uncertain` rows and a per-row world would be id tuning, so
+    it stays an honest abstention (`docs/folio.md` §9). **(a) Open:** test the language guide on the
+    **extraction-bound L2 tier a** slice (text-fed 29–31/45, `docs/g1_g4_plan.md`) — a
+    budgeted live run; the guide gave **no gain** on the L1 slice (7/12 ≈ 7/13). Do not
+    sample (`docs/l3_plan.md` D-L3-10).
 
 ## 9. Reasoning roadmap (main axis)
 

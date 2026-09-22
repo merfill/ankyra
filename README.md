@@ -108,9 +108,9 @@ uv run python -m evals.narrate --lang ru   # read the reasoning
 ```
 
 Every live adapter (`evals.run`, `evals.proofwriter`, `evals.prontoqa`,
-`evals.prontoqa_ood`, `evals.folio`) takes `--jobs N` to run up to N problems
-concurrently on threads; per-problem flags stay in a `ContextVar`, so the pool is safe
-for heterogeneous problems.
+`evals.prontoqa_ood`, `evals.folio`, `evals.ar_lsat`) takes `--jobs N` to run up to N
+problems concurrently on threads; per-problem flags stay in a `ContextVar`, so the pool
+is safe for heterogeneous problems.
 
 Tests: `uv run pytest` (offline), `ANKYRA_LIVE=1 uv run pytest -m live` (real LLM).
 
@@ -166,22 +166,50 @@ collection **65/65** (0 grounded false proofs), and its first live gate —
 **ProntoQA-OOD tier a — is green: 41/42 (97.6%), 0 grounded false proofs**
 (`evals.prontoqa_ood`). On FOLIO L2 tier a the method covers **44/45** (gold-fed 42/45,
 0 grounded false proofs); text-fed is **extraction-bound (29–31/45)**, backlog G1–G4
-complete, residual wall G2 (missing premises). The earlier FOLIO L1 negation slice
-scored 7/13; the gold-FOL diagnostic (`evals.analyze_folio`) separated method from
-extraction, i.e. the FOLIO gap is coverage/extraction, not the engine core.
+complete, residual wall G2 (missing premises). The FOLIO **negation slice** is
+L1-fragment by construction but **fragment-bound**: on the Horn path gold-fed == text-fed
+== 7/13, and its residual is reductio/contrapositive, so it is now scored by the clausal
+L2 procedure (`evals.folio.default_logic`) — gold-fed **12/13**, live **11/13**, **0
+grounded false proofs**, with the residual now extraction (the G2 wall) and no closed
+world applied (a global CWA would wrongly refute the four `Uncertain` rows). The gold-FOL
+diagnostic (`evals.analyze_folio`) separates method from extraction, i.e. the FOLIO gap
+is coverage/extraction, not the engine core.
 
 ## Documentation
 
 - `ARCHITECTURE.md` — layers, flows, data model, module map.
+- `AGENTS.md` — contributor/agent workflow and the no-NL-parsers design boundary.
+
+**Spec and roadmap**
+
 - `docs/task.md` — technical specification.
 - `docs/reasoning_roadmap.md` — staged formalisms and gates (the main axis).
+- `docs/implementation_plan.md` — roadmap, backlog, milestones.
 - `docs/fragment_routing.md` — declared-fragment contract (which procedure runs).
-- `docs/l2_plan.md` — L2 implementation plan (L2 is implemented).
-- `docs/l3_plan.md` — L3 implementation plan (finite-domain CSP engine; implemented).
-- `docs/ar_lsat.md` — AR-LSAT collection notes (the L3 gate).
-- `docs/implementation_plan.md` — roadmap and backlog.
+- `docs/logic_layer.md` — pluggable inference semantics.
+- `docs/statement_sources.md` — origin vs logical role for assertions.
+
+**Stage plans**
+
+- `docs/l1_plan.md` — L1: stratified negation/NAF and declared CWA.
+- `docs/l2_plan.md` — L2: positive FOL (implemented).
+- `docs/l3_plan.md` — L3: finite-domain CSP (implemented).
+- `docs/equality_plan.md` — Tier-2 3a finite equality.
+- `docs/defeasible_reasoning.md` — exceptions/defaults (the D layer).
+
+**Collections, gates and findings**
+
+- `docs/proofwriter.md` — ProofWriter (the L0 gate).
+- `docs/prontoqa.md` — ProntoQA (the L1 gate).
+- `docs/folio.md`, `docs/folio_gold_fed.md`, `docs/folio_ceilings.md`,
+  `docs/folio_extension_plan.md`, `docs/g1_g4_plan.md` — FOLIO (the L2 gate) and the
+  coverage-ceiling work.
+- `docs/coverage_ceiling.md` — the method ceiling and the Tier-1 backlog
+  (`docs/t1_plan.md`, `docs/t3_plan.md`, `docs/t4_t2_plan.md`, `docs/t5_plan.md`,
+  `docs/t6_plan.md`).
+- `docs/ar_lsat.md` — AR-LSAT (the L3 gate).
+- `docs/gsm8k.md` — GSM8K (L4, planned).
 - `docs/quality_findings.md` — eval findings and open quality gaps.
-- `docs/defeasible_reasoning.md` — design note on exceptions/defaults.
 
 ## Status
 
@@ -199,7 +227,10 @@ synthetic gate is **65/65** with 0 grounded false proofs, and the **ProntoQA-OOD
 live gate is green: 41/42 (97.6%), 0 grounded false proofs**. On FOLIO L2 tier a the
 method covers **44/45** (gold-fed 42/45, 0 grounded false proofs); text-fed is
 extraction-bound (29–31/45, backlog G1–G4 complete, residual wall G2 missing premises).
-The defeasible layer (D) is implemented behind `ANKYRA_DEFEASIBLE`. The
+The FOLIO **negation slice** is L1-fragment by construction but fragment-bound, so it is
+scored by the clausal L2 procedure: gold-fed **12/13**, live **11/13**, 0 grounded false
+proofs (the residual is extraction, G2). The defeasible layer (D) is implemented behind
+`ANKYRA_DEFEASIBLE`. The
 declared-fragment contract (`docs/fragment_routing.md`) derives the required fragment
 from the built structure and refuses an unsupported one with a named
 `out_of_fragment`, instead of guessing; its LLM-free gate is **19/19**.
@@ -216,10 +247,11 @@ a per-collection **skill** (`evals/skills/<collection>/`, loaded by the harness 
 the remaining budgeted step (`docs/implementation_plan.md` §8 item 28).
 
 Known open items: FOLIO L2 extraction (residual **G2** — missing premises; the deferred
-`A′` repair); the FOLIO **L1 slice is fragment-bound, not extraction-bound** (needs L2
-reductio/CWA — a language guide gave no gain there, `docs/implementation_plan.md` §8
-item 29); Tier-2 **3b** bounded function terms (deferred — no function terms in the
-available FOLIO splits); the reachable-but-absent **2a** `↔`/`⊕` lowering and **2c**
-multi-variable quantification; full first-order unification (deferred — grounding is
-sound and terminating on the committed finite domains); extraction robustness on real
-text (`docs/folio.md` §9); and the items in `docs/quality_findings.md`.
+`A′` repair); the FOLIO **negation slice is fragment-bound** and now scored at L2 (its
+open step is the language guide on the extraction-bound L2 tier a, `docs/implementation_plan.md`
+§8 item 29); the AR-LSAT **skill task-specific content** (item 28); Tier-2 **3b** bounded
+function terms (deferred — no function terms in the available FOLIO splits); the
+reachable-but-absent **2a** `↔`/`⊕` lowering and **2c** multi-variable quantification;
+full first-order unification (deferred — grounding is sound and terminating on the
+committed finite domains); extraction robustness on real text (`docs/folio.md` §9); and
+the items in `docs/quality_findings.md`.

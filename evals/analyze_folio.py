@@ -9,8 +9,8 @@ A case where the gold formalization already fails in the open world is a **fragm
 gap (needs L2 / a different semantics); a case where the gold formalization succeeds
 but text-fed fails is an **extraction** gap. LLM-free.
 
-``--subset l2`` runs the gold-fed diagnostic under ``ANKYRA_LOGIC=ground`` over the
-committed L2 slice; ``--subset negation`` (the default) keeps the L1/L2-off path. An
+Both committed subsets run the gold-fed diagnostic under ``ANKYRA_LOGIC=ground``
+(the clausal L2 procedure; see ``evals.folio.default_logic``). An
 ``out_of_fragment`` gold verdict is an honest abstention, never a wrong answer.
 
 Usage:
@@ -180,11 +180,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--subset", default="negation", choices=sorted(SAMPLES))
     parser.add_argument("--sample", default="", help="Override the committed sample path.")
     parser.add_argument("--traces", default=str(TRACES))
-    parser.add_argument("--logic", default="", help="Logic level (default: ground for l2, off otherwise).")
+    parser.add_argument("--logic", default="", help="Logic level (default: ground; see evals.folio.default_logic).")
     parser.add_argument("--no-replay", action="store_true", help="Read the saved text score; do not re-run the engine on the saved extraction.")
     args = parser.parse_args(argv)
     sample = Path(args.sample) if args.sample else SAMPLES[args.subset]
-    logic = args.logic or ("ground" if args.subset == "l2" else "off")
+    logic = args.logic or folio_adapter.default_logic(args.subset)
     _report(
         run_all(
             load_sample(sample),

@@ -80,6 +80,13 @@ def test_sample_paths_are_distinct():
     assert folio.sample_path("l2").name == "folio_l2_tier_a.jsonl"
 
 
+def test_default_logic_is_ground_for_both_committed_subsets():
+    # The negation slice's residual is reductio/contrapositive, which L2 subsumes;
+    # both committed subsets run the clausal procedure (docs/folio.md §9).
+    assert folio.default_logic("negation") == "ground"
+    assert folio.default_logic("l2") == "ground"
+
+
 def test_l2_problem_selects_the_ground_logic():
     record = folio.load_sample(folio.sample_path("l2"))[0]
     problem = folio._to_problem(record, allow_hypotheses=False, logic="ground")

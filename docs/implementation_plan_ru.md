@@ -521,14 +521,24 @@
     `grounded_mismatch` 2→0, как только error-driven гид закодировал идиомы игры
     (`docs/l3_plan.md` §11). Deliverable: файл/формат skill'а на коллекцию плюс
     автозагрузка harness'ом; шов `ANKYRA_LANGUAGE_SPEC` — совместимая база.
-29. **FOLIO — fragment-bound vs extraction-bound (исследование).** L1 negation срез —
-    **fragment-bound** (gold-fed == text-fed = 7/13; `docs/folio.md` §9): ему нужен
-    **L2 (reductio / объявленный CWA)**, а не лучшее чтение текста. Language guide это
-    подтвердил — на L1 он дал **нулевой прирост** (7/12 ≈ 7/13), при корректной
-    end-to-end инъекции. Открытая работа: (a) проверить гид на **extraction-bound L2
-    tier a** срезе (text-fed 29–31/45, `docs/g1_g4_plan.md`); (b) закрыть L1-остаток
-    через L2 reductio/CWA, а не извлечение. Сэмплирование не использовать
-    (`docs/l3_plan.md` D-L3-10).
+29. **FOLIO — fragment-bound vs extraction-bound (исследование).** **(b) DONE; (a) открыто.**
+    L1 negation срез — **fragment-bound** (Horn gold-fed == text-fed = 7/13;
+    `docs/folio.md` §9), а не extraction-bound. **(b)** Остаток — это reductio /
+    контрапозиция, и клаузальная процедура L2 уже его решает: gold-fed open под
+    `ANKYRA_LOGIC=ground` — **12/13** (четыре строки `Uncertain` остаются честно
+    `unknown`, каждое решение `proven`, **0 grounded false proofs**), поэтому оба
+    закоммиченных подмножества FOLIO теперь идут по клаузальному пути
+    (`evals.folio.default_logic`); без изменений движка и без CWA. **Живой прогон
+    (text-fed): 11/13**, 0 grounded false proofs, два `undecided_mismatch` (`0027` —
+    строка с меткой ниже; `0050` — потеря извлечения, отрицательная посылка
+    `Digital → ¬Analog` отброшена, стена G2 «missing premises»), т.е. остаток теперь
+    извлечение, а не логика. Единственная строка `0027` помечена `False`, но её
+    аннотированные посылки не влекут ни заключение, ни его отрицание — глобальный
+    закрытый мир неверно опроверг бы четыре строки `Uncertain`, а построчный мир был бы
+    подгонкой под id, поэтому она остаётся честным abstention (`docs/folio.md` §9). **(a) Открыто:** проверить language guide на
+    **extraction-bound L2 tier a** срезе (text-fed 29–31/45, `docs/g1_g4_plan.md`) —
+    бюджетный живой прогон; на L1-срезе гид дал **нулевой прирост** (7/12 ≈ 7/13).
+    Сэмплирование не использовать (`docs/l3_plan.md` D-L3-10).
 
 ## 9. Дорожная карта рассуждений (главная ось)
 
