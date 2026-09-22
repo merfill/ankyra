@@ -439,7 +439,7 @@
     **охват (метод)**, а не язык, поэтому Tier-1 lowering идёт раньше извлечения
     на FOLIO (Phase 2 перед Phase 1 в `docs/folio_extension_plan_ru.md`). Тесты
     `tests/test_evals_folio_fol.py`; полная запись `docs/folio_gold_fed_ru.md`.
-26. **Потолок охвата — разъяснение и план Tier-1 — ЗАВЕРШЁН (T1, T3, T5, T4, T2 DONE).** Gold-fed
+26. **Потолок охвата — разъяснение и план Tier-1 — ЗАВЕРШЁН (T1, T3, T5, T4, T2, T6 DONE).** Gold-fed
     диагностика (пункт 25) показывает, что стена FOLIO L2 — **охват**, а не
     извлечение: 24/45 золотых формул были вне закоммиченного фрагмента.
     `docs/coverage_ceiling_ru.md` объясняет потолок простыми словами и излагает
@@ -485,8 +485,15 @@
     `out_of_fragment` 6→**1** (только битая `0109`), gold-fed 35→**40/45**, охват
     39→**44/45**, covered gold-fed 35/39→**40/44**, **0 grounded false proofs**;
     LLM-free гейты `evals.l2_synthetic` (41→52/52) и `evals.routing_synthetic`
-    (15→17/17); pytest 476 passed. **Tier-1 завершён**; T6 (бюджет G4) остаётся
-    оптимизацией на покрытых строках.
+    (15→17/17); pytest 476 passed.
+    **T6 DONE** (`docs/t6_plan_ru.md`): неподвижная точка ground unit propagation идёт
+    до общего set-of-support цикла в `refute_support`, каждый шаг — реальное
+    resolution-ребро, делящее бюджет (G4). Без нового флага и `FragmentFeature`
+    (оптимизация доказателя, не конструкт). Решает две строки с исчерпанным бюджетом,
+    поднимая gold-fed 40→**42/45**, covered gold-fed 40/44→**42/44**, по-прежнему
+    **0 grounded false proofs**; LLM-free гейты `evals.l2_synthetic` (52→56/56) и
+    `evals.routing_synthetic` (17/17); pytest 480 passed. **Tier-1 завершён**; только
+    битая строка FOLIO `0109` остаётся `out_of_fragment`.
 
 ## 9. Дорожная карта рассуждений (главная ось)
 
@@ -517,15 +524,15 @@
   резолюция set-of-support (`engine/clause.py`, `engine/resolution.py`),
   дизъюнкция/разбор случаев, кванторы через Skolemization + перебор свидетелей,
   составные/open-цели и шов протокола `Inference` (`engine/inference.py`);
-  первичный LLM-free гейт `evals.l2_synthetic` (**52/52**). **Живой гейт
+  первичный LLM-free гейт `evals.l2_synthetic` (**56/56**). **Живой гейт
   ProntoQA-OOD тир a зелёный** — **41/42 (97.6%), 0 grounded false proofs**; живой
   прогон FOLIO L2 (26/44) смешивает охват и извлечение, а **gold-fed диагностика
   показывает, что глубинный предел — охват**: большинство золотых формул было вне
   закоммиченного фрагмента, но на покрытых gold-fed опережает text-fed
   (`docs/folio_gold_fed_ru.md`; backlog G1–G4 в `docs/quality_findings_ru.md` §G).
-  **Tier-1 lowering завершён** (T1/T3/T5/T4/T2): FOLIO L2 тир a gold-fed охват
-  **44/45**, верно 40/45, только битая `0109` остаётся `out_of_fragment` —
-  разъяснение в `docs/coverage_ceiling_ru.md` (пункт 26).
+  **Tier-1 завершён** (T1/T3/T5/T4/T2 плюс T6, ground unit propagation, G4): FOLIO L2
+  тир a gold-fed охват **44/45**, верно 42/45, только битая `0109` остаётся
+  `out_of_fragment` — разъяснение в `docs/coverage_ceiling_ru.md` (пункт 26).
   Полная первопорядковая унификация отложена (`docs/l2_plan_ru.md`).
 - **L3 — конечнодоменные CSP/SAT, отдельный движок.** Бенчмарк AR-LSAT.
 - **L4 — арифметика, отдельный числовой движок или tool-use.** Бенчмарк GSM8K.

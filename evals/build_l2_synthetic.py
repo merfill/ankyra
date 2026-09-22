@@ -9,7 +9,8 @@ De Morgan, proof by contradiction/reductio, conjunctive and disjunctive goals (D
 a disjunctive ground fact with a case split, a shared-witness existential goal (T1), a
 universal clause goal (T3), a head-only universal premise grounded over the individual
 domain (T5), a general ground goal formula (T4), an existential premise with a nested
-disjunction (T2), budget exhaustion, out-of-fragment constructs, and mandatory negative
+disjunction (T2), a unit-propagation chain (T6), budget exhaustion, out-of-fragment
+constructs, and mandatory negative
 controls (the Horn flag must not consume a disjunctive clause; an exhausted budget must
 not yield a proof; a Horn theory gives the same answer under both engines; a class name
 must not be instantiated by a head-only universal; a disjunction is never decided by a
@@ -655,6 +656,67 @@ def _existential_disjunction_cases() -> list[dict]:
     ]
 
 
+def _unit_propagation_cases() -> list[dict]:
+    """A unit-propagation chain forces one disjunct (T6).
+
+    The shape mirrors FOLIO ``0009``: a disjunctive head whose body holds, plus unit
+    negations of every other disjunct. The mandatory controls are ``unit-prop-02``
+    (a literal that is not forced must not be derived) and ``unit-prop-03`` (an
+    exhausted budget is never a proof).
+    """
+    theory = _theory(
+        morphisms=[_is_a("rex", "w"), _is_a("rex", "a", neg=True), _is_a("rex", "b", neg=True)],
+        rules=[
+            _rule(
+                [_is_a("?x", "w")],
+                _is_a("?x", "a"),
+                alternatives=[_is_a("?x", "b"), _is_a("?x", "c")],
+            )
+        ],
+    )
+    return [
+        _case(
+            "unit-prop-01",
+            "unit_propagation",
+            theory,
+            _query(_is_a("rex", "c")),
+            "supported",
+            "yes",
+            note="a disjunctive head with all but one disjunct negated is decided by "
+            "unit propagation",
+        ),
+        _case(
+            "unit-prop-02",
+            "unit_propagation",
+            theory,
+            _query(_is_a("rex", "d")),
+            "unsupported",
+            "unknown",
+            note="soundness control: propagation closes only genuinely forced branches",
+        ),
+        _case(
+            "unit-prop-03",
+            "unit_propagation",
+            theory,
+            _query(_is_a("rex", "d")),
+            "insufficient",
+            "unknown",
+            budget=1,
+            note="negative control: an exhausted budget is never a proof",
+        ),
+        _case(
+            "unit-prop-04",
+            "unit_propagation",
+            theory,
+            _query(_is_a("rex", "c")),
+            "out_of_fragment",
+            "unknown",
+            logic="off",
+            note="negative control: with L2 off a disjunctive head is out_of_fragment",
+        ),
+    ]
+
+
 def _budget_cases() -> list[dict]:
     theory = _theory(morphisms=[_is_a("rex", "p")], rules=[_rule([_is_a("?x", "p")], _is_a("?x", "q"))])
     return [
@@ -865,6 +927,7 @@ def cases() -> list[dict]:
         + _head_only_cases()
         + _clause_goal_cases()
         + _existential_disjunction_cases()
+        + _unit_propagation_cases()
         + _budget_cases()
         + _out_of_fragment_cases()
         + _control_cases()

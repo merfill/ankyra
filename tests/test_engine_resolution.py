@@ -158,6 +158,55 @@ def test_refute_support_accepts_a_multi_clause_assumption():
     assert refute_support(clausification, assumed).status == "entailed"
 
 
+def _unit_chain_theory() -> Theory:
+    # T6 / FOLIO-0009 shape: a disjunctive head whose body holds, with the other
+    # disjuncts negated, so exactly one disjunct is forced.
+    return Theory(
+        morphisms=[
+            _m("is_a", "rex", "w"),
+            _m("is_a", "rex", "a", neg=True),
+            _m("is_a", "rex", "b", neg=True),
+        ],
+        rules=[
+            _rule(
+                [_m("is_a", "?x", "w")],
+                _m("is_a", "?x", "a"),
+                alternatives=[_m("is_a", "?x", "b"), _m("is_a", "?x", "c")],
+            )
+        ],
+    )
+
+
+def test_unit_propagation_entails_a_forced_disjunct():
+    assert prove(_unit_chain_theory(), _lit("is_a", "rex", "c")).status == "entailed"
+    assert prove(_unit_chain_theory(), _lit("is_a", "rex", "c", neg=True)).status == "not_entailed"
+
+
+def test_unit_propagation_does_not_derive_an_unforced_literal():
+    # Soundness control: propagation closes the forced branch, not a missing one.
+    assert prove(_unit_chain_theory(), _lit("is_a", "rex", "d")).status == "not_entailed"
+
+
+def test_unit_propagation_respects_the_budget():
+    result = prove(_unit_chain_theory(), _lit("is_a", "rex", "c"), budget=1)
+    assert result.status == "budget"
+    assert result.proof is None
+
+
+def test_unit_propagation_records_resolution_nodes():
+    result = prove(_unit_chain_theory(), _lit("is_a", "rex", "c"))
+    assert result.status == "entailed" and result.proof is not None
+    derivation = result.proof.derivation()
+    assert derivation[-1] == ()
+    derived = [
+        result.proof.nodes[key]
+        for key in derivation
+        if result.proof.nodes[key][0] is not None
+    ]
+    assert derived
+    assert all(pivot is not None for _, _, pivot in derived)
+
+
 def test_clausify_emits_a_disjunctive_skolem_clause():
     existential = Existential(
         variable="?x",

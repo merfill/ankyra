@@ -263,6 +263,13 @@ filtering and subsumption, an explicit step budget (default 10000,
 `unsupported`. Ground/propositional only (D-L2-4); the first-order layer (unification,
 Skolemization) is M8. Tests: `tests/test_engine_resolution.py`.
 
+**Unit propagation (T6).** `refute_support` first resolves every unit clause to a
+fixpoint (T6, `docs/t6_plan.md`), each step a real binary resolution recorded in the
+proof DAG and counted against the same budget; the general set-of-support loop then
+runs on the simplified set. This is the "unit propagation run before case splits"
+named above and removes the `G4` budget misses without changing the procedure or the
+flag.
+
 ## 9. Data model and extraction schema
 
 Decided in D-L2-3: **extend `Rule`**, do not add a second `Clause` model.
@@ -519,13 +526,22 @@ a contradiction shows both branches. `answer` is unchanged (`refuted` now carrie
     `docs/t4_t2_plan.md`). **T4:** a general **ground** goal formula is
     `Query.goal_clauses` (its CNF) with `goal_mode="cnf"` — supported when `T ∪ {¬φ}`
     is unsatisfiable, refuted when `T ∪ {φ}` is (`verify._cnf_outcome`,
-    `refutation.refute_support`); this resolves **T-D2**. **T2:** an existential
+    `resolution.refute_support`); this resolves **T-D2**. **T2:** an existential
     premise with a nested disjunction is a CNF body (`Existential.disjunctions`),
     Skolemized clause by clause (`clause._add_existentials`). Features `clause_goal`
     and `existential_disjunction` (`engine/inference.py`), no new flag. FOLIO L2 tier
     a gold-fed `out_of_fragment` 6→**1** (only the malformed `0109`), gold-fed
     35→**40/45**, coverage 39→**44/45**, covered 40/44, 0 grounded false proofs.
-    `evals.l2_synthetic` 52/52, `evals.routing_synthetic` 17/17. Tier-1 is complete.
+    `evals.l2_synthetic` 52/52, `evals.routing_synthetic` 17/17.
+16. **Tier-1 lowering — T6 DONE** (`docs/coverage_ceiling.md` §6–§7,
+    `docs/t6_plan.md`). Ground unit propagation: a fixpoint before the set-of-support
+    loop in `resolution.refute_support`, each propagation a real binary resolution
+    recorded in the proof DAG, sharing the step budget; an empty resolvent is the
+    refutation. It removes the G4 budget misses without a new procedure or flag (no
+    new `FragmentFeature`). FOLIO L2 tier a gold-fed: `0009`/`0010` decided, gold-fed
+    40→**42/45**, covered 40/44→**42/44**, `out_of_fragment` **1** (malformed `0109`),
+    0 grounded false proofs. `evals.l2_synthetic` 56/56, `evals.routing_synthetic`
+    17/17; pytest 480 passed. Tier-1 is complete.
 
 Each milestone lands reviewable on its own; no milestone starts on a red soundness
 gate. Milestone 5 gates 2–4; milestone 3 (Horn path untouched) can proceed while the

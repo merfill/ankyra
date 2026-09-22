@@ -430,7 +430,10 @@ formalization problem:
   universal/conditional target form).
 - **G4 — ground-saturation budget (3).** Larger stories (6–8 rules, many objects)
   exhaust the 10000-step cap (`0127`, `0009`, `0039`) → `insufficient`. Unit
-  propagation and/or a larger budget is the fix.
+  propagation and/or a larger budget is the fix. **FIXED by T6**
+  (`docs/t6_plan.md`): a ground unit-propagation fixpoint before the set-of-support
+  loop decides `0009`/`0010`; the gold-fed bound rose 40→42/45 with 0 grounded false
+  proofs. (The text-fed G4 rows are a separate extraction/scale matter.)
 - **Scoring artifacts, not engine bugs.** `0073` (True): the engine derived
   `¬volatile(ko)`, which is actually entailed by `mature(ko)`, `mature→suitable`,
   `volatile→¬suitable`; the adapter's single-atom polarity heuristic mis-scored a

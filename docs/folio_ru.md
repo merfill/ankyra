@@ -278,3 +278,9 @@ grounding только по головным переменным, экзист�
 дальнейшей работы над извлечением (`docs/folio_extension_plan_ru.md` Phase 2).
 Полная запись: `docs/folio_gold_fed_ru.md`; разъяснение плана по поднятию охвата —
 `docs/coverage_ceiling_ru.md`.
+
+**Обновление (Tier-1 завершён).** После T1/T3/T5/T4/T2 и T6 на том же срезе охват
+**44/45**, gold-fed **42/45** (covered 42/44), только битая `0109` остаётся
+`out_of_fragment`, 0 grounded false proofs; T6 (`docs/t6_plan_ru.md`) решил две
+строки с исчерпанным бюджетом (`0009`, `0010`) через ground unit propagation. См.
+`docs/coverage_ceiling_ru.md` §6–§7 и `docs/folio_gold_fed_ru.md` §3.

@@ -162,9 +162,11 @@ composite benchmark (`docs/implementation_plan.md` §10).
 **Phase 0 done** (`docs/folio.md` §10): the L2 gold-fed bound exists and is
 LLM-free. On tier a (45), at that time coverage was 21/45 and on the covered rows
 gold-fed (17/21) led text-fed (15/21) — the limit is the **method**, so Phase 2
-(Tier-1 lowering) is justified ahead of Phase 1 (extraction). **Tier-1 T1 done**
-(`docs/t1_plan.md`): coverage 25/45, gold-fed 21/45, 0 grounded false proofs. The
-remaining phases are still draft and deferred.
+(Tier-1 lowering) is justified ahead of Phase 1 (extraction). **Tier-1 complete**
+(T1/T3/T5/T4/T2/T6): coverage 44/45, gold-fed 42/45, only the malformed `0109` left
+`out_of_fragment`, 0 grounded false proofs (`docs/coverage_ceiling.md` §6–§7). The
+remaining phases (Phase 1 extraction G1–G4, Tier 2 equality/functions) are still
+draft and deferred.
 
 ## 12. References
 

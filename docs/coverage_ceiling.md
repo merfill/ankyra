@@ -19,6 +19,7 @@ Related: `docs/folio_gold_fed.md` (the measurement this plan follows),
 (the shared-witness goal), `docs/t3_plan.md` (the universal/`¬∃` goal form),
 `docs/t5_plan.md` (the head-only universal premise),
 `docs/t4_t2_plan.md` (the non-flat ground goal and the nested-disjunction premise),
+`docs/t6_plan.md` (the G4 unit-propagation optimization),
 `docs/fragment_routing.md` (how a named fragment is declared),
 `docs/quality_findings.md` §G (G1–G4), `docs/implementation_plan.md` §8–§10,
 `docs/reasoning_roadmap.md`.
@@ -50,8 +51,8 @@ its logic. This is a deliberate choice: a silent drop would be a lie.
 ## 3. The FOLIO-L2 coverage wall, concretely
 
 On the committed L2 tier a (45 gold problems), **24/45 formulas were outside the
-committed fragment** when this plan was written (1/45 after Tier-1 T1, T3, T5, T4 and
-T2, §6). They fall into two families.
+committed fragment** when this plan was written (1/45 after Tier-1 T1, T3, T5, T4, T2
+and T6, §6). They fall into two families.
 
 **(a) The engine refuses — 12 rows — covered by T5.** They all contain the same shape,
 a *universal disjunctive fact*:
@@ -96,16 +97,16 @@ From `docs/folio_gold_fed.md` (FOLIO L2 tier a, 45):
 | verdict source | correct |
 |---|---|
 | text-fed (live LLM extraction) | 25/45 |
-| gold-fed (perfect formulas, L2 procedure) | 40/45 |
+| gold-fed (perfect formulas, L2 procedure) | 42/45 |
 | gold `out_of_fragment` | 1/45 |
 
 The older `gold-fed < text-fed` was **not a paradox**: the live path sometimes "won"
 hard rows by *simplifying the hard construct away* and answering — occasionally
 correctly, three times wrongly — while the gold path refused to guess. After
-T1/T3/T5/T4/T2 the gold path leads (40 vs 25). Restricted to the **44 rows the
-committed L2 procedure covers, gold-fed is 40/44 versus text-fed 25/44**: wherever the
+T1/T3/T5/T4/T2 and T6 the gold path leads (42 vs 25). Restricted to the **44 rows the
+committed L2 procedure covers, gold-fed is 42/44 versus text-fed 25/44**: wherever the
 engine *can* decide, it already beats the translator. (Numbers after Tier-1
-T1/T3/T5/T4/T2, `docs/t4_t2_plan.md` §15.)
+T1/T3/T5/T4/T2/T6, `docs/t4_t2_plan.md` §15, `docs/t6_plan.md` §12.)
 
 So the dominant wall is **coverage**, not language.
 
@@ -125,7 +126,7 @@ out-of-fragment rows whose *first* blocker is that item.
 | T3 | universal / conditional / `¬∃` goal form (G3) — **DONE** | 2 | `Query.goal_mode="forall"` + `engine/verify.py` | supported at a *fresh* constant (universal generalization); refuted by one named witness |
 | T4 | non-flat compound / conditional goal — **DONE** | 2 | target formula (CNF/DNF over literals), not only flat `all`/`any` | general flat-goal shape; keeps `proven` sound |
 | T5 | head-only grounding `∀x (A(x) ∨ B(x))` — **DONE** | 12 | `engine/clause.py:_groundings` | head-only variables range over the **individual domain** (pool minus `is_a` objects); a class name is not a universe element, so instantiating there would fabricate proofs |
-| T6 | G4 resolution budget / unit propagation | 2 covered (+ enables others) | `engine/resolution.py` | exhaustion stays an honest `insufficient` |
+| T6 | G4 resolution budget / ground unit propagation — **DONE** | 2 covered | `engine/resolution.py` | exhaustion stays an honest `insufficient`; every propagation is a real resolution edge |
 | — | malformed annotation | 1 | — | not fixable (data) |
 
 Reachable but absent from the committed L2 sample: **2a** `↔`/`⊕` lowering (two
@@ -190,11 +191,20 @@ malformed `0109`), gold-fed **35 → 40/45**, coverage **39 → 44/45**, covered
 **35/39 → 40/44**, **0 grounded false proofs** (`docs/t4_t2_plan.md`,
 `docs/folio_gold_fed.md` §3).
 
+**T6 done.** A ground unit-propagation fixpoint now runs before the general
+set-of-support loop in `refute_support` (`engine/resolution.py`): each propagation is
+a real binary resolution recorded in the proof DAG, shares the step budget, and an
+empty resolvent is the refutation. This decides the two `logic_budget:exhausted` rows
+(`0009`, `0010`). FOLIO L2 tier a gold-fed: gold-fed **40 → 42/45**, covered gold-fed
+**40/44 → 42/44**, `out_of_fragment` **1** (only `0109`), **0 grounded false proofs**;
+LLM-free gates `evals.l2_synthetic` (56/56) and `evals.routing_synthetic` (17/17).
+No new flag or `FragmentFeature` (a prover optimization, not a construct). The feature
+is internal; the row-level record is `docs/t6_plan.md`.
+
 ## 7. Order and open decisions
 
-- **Order.** Tier-1 is **complete** (T1, T3, T5, T4, T2 done); the only remaining
-  `out_of_fragment` row is the malformed annotation `0109`. **T6** (G4 resolution
-  budget / unit propagation) remains an optimization on covered rows. Extraction
+- **Order.** Tier-1 is **complete** (T1, T3, T5, T4, T2, T6 done); the only remaining
+  `out_of_fragment` row is the malformed annotation `0109`. Extraction
   G1–G4 (`docs/quality_findings.md` §G) runs on the rows the method already covers, in
   parallel, not first.
 - **Open decision T-D1 (resolved).** T5's domain: ground head-only variables over the

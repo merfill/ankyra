@@ -450,7 +450,7 @@ Source: `docs/quality_findings.md`. Ordered by priority.
     extraction on FOLIO (Phase 2 before Phase 1 in
     `docs/folio_extension_plan.md`). Tests `tests/test_evals_folio_fol.py`; full
     record `docs/folio_gold_fed.md`.
-26. **Coverage ceiling — explained, and the Tier-1 plan — COMPLETE (T1, T3, T5, T4, T2 DONE).**
+26. **Coverage ceiling — explained, and the Tier-1 plan — COMPLETE (T1, T3, T5, T4, T2, T6 DONE).**
     The gold-fed diagnostic (item 25) shows the FOLIO L2 wall is **coverage**, not
     extraction: 24/45 gold formulas were outside the committed fragment.
     `docs/coverage_ceiling.md` explains the ceiling in plain terms and lays out the
@@ -492,8 +492,15 @@ Source: `docs/quality_findings.md`. Ordered by priority.
     `out_of_fragment` 6→**1** (only the malformed `0109`), gold-fed 35→**40/45**,
     coverage 39→**44/45**, covered gold-fed 35/39→**40/44**, **0 grounded false
     proofs**; LLM-free gates `evals.l2_synthetic` (41→52/52) and
-    `evals.routing_synthetic` (15→17/17); pytest 476 passed. **Tier-1 is complete**;
-    T6 (G4 budget) remains an optimization on covered rows.
+    `evals.routing_synthetic` (15→17/17); pytest 476 passed.
+    **T6 DONE** (`docs/t6_plan.md`): a ground unit-propagation fixpoint runs before the
+    general set-of-support loop in `refute_support`, each step a real resolution edge
+    sharing the step budget (G4). No new flag or `FragmentFeature` (a prover
+    optimization, not a construct). It decides the two budget-exhausted rows, raising
+    gold-fed 40→**42/45**, covered gold-fed 40/44→**42/44**, still **0 grounded false
+    proofs**; LLM-free gates `evals.l2_synthetic` (52→56/56) and
+    `evals.routing_synthetic` (17/17); pytest 480 passed. **Tier-1 is complete**;
+    only the malformed FOLIO row `0109` stays `out_of_fragment`.
 
 ## 9. Reasoning roadmap (main axis)
 
@@ -524,15 +531,15 @@ Stages:
   resolution (`engine/clause.py`, `engine/resolution.py`), disjunction/case split,
   quantifiers by Skolemization + witness enumeration, compound/open goals, and the
   `Inference` protocol seam (`engine/inference.py`); primary LLM-free gate
-  `evals.l2_synthetic` (**52/52**). **ProntoQA-OOD tier-a live gate green** —
+  `evals.l2_synthetic` (**56/56**). **ProntoQA-OOD tier-a live gate green** —
   **41/42 (97.6%), 0 grounded false proofs**; the FOLIO L2 live run (26/44) mixes
   coverage and extraction, and the **gold-fed diagnostic shows the deeper limit is
   coverage** — most gold formulas were outside the committed fragment, but on those
   covered gold-fed out-scores text-fed (`docs/folio_gold_fed.md`; backlog G1–G4 in
-  `docs/quality_findings.md` §G). **Tier-1 lowering is complete** (T1/T3/T5/T4/T2):
-  FOLIO L2 tier a gold-fed coverage **44/45**, 40/45 correct, only the malformed
-  `0109` left `out_of_fragment` — the explained plan is `docs/coverage_ceiling.md`
-  (item 26).
+  `docs/quality_findings.md` §G). **Tier-1 is complete** (T1/T3/T5/T4/T2 plus T6, the
+  G4 ground unit propagation in `refute_support`): FOLIO L2 tier a gold-fed coverage
+  **44/45**, 42/45 correct, only the malformed `0109` left `out_of_fragment` — the
+  explained plan is `docs/coverage_ceiling.md` (item 26).
   Full first-order unification is deferred (`docs/l2_plan.md`).
 - **L3 — finite-domain CSP/SAT, a separate engine.** Benchmark AR-LSAT.
 - **L4 — arithmetic, a separate numeric engine or tool-use.** Benchmark GSM8K.

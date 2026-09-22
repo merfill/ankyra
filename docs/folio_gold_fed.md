@@ -7,7 +7,8 @@ L2 (`∨`/`∃`) and the result that decides the FOLIO priority.
 Canonical language: English; Russian mirror: `docs/folio_gold_fed_ru.md`.
 Related: `docs/folio.md` (§9–§10), `docs/folio_ceilings.md` (§4, §7),
 `docs/folio_extension_plan.md` (§3, Phase 0), `docs/quality_findings.md` §G,
-`docs/l2_plan.md`, `docs/implementation_plan.md` §10, `docs/reasoning_roadmap.md`.
+`docs/l2_plan.md`, `docs/t6_plan.md`, `docs/implementation_plan.md` §10,
+`docs/reasoning_roadmap.md`.
 
 ## 1. Question
 
@@ -88,26 +89,28 @@ labels need reductio/CWA), as recorded in `docs/folio.md` §9.
 | source | correct |
 |---|---|
 | text-fed (LLM extraction) | 25/45 |
-| gold-fed open (= closed) | 40/45 |
+| gold-fed open (= closed) | 42/45 |
 | gold `out_of_fragment` | 1/45 |
 
 Coverage (rows the committed L2 procedure can express and decide) is **44/45** —
 Tier-1 item **T1** (`docs/t1_plan.md`) added four shared-witness rows
 (`0033`, `0058`, `0059`, `0069`), **T3** (`docs/t3_plan.md`) added the
 universal/`¬∃` rows (`0045`, `0107`), **T5** (`docs/t5_plan.md`) added the twelve
-head-only-universal rows, and **T4/T2** (`docs/t4_t2_plan.md`) added the two
+head-only-universal rows, **T4/T2** (`docs/t4_t2_plan.md`) added the two
 non-flat-goal rows (`0073`, `0020`) and the three nested-disjunction-premise rows
-(`0006`, `0007`, `0008`). On the covered rows:
+(`0006`, `0007`, `0008`), and **T6** (`docs/t6_plan.md`) decided the two
+budget-exhausted rows (`0009`, `0010`) by ground unit propagation. On the covered
+rows:
 
 | label | gold-fed | text-fed |
 |---|---|---|
-| True | 14/15 | 7/15 |
-| False | 11/14 | 5/14 |
+| True | 15/15 | 7/15 |
+| False | 12/14 | 5/14 |
 | Uncertain | 15/15 | 13/15 |
-| **total** | **40/44** | **25/44** |
+| **total** | **42/44** | **25/44** |
 
-No grounded false proof: every wrong gold answer is an abstention — `insufficient`
-from the resolution budget (G4) or `unsupported`; none is a wrong determinate
+No grounded false proof: every wrong gold answer is an abstention — `unsupported`
+(`0047`, `0139`) or `out_of_fragment` (`0109`); none is a wrong determinate
 answer.
 
 The single remaining out-of-fragment row is the **malformed annotation** `0109`
@@ -115,13 +118,14 @@ The single remaining out-of-fragment row is the **malformed annotation** `0109`
 
 ## 4. Interpretation and decision
 
-The raw gold-fed number (40/45) leads text-fed (25/45); the remaining gap is the one
+The raw gold-fed number (42/45) leads text-fed (25/45); the remaining gap is the one
 malformed row and the text-fed path's abstraction errors. Restricted to the rows the
-committed L2 procedure covers, **gold-fed (40/44) far leads text-fed (25/44)**.
+committed L2 procedure covers, **gold-fed (42/44) far leads text-fed (25/44)**.
 
 Conclusion: the dominant ceiling on the L2 slice was **coverage (the method)**, not
 the language, and Tier-1 lowering closed it: coverage rose 21→44/45 across
-T1/T3/T5/T4/T2. Only the malformed annotation stays `out_of_fragment`; extraction
+T1/T3/T5/T4/T2, and T6 removed the two remaining budget abstentions. Only the
+malformed annotation stays `out_of_fragment`; extraction
 G1–G4 remains worth doing on the rows the method already covers. The explained plan,
 per-item yields and open decisions are in `docs/coverage_ceiling.md`.
 

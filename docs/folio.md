@@ -275,3 +275,9 @@ already out-scores the extractor, so Tier-1 lowering (universal/conditional targ
 head-only grounding, existential conjunctions) precedes further extraction work
 (`docs/folio_extension_plan.md` Phase 2). Full record: `docs/folio_gold_fed.md`;
 the explained plan to raise coverage is `docs/coverage_ceiling.md`.
+
+**Update (Tier-1 complete).** After T1/T3/T5/T4/T2 and T6 the same slice has coverage
+**44/45** and gold-fed **42/45** (covered 42/44), only the malformed `0109` left
+`out_of_fragment`, 0 grounded false proofs; T6 (`docs/t6_plan.md`) decided the two
+budget-exhausted rows (`0009`, `0010`) by ground unit propagation. See
+`docs/coverage_ceiling.md` §6–§7 and `docs/folio_gold_fed.md` §3.

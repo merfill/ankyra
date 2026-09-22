@@ -6,7 +6,9 @@ goal as a unit clause, and saturate by binary resolution under an explicit step 
 An empty clause is the refutation (``entailed``); a completed saturation without one
 means the goal is not entailed (``not_entailed``); an exhausted budget is the honest
 ``budget`` (never a guess). Every derived clause records its parents and pivot, so the
-refutation is a mechanically checkable proof DAG.
+refutation is a mechanically checkable proof DAG. Ground unit clauses are propagated
+to a fixpoint before the general search (T6, ``docs/t6_plan.md``): each propagation is
+a real resolution step, so the proof DAG and the budget are unchanged.
 
 Set-of-support keeps the search goal-directed: only clauses descended from the negated
 goal drive new resolutions. The fragment is ground/finite-domain (``docs/l2_plan.md``
@@ -16,6 +18,7 @@ witness enumeration in ``verify``.
 
 from __future__ import annotations
 
+from collections import deque
 from dataclasses import dataclass, field
 
 from ankyra.core.models import Theory
@@ -155,6 +158,57 @@ def refute_support(
             in_support.add(key)
             support.append(key)
     steps = 0
+
+    # Ground unit propagation: resolve every unit clause to a fixpoint before the
+    # general set-of-support loop (T6, ``docs/t6_plan.md`` §4.2). Each step is a real
+    # binary resolution recorded in the proof DAG; an empty resolvent is the
+    # refutation. The budget is shared, so exhaustion stays the honest ``budget``.
+    queue: deque[ClauseKey] = deque(
+        key for key, clause in clauses.items() if len(clause) == 1
+    )
+    queued: set[ClauseKey] = set(queue)
+    while queue:
+        unit_key = queue.popleft()
+        queued.discard(unit_key)
+        unit = clauses.get(unit_key)
+        if unit is None or len(unit) != 1:
+            continue
+        (literal,) = tuple(unit)
+        complement = negate(literal)
+        for key in list(clauses):
+            if key == unit_key:
+                continue
+            clause = clauses[key]
+            if complement not in clause:
+                continue
+            resolvent = clause - {complement}
+            steps += 1
+            if steps > budget:
+                return ProverResult("budget", None, steps - 1, budget)
+            if not resolvent:
+                nodes[()] = (unit_key, key, complement)
+                origins[()] = []
+                proof = Proof(
+                    assumed=assumed_units, steps=steps, nodes=nodes, origins=origins
+                )
+                return ProverResult("entailed", proof, steps, budget)
+            resolvent_key = clause_key(resolvent)
+            if resolvent_key in clauses:
+                continue
+            if any(_subsumes(existing, resolvent) for existing in clauses.values()):
+                continue
+            clauses[resolvent_key] = resolvent
+            nodes[resolvent_key] = (unit_key, key, complement)
+            origins[resolvent_key] = []
+            if (
+                unit_key in in_support or key in in_support
+            ) and resolvent_key not in in_support:
+                in_support.add(resolvent_key)
+                support.append(resolvent_key)
+            if len(resolvent) == 1 and resolvent_key not in queued:
+                queue.append(resolvent_key)
+                queued.add(resolvent_key)
+
     while steps < budget:
         candidates: list[ClauseKey] = []
         for support_key in list(support):

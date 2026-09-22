@@ -273,6 +273,13 @@ Recon (§6) показывает, что доминирующие не-Horn фо
 `budget`, `unsupported`. Только ground/propositional (D-L2-4); первопорядковый слой
 (унификация, Skolemization) — M8. Тесты: `tests/test_engine_resolution.py`.
 
+**Unit propagation (T6).** `refute_support` сначала резолвит каждую unit-клаузу до
+неподвижной точки (T6, `docs/t6_plan_ru.md`), каждый шаг — реальное бинарное
+resolution-ребро, записанное в proof DAG и учтённое тем же бюджетом; затем общий
+set-of-support цикл идёт по упрощённому множеству. Это и есть «unit propagation до
+разбиения на случаи», названный выше; он убирает промахи бюджета G4 без изменения
+процедуры и флага.
+
 ## 9. Модель данных и схема извлечения
 
 Решено в D-L2-3: **расширить `Rule`**, не добавлять вторую модель `Clause`.
@@ -546,7 +553,17 @@ Recon (§6) показывает, что доминирующие не-Horn фо
     `existential_disjunction` (`engine/inference.py`), нового флага нет. FOLIO L2 тир a,
     gold-fed `out_of_fragment` 6→**1** (только битая `0109`), gold-fed 35→**40/45**,
     охват 39→**44/45**, covered 40/44, 0 grounded false proofs. `evals.l2_synthetic`
-    52/52, `evals.routing_synthetic` 17/17. Tier-1 завершён.
+    52/52, `evals.routing_synthetic` 17/17.
+16. **Tier-1 lowering — T6 СДЕЛАНО** (`docs/coverage_ceiling_ru.md` §6–§7,
+    `docs/t6_plan_ru.md`). Ground unit propagation — неподвижная точка до
+    set-of-support цикла в `resolution.refute_support`: каждая пропагация —
+    реальное бинарное resolution-ребро в proof DAG, делит тот же бюджет шагов, а
+    пустая резольвента — опровержение. Это устраняет промахи бюджета G4, не меняя
+    процедуру и флаг (нового `FragmentFeature` нет). FOLIO L2 тир a, gold-fed:
+    решены `0009`/`0010`, gold-fed 40→**42/45**, covered 40/44→**42/44**,
+    `out_of_fragment` **1** (битая `0109`), 0 grounded false proofs.
+    `evals.l2_synthetic` 56/56, `evals.routing_synthetic` 17/17; pytest 480 passed.
+    Tier-1 завершён.
 
 Каждый milestone ложится отдельно ревьюируемым; ни один не начинается на красном
 soundness-гейте. Milestone 5 гейтит 2–4; milestone 3 (Horn-путь нетронут) может

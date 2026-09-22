@@ -60,7 +60,7 @@ covered gold-fed **40/44**, **0 grounded false proofs**.
   literals. `all` is each conjunct independently, `any` is a flat disjunction; neither
   is `(A∧B) → (C∧D)`.
 - **The prover is already general enough.** `refute_support`
-  (`engine/resolution.py:118`) accepts a *list* of assumed clauses, so
+  (`engine/resolution.py:121`) accepts a *list* of assumed clauses, so
   `T ⊨ φ` is decidable as `T ∪ {¬φ}` unsatisfiable by placing the CNF of `¬φ` in the
   set of support. No new decision procedure is needed.
 

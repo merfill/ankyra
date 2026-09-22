@@ -79,9 +79,10 @@ where the committed L2 procedure can express the gold formula it already beats t
 extractor. The 24 out-of-fragment rows named the Tier-1 work: 12 the parser could not
 represent (universal/conditional goals, shared-witness existential conjunctions,
 nested existentials, `¬∃`), 12 the engine refuses as `unsafe_rule` (a universal
-disjunctive fact `∀x (A(x) ∨ B(x))` grounds an unbounded head variable). **Tier-1 T1
-(shared-witness `∃x(A(x)∧B(x))`) is done** (`docs/t1_plan.md`): gold-fed 21/45,
-`out_of_fragment` 20/45, coverage 25/45, covered 21/25, 0 grounded false proofs.
+disjunctive fact `∀x (A(x) ∨ B(x))` grounds an unbounded head variable). **Tier-1 is
+complete** (T1/T3/T5/T4/T2 plus T6): gold-fed 42/45, `out_of_fragment` 1/45 (the
+malformed `0109`), coverage 44/45, covered 42/44, 0 grounded false proofs
+(`docs/coverage_ceiling.md` §6, `docs/t6_plan.md` §12).
 
 ## 5. Constructs: in fragment, reachable, out of reach
 
@@ -112,11 +113,12 @@ disjunctive fact `∀x (A(x) ∨ B(x))` grounds an unbounded head variable). **T
 
 1. ~~**Gold-fed L2 bound** (LLM-free, cheap, decisive).~~ **DONE** (see §4): the
    limit on the L2 slice is the **method** (coverage was 21/45), not the language, so
-   Tier 1 (item 3) comes before extraction on FOLIO. **Tier-1 T1 done** — coverage
-   25/45, gold-fed 21/45 (`docs/t1_plan.md`).
+   Tier 1 (item 3) comes before extraction on FOLIO. **Tier-1 complete** —
+   coverage 44/45, gold-fed 42/45 (`docs/coverage_ceiling.md` §6).
 2. **Extraction G1–G4** (`docs/quality_findings.md` §G) — still worth doing on the
    rows the method now covers.
-3. **Tier 1 engine extension** — justified by the gold-fed bound.
+3. ~~**Tier 1 engine extension** — justified by the gold-fed bound.~~ **DONE**
+   (T1/T3/T5/T4/T2/T6).
 4. **Tier 2** (equality/functions) — a separate fragment decision, not a bug fix.
 
 The staged plan is `docs/folio_extension_plan.md`; the plain-language explanation of
