@@ -21,10 +21,11 @@ WorldAssumption = Literal["open", "closed"]
 # How a decomposed question goal is read (L2, D-L2-7): ``single`` is the ordinary
 # one-target query; ``all`` requires every goal (a conjunctive question); ``any``
 # requires some goal (a disjunctive question); ``forall`` is a universally quantified
-# clause goal "∀x (l₁ ∨ … ∨ lₙ)" (T3), whose goals are the clause literals. The goals
-# are the decomposed conjuncts/disjuncts/literals; ``Query.target`` still names the
-# first one for echo/answer use.
-GoalMode = Literal["single", "all", "any", "forall"]
+# clause goal "∀x (l₁ ∨ … ∨ lₙ)" (T3), whose goals are the clause literals; ``cnf`` is
+# a general ground goal formula given as ``goal_clauses`` (T4). The goals are the
+# decomposed conjuncts/disjuncts/literals; ``Query.target`` still names the first one
+# for echo/answer use.
+GoalMode = Literal["single", "all", "any", "forall", "cnf"]
 ConstraintKind = Literal["disjoint"]
 HypothesisKind = Literal["rule", "fact"]
 AnswerType = Literal["yes_no", "open", "instruction"]
@@ -188,11 +189,18 @@ class Existential(BaseModel):
     Phase 0 records the quantifier structure; the prover Skolemizes it (a fresh
     constant per existential) during clausification. It is deliberately not expanded
     by the builder: Skolemization is a decision-procedure step, not extraction
-    (docs/folio.md §4, docs/l2_plan.md §7.4).
+    (docs/folio.md §4, docs/l2_plan.md §7.4). ``atoms`` are the unit clauses and
+    ``disjunctions`` the multi-literal clauses of the body's CNF, so together they
+    represent ``∃variable (⋀atoms ∧ ⋀(⋁disjunctions))`` (T2,
+    ``docs/t4_t2_plan.md``).
     """
 
     variable: str = Field(default="?x", description="The existentially quantified variable.")
     atoms: list[Morphism] = Field(default_factory=list, description="The conjoined atoms over it.")
+    disjunctions: list[list[Morphism]] = Field(
+        default_factory=list,
+        description="Disjunctions of literals over it (each inner list is one clause).",
+    )
     quote: str | None = Field(default=None, description="Optional verbatim source span.")
 
 
@@ -249,10 +257,16 @@ class Query(BaseModel):
         description="Decomposed goals when the question target is a conjunction or "
         "disjunction (L2, D-L2-7); empty for the single-target case.",
     )
+    goal_clauses: list[list[Morphism]] = Field(
+        default_factory=list,
+        description="A general ground goal formula in CNF (T4): each inner list is a "
+        "disjunction of literal Morphisms; empty unless ``goal_mode == 'cnf'``.",
+    )
     goal_mode: GoalMode = Field(
         default="single",
         description="single | all (conjunctive) | any (disjunctive) | forall (a "
-        "universal clause over ``goals``).",
+        "universal clause over ``goals``) | cnf (a ground goal formula in "
+        "``goal_clauses``).",
     )
     variables: dict[str, str] = Field(default_factory=dict)
     answer_type: AnswerType = Field(default="yes_no")

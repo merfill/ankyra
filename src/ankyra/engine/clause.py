@@ -144,6 +144,8 @@ def _class_names(theory: Theory) -> set[str]:
         atoms.extend(rule.head)
     for existential in theory.existentials:
         atoms.extend(existential.atoms)
+        for disjunction in existential.disjunctions:
+            atoms.extend(disjunction)
     names = {
         atom.object
         for atom in atoms
@@ -267,16 +269,53 @@ def _add_constraints(result: Clausification, theory: Theory) -> None:
             )
 
 
+def _ground_existential_atom(atom: Morphism, variable: str, constant: str) -> Morphism:
+    subject = constant if atom.subject == variable else atom.subject
+    obj = constant if atom.object == variable else atom.object
+    return atom.model_copy(update={"subject": subject, "object": obj})
+
+
+def _existential_morphism_is_ground(morphism: Morphism) -> bool:
+    return not (is_var(morphism.subject) or is_var(morphism.object))
+
+
 def _add_existentials(result: Clausification, theory: Theory) -> None:
-    """Skolemize each conjunctive existential premise with a fresh constant."""
+    """Skolemize each existential premise with a fresh constant.
+
+    The body is a CNF (``atoms`` are units, ``disjunctions`` the multi-literal
+    clauses, T2); each clause becomes a ground clause over the Skolem constant. An
+    atom over a different free variable (a nested quantifier) is out of fragment,
+    never a non-ground clause.
+    """
     for index, existential in enumerate(theory.existentials):
         constant = f"sk{index}"
+        grounded_atoms = [
+            _ground_existential_atom(atom, existential.variable, constant)
+            for atom in existential.atoms
+        ]
+        grounded_groups = [
+            [
+                _ground_existential_atom(atom, existential.variable, constant)
+                for atom in disjunction
+            ]
+            for disjunction in existential.disjunctions
+        ]
+        if not all(
+            _existential_morphism_is_ground(atom) for atom in grounded_atoms
+        ) or not all(
+            _existential_morphism_is_ground(atom)
+            for group in grounded_groups
+            for atom in group
+        ):
+            result.unsupported.append(f"existential:{index}")
+            continue
         result.skolems.append(constant)
-        for atom in existential.atoms:
-            subject = constant if atom.subject == existential.variable else atom.subject
-            obj = constant if atom.object == existential.variable else atom.object
-            grounded = atom.model_copy(update={"subject": subject, "object": obj})
+        for grounded in grounded_atoms:
             result.add(frozenset({literal_of(grounded)}), f"skolem:{index}")
+        for group in grounded_groups:
+            clause = frozenset(literal_of(atom) for atom in group)
+            if clause and not is_tautology(clause):
+                result.add(clause, f"skolem:{index}")
 
 
 def clausify(

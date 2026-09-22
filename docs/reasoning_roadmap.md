@@ -17,6 +17,7 @@ implementation plan), `docs/l2_plan.md` (the L2 implementation plan),
 `docs/t1_plan.md` (Tier-1 item T1: shared-witness existential goal),
 `docs/t3_plan.md` (Tier-1 item T3: universal/`¬∃` goal form),
 `docs/t5_plan.md` (Tier-1 item T5: head-only universal premise),
+`docs/t4_t2_plan.md` (Tier-1 items T4/T2: non-flat ground goal, nested-disjunction premise),
 `docs/ar_lsat.md`,
 `docs/gsm8k.md`, `docs/defeasible_reasoning.md`, `docs/task.md`,
 `docs/implementation_plan.md`.
@@ -130,7 +131,7 @@ Every stage is defined by the same six items:
 - **Status:** engine implemented behind `ANKYRA_LOGIC` — ground clause IR + bounded
   set-of-support resolution, disjunction/case split, finite-domain quantifiers
   (Skolemization + witness enumeration), compound/open goals, and the `Inference`
-  protocol seam. LLM-free synthetic gate `evals.l2_synthetic` is green (**36/36**, 0
+  protocol seam. LLM-free synthetic gate `evals.l2_synthetic` is green (**52/52**, 0
   grounded false proofs); the **ProntoQA-OOD tier-a live gate is green** (**41/42
   (97.6%), 0 grounded false proofs**), while FOLIO's L2 live gate is
   **extraction-bound** (26/44; the misses are no-target/out-of-fragment or a universal
@@ -150,8 +151,14 @@ Every stage is defined by the same six items:
   (`docs/t5_plan.md`): the head-only variable is grounded over the **individual
   domain** (pool minus `is_a` objects; resolves T-D1), raising coverage to 39/45,
   gold-fed to 35/45 (covered 35/39), 0 grounded false proofs; `evals.l2_synthetic`
-  41/41, `evals.routing_synthetic` 15/15. Remaining Tier-1: T4 (non-flat goal) and
-  T2 (nested-disjunction existential premise). Full first-order **unification** is
+  41/41, `evals.routing_synthetic` 15/15. **Tier-1 T4 (non-flat ground goal) and T2
+  (nested-disjunction existential premise) are done** (`docs/t4_t2_plan.md`): T4 is
+  `Query.goal_clauses` (CNF) + `goal_mode="cnf"`, decided by unsatisfiability of
+  `T ∧ ¬φ` / `T ∧ φ`; T2 Skolemizes a CNF existential body clause by clause. This
+  raises coverage to **44/45**, gold-fed to **40/45** (covered 40/44), 0 grounded
+  false proofs; `evals.l2_synthetic` 52/52, `evals.routing_synthetic` 17/17. Tier-1 is
+  complete; only the malformed FOLIO row `0109` stays `out_of_fragment`. Full
+  first-order **unification** is
   deferred: a prototype diverges on `not_entailed` (semi-decidability); the committed
   collections are finite named domains, where grounding is sound and terminating.
 
@@ -238,7 +245,7 @@ honest `out_of_fragment`, never a guess.
 |---|---|---|---|---|
 | L0 | ProofWriter | Tier D 300 | 0 grounded false proofs; determinate all `proven`; ≥95% | done (297/300 re-run) |
 | L1 | ProntoQA (negation), FOLIO negation subset | ProntoQA tier a/b | same + declared CWA | implemented (engine) + synthetic gate; ProntoQA green and closed |
-| L2 | ProntoQA-OOD (compositional), then FOLIO | ProntoQA-OOD tier a (44), FOLIO L2 tier a (45) | same; FOLIO stratified by construct | implemented; ProntoQA-OOD live 41/42 (0 grounded false proofs), FOLIO live extraction-bound (26/44); Tier-1 T1 (shared-witness ∃), T3 (universal clause goal) and T5 (head-only universal premise) raise gold-fed coverage to 39/45, 35/45 correct (`docs/t1_plan.md`, `docs/t3_plan.md`, `docs/t5_plan.md`) |
+| L2 | ProntoQA-OOD (compositional), then FOLIO | ProntoQA-OOD tier a (44), FOLIO L2 tier a (45) | same; FOLIO stratified by construct | implemented; ProntoQA-OOD live 41/42 (0 grounded false proofs), FOLIO live extraction-bound (26/44); Tier-1 T1 (shared-witness ∃), T3 (universal clause goal), T5 (head-only universal premise), T4 (non-flat ground goal) and T2 (nested-disjunction premise) raise gold-fed coverage to 44/45, 40/45 correct (`docs/t1_plan.md`, `docs/t3_plan.md`, `docs/t5_plan.md`, `docs/t4_t2_plan.md`) |
 | L3 | AR-LSAT | to build | per-option solver check | planned (separate engine) |
 | L4 | GSM8K | to build | numeric match | low priority |
 | D | defeasible-NLI | to choose | resolved/undecided conflict reported | implemented + synthetic gate |

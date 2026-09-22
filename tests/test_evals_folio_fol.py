@@ -126,9 +126,31 @@ def test_universal_fact_is_out_of_fragment():
         to_theory_query(_record(["∀x (A(x))"], "A(a)"))
 
 
-def test_conditional_compound_conclusion_is_out_of_fragment():
+def test_conditional_compound_conclusion_is_a_cnf_goal():
+    # ``B(a) ∧ C(a) → D(a) ∧ E(a)`` is a ground goal formula (T4).
+    _, query = to_theory_query(_record(["A(a)"], "B(a) ∧ C(a) → D(a) ∧ E(a)"))
+    assert query.goal_mode == "cnf"
+    assert len(query.goal_clauses) == 2
+    assert all(len(clause) == 3 for clause in query.goal_clauses)
+
+
+def test_a_quantified_compound_conclusion_is_out_of_fragment():
     with pytest.raises(FolParseError):
-        to_theory_query(_record(["A(a)"], "B(a) ∧ C(a) → D(a) ∧ E(a)"))
+        to_theory_query(_record(["A(a)"], "(∀x B(x)) → D(a)"))
+
+
+def test_existential_premise_with_a_nested_disjunction_parses():
+    theory, _ = to_theory_query(
+        _record(["∃x (P(x) ∧ (Q(x) ∨ R(x)))"], "P(a)")
+    )
+    existential = theory.existentials[0]
+    assert [atom.object for atom in existential.atoms] == ["p"]
+    assert [[atom.object for atom in group] for group in existential.disjunctions] == [["q", "r"]]
+
+
+def test_existential_premise_with_a_nested_quantifier_is_out_of_fragment():
+    with pytest.raises(FolParseError):
+        to_theory_query(_record(["∃x (P(x) ∧ ∃y Q(x, y))"], "P(a)"))
 
 
 def test_malformed_formula_raises():
@@ -173,12 +195,13 @@ def test_gold_l2_shared_witness_refutation(tmp_path: Path):
     assert result["gold_open_ok"] and not result["fragment"]
 
 
-def test_gold_l2_shared_witness_with_a_nested_premise_is_fragment(tmp_path: Path):
-    # 0008's conclusion is a shared-witness conjunction, but its premise has a nested
-    # disjunction (T2), so it stays an honest out_of_fragment.
+def test_gold_l2_shared_witness_with_a_nested_premise_is_covered(tmp_path: Path):
+    # 0008's conclusion is a shared-witness conjunction and its premise has a nested
+    # disjunction (T2); the faithful answer is the honest unknown.
     result = analyze(_committed("l2", "0008"), tmp_path, logic="ground")
-    assert result["fragment"]
-    assert result["gold_open"][1].startswith("out_of_fragment")
+    assert not result["fragment"]
+    assert result["gold_open"][0] == "unknown"
+    assert result["gold_open_ok"]
 
 
 def test_gold_l2_universal_conclusion_is_covered(tmp_path: Path):

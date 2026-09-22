@@ -450,7 +450,7 @@ Source: `docs/quality_findings.md`. Ordered by priority.
     extraction on FOLIO (Phase 2 before Phase 1 in
     `docs/folio_extension_plan.md`). Tests `tests/test_evals_folio_fol.py`; full
     record `docs/folio_gold_fed.md`.
-26. **Coverage ceiling — explained, and the Tier-1 plan — IN PROGRESS (T1, T3, T5 DONE).**
+26. **Coverage ceiling — explained, and the Tier-1 plan — COMPLETE (T1, T3, T5, T4, T2 DONE).**
     The gold-fed diagnostic (item 25) shows the FOLIO L2 wall is **coverage**, not
     extraction: 24/45 gold formulas were outside the committed fragment.
     `docs/coverage_ceiling.md` explains the ceiling in plain terms and lays out the
@@ -459,7 +459,7 @@ Source: `docs/quality_findings.md`. Ordered by priority.
     grounding `∀x (A(x) ∨ B(x))` — the largest and soundness-sensitive, T6 G4 budget),
     each a named fragment reusing `ANKYRA_LOGIC` with a synthetic gate in
     `evals.l2_synthetic` and a re-measured gold-fed bound. Extraction G1–G4 runs in
-    parallel on covered rows. Open: T-D2 (goal-formula vs `goal_mode`).
+    parallel on covered rows.
     **T1 DONE** (`docs/t1_plan.md`): a shared-witness existential goal `∃x(A(x)∧B(x))`
     is a joint `all` goal (one witness for every conjunct; `refute_conjunction` for
     the per-witness negative check), feature `shared_witness`, no new flag. Gold-fed
@@ -482,8 +482,18 @@ Source: `docs/quality_findings.md`. Ordered by priority.
     Feature `head_only_rule`, no new flag. Gold-fed: `out_of_fragment` 18→**6**,
     gold-fed 23→**35/45**, coverage 27→**39/45**, covered gold-fed 23/27→**35/39**,
     **0 grounded false proofs**; LLM-free gates `evals.l2_synthetic` (36→41/41) and
-    `evals.routing_synthetic` (14→15/15); pytest 464 passed. Remaining Tier-1: T4
-    (2 rows) and T2 (3 rows).
+    `evals.routing_synthetic` (14→15/15); pytest 464 passed.
+    **T4 + T2 DONE** (`docs/t4_t2_plan.md`): T4 is a general **ground** goal formula as
+    `Query.goal_clauses` (its CNF) with `goal_mode="cnf"` — supported when `T ∪ {¬φ}` is
+    unsatisfiable, refuted when `T ∪ {φ}` is (`refute_support` on the cross-product);
+    this resolves **T-D2**. T2 is an existential premise with a nested disjunction as a
+    CNF body (`Existential.disjunctions`), Skolemized clause by clause. Features
+    `clause_goal` and `existential_disjunction`, no new flag. Gold-fed:
+    `out_of_fragment` 6→**1** (only the malformed `0109`), gold-fed 35→**40/45**,
+    coverage 39→**44/45**, covered gold-fed 35/39→**40/44**, **0 grounded false
+    proofs**; LLM-free gates `evals.l2_synthetic` (41→52/52) and
+    `evals.routing_synthetic` (15→17/17); pytest 476 passed. **Tier-1 is complete**;
+    T6 (G4 budget) remains an optimization on covered rows.
 
 ## 9. Reasoning roadmap (main axis)
 
@@ -514,14 +524,15 @@ Stages:
   resolution (`engine/clause.py`, `engine/resolution.py`), disjunction/case split,
   quantifiers by Skolemization + witness enumeration, compound/open goals, and the
   `Inference` protocol seam (`engine/inference.py`); primary LLM-free gate
-  `evals.l2_synthetic` (**23/23**). **ProntoQA-OOD tier-a live gate green** —
+  `evals.l2_synthetic` (**52/52**). **ProntoQA-OOD tier-a live gate green** —
   **41/42 (97.6%), 0 grounded false proofs**; the FOLIO L2 live run (26/44) mixes
   coverage and extraction, and the **gold-fed diagnostic shows the deeper limit is
-  coverage** — only 21/45 gold formulas fall in the committed fragment, but on
-  those gold-fed **17/21** out-scores text-fed **15/21** (`docs/folio_gold_fed.md`;
-  backlog G1–G4 in `docs/quality_findings.md` §G). The next axis is therefore
-  **Tier-1 lowering** to raise that coverage — the explained plan and ordered
-  backlog are `docs/coverage_ceiling.md` (item 26).
+  coverage** — most gold formulas were outside the committed fragment, but on those
+  covered gold-fed out-scores text-fed (`docs/folio_gold_fed.md`; backlog G1–G4 in
+  `docs/quality_findings.md` §G). **Tier-1 lowering is complete** (T1/T3/T5/T4/T2):
+  FOLIO L2 tier a gold-fed coverage **44/45**, 40/45 correct, only the malformed
+  `0109` left `out_of_fragment` — the explained plan is `docs/coverage_ceiling.md`
+  (item 26).
   Full first-order unification is deferred (`docs/l2_plan.md`).
 - **L3 — finite-domain CSP/SAT, a separate engine.** Benchmark AR-LSAT.
 - **L4 — arithmetic, a separate numeric engine or tool-use.** Benchmark GSM8K.

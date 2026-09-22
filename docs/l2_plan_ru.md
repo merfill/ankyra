@@ -536,6 +536,17 @@ Recon (§6) показывает, что доминирующие не-Horn фо
     23→**35/45**, охват 27→**39/45**, covered 35/39, 0 grounded false proofs.
     `evals.l2_synthetic` 41/41, `evals.routing_synthetic` 15/15. Осталось из Tier-1:
     T4 (2 строки), T2 (3 строки).
+15. **Tier-1 lowering — T4 + T2 СДЕЛАНО** (`docs/coverage_ceiling_ru.md` §6–§7,
+    `docs/t4_t2_plan_ru.md`). **T4:** общая **ground**-формула цели — это
+    `Query.goal_clauses` (её CNF) с `goal_mode="cnf"` — supported, когда `T ∪ {¬φ}`
+    невыполнимо, refuted, когда `T ∪ {φ}` (`verify._cnf_outcome`,
+    `resolution.refute_support`); это разрешает **T-D2**. **T2:** экзистенциальная
+    посылка с вложенной дизъюнкцией — CNF-тело (`Existential.disjunctions`),
+    Skolemize по клаузам (`clause._add_existentials`). Признаки `clause_goal` и
+    `existential_disjunction` (`engine/inference.py`), нового флага нет. FOLIO L2 тир a,
+    gold-fed `out_of_fragment` 6→**1** (только битая `0109`), gold-fed 35→**40/45**,
+    охват 39→**44/45**, covered 40/44, 0 grounded false proofs. `evals.l2_synthetic`
+    52/52, `evals.routing_synthetic` 17/17. Tier-1 завершён.
 
 Каждый milestone ложится отдельно ревьюируемым; ни один не начинается на красном
 soundness-гейте. Milestone 5 гейтит 2–4; milestone 3 (Horn-путь нетронут) может

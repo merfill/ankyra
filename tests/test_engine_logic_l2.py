@@ -311,3 +311,106 @@ def test_l2_existential_goal_uses_the_skolem_witness():
         verdict = verify(theory, query)
     assert verdict.status == "supported"
     assert verdict.bindings.get("?x") == "sk0"
+
+
+def _cnf_query(clauses):
+    return Query(target=clauses[0][0], goal_mode="cnf", goal_clauses=clauses)
+
+
+def test_l2_cnf_goal_supports_an_implication_between_compounds():
+    # ``(A ∧ B) → (C ∧ D)`` in CNF: ``(¬A ∨ ¬B ∨ C) ∧ (¬A ∨ ¬B ∨ D)``.
+    theory = Theory(
+        morphisms=[_m("a", "x"), _m("b", "x")],
+        rules=[
+            _rule([_m("a", "?x"), _m("b", "?x")], _m("c", "x")),
+            _rule([_m("a", "?x"), _m("b", "?x")], _m("d", "x")),
+        ],
+    )
+    clauses = [
+        [_m("a", "x", neg=True), _m("b", "x", neg=True), _m("c", "x")],
+        [_m("a", "x", neg=True), _m("b", "x", neg=True), _m("d", "x")],
+    ]
+    with setting_overrides(LOGIC="ground"):
+        verdict = verify(theory, _cnf_query(clauses))
+    assert verdict.status == "supported"
+
+
+def test_l2_cnf_goal_soundness_control_is_not_a_flat_disjunction_of_entailments():
+    # T = {A, B} entails neither ``(A ∨ B) → C`` nor its negation. Deciding the
+    # goal by "some disjunct is entailed" would be unsound and answer yes.
+    theory = Theory(morphisms=[_m("a", "x"), _m("b", "x")])
+    clauses = [
+        [_m("a", "x", neg=True), _m("c", "x")],
+        [_m("b", "x", neg=True), _m("c", "x")],
+    ]
+    with setting_overrides(LOGIC="ground"):
+        verdict = verify(theory, _cnf_query(clauses))
+    assert verdict.status == "insufficient"
+
+
+def test_l2_cnf_goal_is_refuted():
+    theory = Theory(
+        morphisms=[_m("a", "x"), _m("b", "x"), _m("c", "x", neg=True)]
+    )
+    clauses = [
+        [_m("a", "x", neg=True), _m("c", "x")],
+        [_m("b", "x", neg=True), _m("c", "x")],
+    ]
+    with setting_overrides(LOGIC="ground"):
+        verdict = verify(theory, _cnf_query(clauses))
+    assert verdict.status == "refuted"
+
+
+def test_l2_cnf_goal_budget_exhaustion_is_never_a_proof():
+    theory = Theory(morphisms=[_m("a", "x"), _m("b", "x")])
+    clauses = [
+        [_m("a", "x", neg=True), _m("b", "x", neg=True), _m("c", "x")],
+    ]
+    with setting_overrides(LOGIC="ground", LOGIC_BUDGET=1):
+        verdict = verify(theory, _cnf_query(clauses))
+    assert verdict.status == "insufficient"
+
+
+def test_l2_skolemizes_an_existential_disjunction():
+    # ``∃x(p(x) ∧ (q(x) ∨ r(x)))`` with ``p → ¬r`` entails ``q(sk0)``.
+    theory = Theory(
+        existentials=[
+            Existential(
+                variable="?x",
+                atoms=[_m("is_a", "?x", "p")],
+                disjunctions=[[_m("is_a", "?x", "q"), _m("is_a", "?x", "r")]],
+            )
+        ],
+        rules=[_rule([_m("is_a", "?x", "p")], _m("is_a", "?x", "r", neg=True))],
+    )
+    with setting_overrides(LOGIC="ground"):
+        assert verify(theory, Query(target=_m("is_a", "sk0", "q"))).status == "supported"
+
+
+def test_l2_existential_disjunction_without_a_forcing_premise_is_unknown():
+    theory = Theory(
+        existentials=[
+            Existential(
+                variable="?x",
+                atoms=[_m("is_a", "?x", "p")],
+                disjunctions=[[_m("is_a", "?x", "q"), _m("is_a", "?x", "r")]],
+            )
+        ]
+    )
+    with setting_overrides(LOGIC="ground"):
+        assert verify(theory, Query(target=_m("is_a", "sk0", "q"))).status == "unsupported"
+
+
+def test_l2_existential_disjunction_is_refuted_when_a_disjunct_holds():
+    theory = Theory(
+        existentials=[
+            Existential(
+                variable="?x",
+                atoms=[_m("is_a", "?x", "p")],
+                disjunctions=[[_m("is_a", "?x", "q"), _m("is_a", "?x", "r")]],
+            )
+        ],
+        rules=[_rule([_m("is_a", "?x", "p")], _m("is_a", "?x", "q"))],
+    )
+    with setting_overrides(LOGIC="ground"):
+        assert verify(theory, Query(target=_m("is_a", "sk0", "q", neg=True))).status == "refuted"

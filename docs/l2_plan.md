@@ -515,6 +515,17 @@ a contradiction shows both branches. `answer` is unchanged (`refuted` now carrie
     gold-fed `out_of_fragment` 18→**6**, gold-fed 23→**35/45**, coverage 27→**39/45**,
     covered 35/39, 0 grounded false proofs. `evals.l2_synthetic` 41/41,
     `evals.routing_synthetic` 15/15. Remaining Tier-1: T4 (2 rows), T2 (3 rows).
+15. **Tier-1 lowering — T4 + T2 DONE** (`docs/coverage_ceiling.md` §6–§7,
+    `docs/t4_t2_plan.md`). **T4:** a general **ground** goal formula is
+    `Query.goal_clauses` (its CNF) with `goal_mode="cnf"` — supported when `T ∪ {¬φ}`
+    is unsatisfiable, refuted when `T ∪ {φ}` is (`verify._cnf_outcome`,
+    `refutation.refute_support`); this resolves **T-D2**. **T2:** an existential
+    premise with a nested disjunction is a CNF body (`Existential.disjunctions`),
+    Skolemized clause by clause (`clause._add_existentials`). Features `clause_goal`
+    and `existential_disjunction` (`engine/inference.py`), no new flag. FOLIO L2 tier
+    a gold-fed `out_of_fragment` 6→**1** (only the malformed `0109`), gold-fed
+    35→**40/45**, coverage 39→**44/45**, covered 40/44, 0 grounded false proofs.
+    `evals.l2_synthetic` 52/52, `evals.routing_synthetic` 17/17. Tier-1 is complete.
 
 Each milestone lands reviewable on its own; no milestone starts on a red soundness
 gate. Milestone 5 gates 2–4; milestone 3 (Horn path untouched) can proceed while the

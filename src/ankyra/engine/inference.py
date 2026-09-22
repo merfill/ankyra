@@ -35,6 +35,8 @@ FragmentFeature = Literal[
     "shared_witness",
     "universal_goal",
     "head_only_rule",
+    "clause_goal",
+    "existential_disjunction",
 ]
 
 # The features whose presence makes the clausal (L2) procedure the required one.
@@ -118,6 +120,16 @@ def _has_head_only_rule(theory: Theory) -> bool:
     return False
 
 
+def _has_clause_goal(query: Query) -> bool:
+    """True when the question is a general ground CNF goal formula (T4)."""
+    return query.goal_mode == "cnf" and bool(query.goal_clauses)
+
+
+def _has_existential_disjunction(theory: Theory) -> bool:
+    """True when an existential premise carries a disjunctive clause (T2)."""
+    return any(existential.disjunctions for existential in theory.existentials)
+
+
 def _has_builtin(theory: Theory) -> bool:
     from ankyra.engine.builtins import is_builtin
 
@@ -154,6 +166,10 @@ def _fragment(theory: Theory, query: Query) -> frozenset[str]:
         features.add("universal_goal")
     if _has_head_only_rule(theory):
         features.add("head_only_rule")
+    if _has_clause_goal(query):
+        features.add("clause_goal")
+    if _has_existential_disjunction(theory):
+        features.add("existential_disjunction")
     return frozenset(features)
 
 

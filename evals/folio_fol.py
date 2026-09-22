@@ -9,11 +9,13 @@ the L1/L2 models, so the number isolates the method from extraction errors
 The parser covers the reachable L2 shape — universal/implication formulas, ``∧``/``∨``,
 negation (pushed to literals by NNF), conjunctive existential premises (``∃x (φ ∧ …)``),
 ground or open goals, flat compound goals, a conjunctive existential conclusion with a
-shared witness (``∃x (A(x) ∧ B(x))``, decided jointly, ``docs/t1_plan.md``) and a
-universal clause conclusion (``∀x (l₁ ∨ … ∨ lₙ)``, which subsumes ``∀x (A→B)`` and
-``¬∃x φ``, ``docs/t3_plan.md``). A formula outside the committed fragment raises
-:class:`FolParseError` (an honest ``out_of_fragment``), never a guessed encoding:
-non-clause/conditional goals, nested quantifiers and function terms stay outside L2.
+shared witness (``∃x (A(x) ∧ B(x))``, decided jointly, ``docs/t1_plan.md``), a universal
+clause conclusion (``∀x (l₁ ∨ … ∨ lₙ)``, which subsumes ``∀x (A→B)`` and ``¬∃x φ``,
+``docs/t3_plan.md``), an existential premise with a nested disjunction (``∃x (A(x) ∧
+(B(x) ∨ C(x)))``, ``docs/t4_t2_plan.md``) and a general ground goal formula
+(``docs/t4_t2_plan.md``). A formula outside the committed fragment raises
+:class:`FolParseError` (an honest ``out_of_fragment``), never a guessed encoding: a
+quantified compound goal, nested quantifiers and function terms stay outside L2.
 """
 
 from __future__ import annotations
@@ -317,14 +319,38 @@ def _premise(formula) -> tuple[list[Morphism], list[Rule], list[Existential]]:
 def _existential_premise(formula) -> tuple[list, list, list[Existential]]:
     variable = f"?{formula[1]}"
     body = _nnf(formula[2])
-    if _is_literal(body):
-        literals = [body]
-    elif body[0] == "and" and all(_is_literal(part) for part in body[1]):
-        literals = list(body[1])
-    else:
-        raise FolParseError("existential premise is not a conjunction of literals")
-    atoms = [_morphism(literal) for literal in literals]
-    return [], [], [Existential(variable=variable, atoms=atoms)]
+    atoms: list[Morphism] = []
+    disjunctions: list[list[Morphism]] = []
+    for clause in _cnf(body):
+        literals = [_morphism(literal) for literal in clause]
+        if len(literals) == 1:
+            atoms.append(literals[0])
+        else:
+            disjunctions.append(literals)
+    if not atoms and not disjunctions:
+        raise FolParseError("empty existential premise")
+    for morphism in (*atoms, *(m for group in disjunctions for m in group)):
+        for term in (morphism.subject, morphism.object):
+            if term and term.startswith("?") and term != variable:
+                raise FolParseError("existential premise has a free variable other than the bound one")
+    return [], [], [Existential(variable=variable, atoms=atoms, disjunctions=disjunctions)]
+
+
+def _ground_goal_clauses(formula) -> list[list[Morphism]]:
+    """The CNF of a **ground** goal formula, or ``FolParseError`` (T4).
+
+    A quantifier inside the formula makes ``_cnf`` refuse; a term left as a variable is
+    not ground and is refused too. The result is ``goal_clauses`` for ``goal_mode="cnf"``.
+    """
+    clauses = [[_morphism(literal) for literal in clause] for clause in _cnf(formula)]
+    if any(
+        term and term.startswith("?")
+        for clause in clauses
+        for morphism in clause
+        for term in (morphism.subject, morphism.object)
+    ):
+        raise FolParseError("a compound conclusion with a variable is out of fragment")
+    return clauses
 
 
 def _universal_conclusion(formula):
@@ -347,11 +373,11 @@ def _universal_conclusion(formula):
     }
     if free != {variable}:
         raise FolParseError("universal conclusion must bind exactly one variable")
-    return goals[0], goals, "forall"
+    return goals[0], goals, "forall", []
 
 
 def _conclusion(formula):
-    """Return ``(target, goals, goal_mode)`` for the annotated conclusion."""
+    """Return ``(target, goals, goal_mode, goal_clauses)`` for the conclusion."""
     normal = _nnf(formula)
     if normal[0] == "forall":
         return _universal_conclusion(normal)
@@ -360,27 +386,33 @@ def _conclusion(formula):
         if _is_literal(body):
             literal = body
             target = _morphism(literal)
-            return target, [], "single"
+            return target, [], "single", []
         if body[0] == "and" and all(_is_literal(part) for part in body[1]):
             goals = [_morphism(literal) for literal in body[1]]
-            return goals[0], goals, "all"
+            return goals[0], goals, "all", []
         if body[0] == "or" and all(_is_literal(part) for part in body[1]):
             goals = [_morphism(literal) for literal in body[1]]
-            return goals[0], goals, "any"
+            return goals[0], goals, "any", []
         raise FolParseError("existential conclusion is not a flat literal combination")
     if _is_literal(normal):
         target = _morphism(normal)
-        return target, [], "single"
+        return target, [], "single", []
     if normal[0] == "and" and all(_is_literal(part) for part in normal[1]):
         goals = [_morphism(literal) for literal in normal[1]]
-        return goals[0], goals, "all"
+        return goals[0], goals, "all", []
     if normal[0] == "or" and all(_is_literal(part) for part in normal[1]):
         goals = [_morphism(literal) for literal in normal[1]]
-        return goals[0], goals, "any"
-    raise FolParseError("compound conclusion is not a flat conjunction/disjunction")
+        return goals[0], goals, "any", []
+    clauses = _ground_goal_clauses(normal)
+    return clauses[0][0], [], "cnf", clauses
 
 
-def _object_names(theory: Theory, target: Morphism | None, goals: list[Morphism]) -> list[str]:
+def _object_names(
+    theory: Theory,
+    target: Morphism | None,
+    goals: list[Morphism],
+    goal_clauses: list[list[Morphism]] = (),
+) -> list[str]:
     names: list[str] = []
     atoms: list[Morphism] = [*theory.morphisms]
     for rule in theory.rules:
@@ -388,9 +420,13 @@ def _object_names(theory: Theory, target: Morphism | None, goals: list[Morphism]
         atoms.extend(rule.head)
     for existential in theory.existentials:
         atoms.extend(existential.atoms)
+        for disjunction in existential.disjunctions:
+            atoms.extend(disjunction)
     if target is not None:
         atoms.append(target)
     atoms.extend(goals)
+    for clause in goal_clauses:
+        atoms.extend(clause)
     for atom in atoms:
         if atom.predicate == "is_a":
             terms = (atom.subject,)
@@ -415,10 +451,13 @@ def to_theory_query(record: dict, *, world_assumption: str = "open") -> tuple[Th
         rules.extend(premise_rules)
         existentials.extend(premise_existentials)
 
-    target, goals, goal_mode = _conclusion(_parse(record["conclusion_fol"]))
+    target, goals, goal_mode, goal_clauses = _conclusion(_parse(record["conclusion_fol"]))
     theory = Theory(
         objects=[Object(id=name) for name in _object_names(
-            Theory(morphisms=facts, rules=rules, existentials=existentials), target, goals
+            Theory(morphisms=facts, rules=rules, existentials=existentials),
+            target,
+            goals,
+            goal_clauses,
         )],
         morphisms=facts,
         rules=rules,
@@ -427,6 +466,7 @@ def to_theory_query(record: dict, *, world_assumption: str = "open") -> tuple[Th
     query = Query(
         target=target,
         goals=goals,
+        goal_clauses=goal_clauses,
         goal_mode=goal_mode,
         answer_type="yes_no",
         world_assumption=world_assumption,

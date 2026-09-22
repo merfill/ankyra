@@ -8,10 +8,12 @@ Coverage (``docs/l2_plan.md`` §12.1): disjunctive head + case split, disjunctiv
 De Morgan, proof by contradiction/reductio, conjunctive and disjunctive goals (D-L2-7),
 a disjunctive ground fact with a case split, a shared-witness existential goal (T1), a
 universal clause goal (T3), a head-only universal premise grounded over the individual
-domain (T5), budget exhaustion, out-of-fragment constructs, and mandatory negative
+domain (T5), a general ground goal formula (T4), an existential premise with a nested
+disjunction (T2), budget exhaustion, out-of-fragment constructs, and mandatory negative
 controls (the Horn flag must not consume a disjunctive clause; an exhausted budget must
 not yield a proof; a Horn theory gives the same answer under both engines; a class name
-must not be instantiated by a head-only universal).
+must not be instantiated by a head-only universal; a disjunction is never decided by a
+disjunct).
 
 Usage:
     uv run python -m evals.build_l2_synthetic [--out PATH]
@@ -69,11 +71,20 @@ def _theory(morphisms=(), rules=(), constraints=(), objects=(), existentials=())
     }
 
 
-def _query(target, conditions=(), *, goals=(), goal_mode: str = "single", answer_type: str = "yes_no") -> dict:
+def _query(
+    target,
+    conditions=(),
+    *,
+    goals=(),
+    goal_mode: str = "single",
+    goal_clauses=(),
+    answer_type: str = "yes_no",
+) -> dict:
     return {
         "conditions": list(conditions),
         "target": target,
         "goals": list(goals),
+        "goal_clauses": list(goal_clauses),
         "goal_mode": goal_mode,
         "variables": {},
         "answer_type": answer_type,
@@ -478,6 +489,172 @@ def _universal_goal_cases() -> list[dict]:
     ]
 
 
+def _clause_goal_cases() -> list[dict]:
+    """A general ground goal formula in CNF (T4).
+
+    ``φ = (A ∧ B) → (C ∧ D)`` is ``goal_clauses``; the engine assumes ``CNF(φ)`` for
+    the refutation and ``CNF(¬φ)`` for support (via ``refute_support``). The mandatory
+    control is ``clause-goal-02``: a disjunction must not be decided by a disjunct.
+    """
+    implication = _theory(
+        morphisms=[_m("a", "x"), _m("b", "x")],
+        rules=[
+            _rule([_m("a", "?x"), _m("b", "?x")], _m("c", "x")),
+            _rule([_m("a", "?x"), _m("b", "?x")], _m("d", "x")),
+        ],
+    )
+    ab_to_cd = [
+        [_m("a", "x", neg=True), _m("b", "x", neg=True), _m("c", "x")],
+        [_m("a", "x", neg=True), _m("b", "x", neg=True), _m("d", "x")],
+    ]
+    ab_to_c = [
+        [_m("a", "x", neg=True), _m("c", "x")],
+        [_m("b", "x", neg=True), _m("c", "x")],
+    ]
+    return [
+        _case(
+            "clause-goal-01",
+            "clause_goal",
+            implication,
+            _query(ab_to_cd[0][0], goal_mode="cnf", goal_clauses=ab_to_cd),
+            "supported",
+            "yes",
+            note="a non-flat ground goal (an implication between compounds) is entailed",
+        ),
+        _case(
+            "clause-goal-02",
+            "clause_goal",
+            _theory(morphisms=[_m("a", "x"), _m("b", "x")]),
+            _query(ab_to_c[0][0], goal_mode="cnf", goal_clauses=ab_to_c),
+            "insufficient",
+            "unknown",
+            note="soundness control: A, B do not entail (A or B) -> C; deciding by a "
+            "disjunct would say yes",
+        ),
+        _case(
+            "clause-goal-03",
+            "clause_goal",
+            _theory(morphisms=[_m("a", "x"), _m("b", "x"), _m("c", "x", neg=True)]),
+            _query(ab_to_c[0][0], goal_mode="cnf", goal_clauses=ab_to_c),
+            "refuted",
+            "no",
+            note="a non-flat ground goal is refuted when its negation follows",
+        ),
+        _case(
+            "clause-goal-04",
+            "clause_goal",
+            implication,
+            _query(ab_to_cd[0][0], goal_mode="cnf", goal_clauses=ab_to_cd),
+            "insufficient",
+            "unknown",
+            budget=1,
+            note="negative control: an exhausted budget is never a proof",
+        ),
+        _case(
+            "clause-goal-05",
+            "clause_goal",
+            implication,
+            _query(ab_to_cd[0][0], goal_mode="cnf", goal_clauses=ab_to_cd),
+            "out_of_fragment",
+            "unknown",
+            logic="off",
+            note="negative control: with L2 off a compound goal is out_of_fragment",
+        ),
+    ]
+
+
+def _existential_disjunction_cases() -> list[dict]:
+    """An existential premise with a nested disjunction (T2).
+
+    ``∃x(p(x) ∧ (q(x) ∨ r(x)))`` is Skolemized to ``p(sk0)`` and ``q(sk0) ∨ r(sk0)``.
+    The mandatory controls are ``exist-or-02`` (an unforced disjunction decides
+    nothing) and ``exist-or-06`` (a nested quantifier is out of fragment).
+    """
+    existential = {
+        "variable": "?x",
+        "atoms": [_is_a("?x", "p")],
+        "disjunctions": [[_is_a("?x", "q"), _is_a("?x", "r")]],
+        "quote": None,
+    }
+    forced = _theory(
+        existentials=[existential],
+        rules=[_rule([_is_a("?x", "p")], _is_a("?x", "r", neg=True))],
+    )
+    plain = _theory(existentials=[existential])
+    forcing_q = _theory(
+        existentials=[existential],
+        rules=[_rule([_is_a("?x", "p")], _is_a("?x", "q"))],
+    )
+    nested = _theory(
+        existentials=[
+            {
+                "variable": "?x",
+                "atoms": [_is_a("?x", "p"), _is_a("?y", "q")],
+                "disjunctions": [],
+                "quote": None,
+            }
+        ]
+    )
+    return [
+        _case(
+            "exist-or-01",
+            "existential_disjunction",
+            forced,
+            _query(_is_a("sk0", "q")),
+            "supported",
+            "yes",
+            note="with p -> not r the nested disjunction forces q(sk0)",
+        ),
+        _case(
+            "exist-or-02",
+            "existential_disjunction",
+            plain,
+            _query(_is_a("sk0", "q")),
+            "unsupported",
+            "unknown",
+            note="negative control: an unforced disjunction entails neither disjunct",
+        ),
+        _case(
+            "exist-or-03",
+            "existential_disjunction",
+            forcing_q,
+            _query(_is_a("sk0", "q", neg=True)),
+            "refuted",
+            "no",
+            note="with p -> q the existential refutes not q(sk0)",
+        ),
+        _case(
+            "exist-or-04",
+            "existential_disjunction",
+            forced,
+            _query(_is_a("sk0", "q")),
+            "insufficient",
+            "unknown",
+            budget=1,
+            note="negative control: an exhausted budget is never a proof",
+        ),
+        _case(
+            "exist-or-05",
+            "existential_disjunction",
+            forced,
+            _query(_is_a("sk0", "q")),
+            "out_of_fragment",
+            "unknown",
+            logic="off",
+            note="negative control: with L2 off an existential is out_of_fragment",
+        ),
+        _case(
+            "exist-or-06",
+            "existential_disjunction",
+            nested,
+            _query(_is_a("sk0", "p")),
+            "out_of_fragment",
+            "unknown",
+            note="negative control: an atom over a different free variable is not ground",
+        ),
+    ]
+
+
 def _budget_cases() -> list[dict]:
     theory = _theory(morphisms=[_is_a("rex", "p")], rules=[_rule([_is_a("?x", "p")], _is_a("?x", "q"))])
     return [
@@ -686,6 +863,8 @@ def cases() -> list[dict]:
         + _shared_witness_cases()
         + _universal_goal_cases()
         + _head_only_cases()
+        + _clause_goal_cases()
+        + _existential_disjunction_cases()
         + _budget_cases()
         + _out_of_fragment_cases()
         + _control_cases()

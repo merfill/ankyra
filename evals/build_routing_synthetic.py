@@ -7,7 +7,8 @@ and expected verdict. Run by ``evals.routing_synthetic``. No LLM, no natural
 language, zero provider variance.
 
 Coverage: every fragment feature (horn, negation, disjunction, existential,
-builtin, compound_goal, shared_witness, universal_goal, head_only_rule) and every
+builtin, compound_goal, shared_witness, universal_goal, head_only_rule, clause_goal,
+existential_disjunction) and every
 refusal code (non_horn, compound_goal, existential, naf_in_l2,
 defeasible_with_clausal_fragment), plus controls for the A1 policy (the L2 flag
 selects the clausal procedure even for a Horn structure) and the second refusal
@@ -214,6 +215,51 @@ def cases() -> list[dict]:
             status="supported",
             kind="yes",
             note="a head-only universal premise is the head_only_rule feature and requires the clausal procedure",
+        ),
+        _case(
+            "clause-goal-16",
+            "clause_goal",
+            _theory(
+                morphisms=[_m("a", "x"), _m("b", "x")],
+                rules=[
+                    _rule([_m("a", "?x"), _m("b", "?x")], _m("c", "x")),
+                    _rule([_m("a", "?x"), _m("b", "?x")], _m("d", "x")),
+                ],
+            ),
+            _query(
+                _m("a", "x", neg=True),
+                goal_mode="cnf",
+                goal_clauses=[
+                    [_m("a", "x", neg=True), _m("b", "x", neg=True), _m("c", "x")],
+                    [_m("a", "x", neg=True), _m("b", "x", neg=True), _m("d", "x")],
+                ],
+            ),
+            fragment=["clause_goal", "compound_goal", "horn"],
+            procedure="clausal",
+            status="supported",
+            kind="yes",
+            note="a general ground goal formula is the clause_goal feature and requires the clausal procedure",
+        ),
+        _case(
+            "existential-disjunction-17",
+            "existential_disjunction",
+            _theory(
+                existentials=[
+                    {
+                        "variable": "?x",
+                        "atoms": [_is_a("?x", "p")],
+                        "disjunctions": [[_is_a("?x", "q"), _is_a("?x", "r")]],
+                        "quote": None,
+                    }
+                ],
+                rules=[_rule([_is_a("?x", "p")], _is_a("?x", "q"))],
+            ),
+            _query(_is_a("sk0", "q", neg=True)),
+            fragment=["existential", "existential_disjunction", "horn"],
+            procedure="clausal",
+            status="refuted",
+            kind="no",
+            note="an existential with a nested disjunction is the existential_disjunction feature",
         ),
         _case(
             "refuse-non-horn-06",

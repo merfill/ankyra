@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from ankyra.core.models import Constraint, Morphism, Rule, Theory
+from ankyra.core.models import Constraint, Existential, Morphism, Rule, Theory
 from ankyra.engine.clause import clausify, literal_of
-from ankyra.engine.resolution import prove, refute_conjunction
+from ankyra.engine.resolution import prove, refute_conjunction, refute_support
 
 
 def _lit(predicate, subject="", obj="", *, neg=False):
@@ -144,3 +144,30 @@ def test_a_conjunction_can_be_unsatisfiable_without_either_conjunct():
 
 def test_literal_of_matches_the_morphism():
     assert literal_of(_m("is_a", "x", "y")) == ("is_a", "x", "y", False, "neutral")
+
+
+def test_refute_support_accepts_a_multi_clause_assumption():
+    # To refute φ = (A ∨ B) → C assume φ's CNF, {¬A ∨ C} and {¬B ∨ C}. With A, B and
+    # ¬C the assumed clauses are jointly unsatisfiable (T4).
+    theory = Theory(morphisms=[_m("a", "x"), _m("b", "x"), _m("c", "x", neg=True)])
+    clausification = clausify(theory)
+    assumed = [
+        frozenset({_lit("a", "x", neg=True), _lit("c", "x")}),
+        frozenset({_lit("b", "x", neg=True), _lit("c", "x")}),
+    ]
+    assert refute_support(clausification, assumed).status == "entailed"
+
+
+def test_clausify_emits_a_disjunctive_skolem_clause():
+    existential = Existential(
+        variable="?x",
+        atoms=[_m("is_a", "?x", "p")],
+        disjunctions=[[_m("is_a", "?x", "q"), _m("is_a", "?x", "r")]],
+    )
+    result = clausify(Theory(existentials=[existential]))
+    keys = {frozenset(clause) for clause in result.clauses}
+    assert frozenset({literal_of(_m("is_a", "sk0", "p"))}) in keys
+    assert (
+        frozenset({literal_of(_m("is_a", "sk0", "q")), literal_of(_m("is_a", "sk0", "r"))})
+        in keys
+    )

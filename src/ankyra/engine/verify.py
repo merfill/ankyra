@@ -26,6 +26,7 @@ from ankyra.engine.resolution import (
     ProverResult,
     refute,
     refute_conjunction,
+    refute_support,
 )
 
 
@@ -466,10 +467,58 @@ def _universal_outcome(
     return "unknown", None, None, {}
 
 
+def _cnf_assumed(goal_clauses: list[list[Morphism]]) -> list:
+    """The assumed clauses of ``φ`` itself (``T ⊨ ¬φ`` check), T4."""
+    return [
+        frozenset(literal_of(literal) for literal in clause) for clause in goal_clauses
+    ]
+
+
+def _cnf_assumed_negated(goal_clauses: list[list[Morphism]]) -> list:
+    """The CNF of ``¬φ`` (the ``T ⊨ φ`` check's set of support), T4.
+
+    ``¬(C₁ ∧ … ∧ Cₘ) = ∨ᵢ ¬Cᵢ``, so each choice of one literal per clause yields the
+    clause ``{¬l₁, …, ¬lₘ}``; their conjunction is a CNF of ``¬φ``.
+    """
+    return [
+        frozenset(negate(literal_of(literal)) for literal in combo)
+        for combo in product(*goal_clauses)
+    ]
+
+
+def _cnf_outcome(clausification, goal_clauses: list[list[Morphism]], budget: int):
+    """Joint decision of a ground CNF goal formula ``φ`` (T4).
+
+    ``supported`` when ``T ∪ {¬φ}`` is unsatisfiable (assume ``CNF(¬φ)``), ``refuted``
+    when ``T ∪ {φ}`` is unsatisfiable (assume ``CNF(φ)``), ``contradiction`` when both,
+    ``budget`` on exhaustion, else ``unknown``. Returns
+    ``(outcome, target_result, complement_result, {})``.
+    """
+    assumed = _cnf_assumed(goal_clauses)
+    positive = refute_support(
+        clausification, _cnf_assumed_negated(goal_clauses), budget=budget
+    )
+    if positive.status == "entailed":
+        negative = refute_support(
+            clausification, assumed, budget=min(budget, _CONTRADICTION_BUDGET)
+        )
+        if negative.status == "entailed":
+            return "contradiction", positive, negative, {}
+        return "supported", positive, negative, {}
+    if positive.status == "budget":
+        return "budget", positive, None, {}
+    negative = refute_support(clausification, assumed, budget=budget)
+    if negative.status == "entailed":
+        return "refuted", positive, negative, {}
+    if negative.status == "budget":
+        return "budget", positive, negative, {}
+    return "unknown", positive, negative, {}
+
+
 def _l2_status(mode: str, kinds: list[str]) -> str:
     if "contradiction" in kinds:
         return "contradiction"
-    if mode == "forall":
+    if mode in {"forall", "cnf"}:
         kind = kinds[0] if kinds else "unknown"
         return {
             "supported": "supported",
@@ -539,7 +588,11 @@ def _verify_l2(theory: Theory, query: Query, ctx) -> Verdict:
             gaps=[f"out_of_fragment:{item}" for item in clausification.unsupported],
             shelf="refused",
         )
-    mode = query.goal_mode if query.goal_mode in {"all", "any", "forall"} else "single"
+    mode = (
+        query.goal_mode
+        if query.goal_mode in {"all", "any", "forall", "cnf"}
+        else "single"
+    )
     status = _l2_status(mode, [outcome for _, outcome, _, _, _ in outcomes])
     gaps: list[str] = []
     if any(outcome == "budget" for _, outcome, _, _, _ in outcomes):
@@ -553,7 +606,7 @@ def _verify_l2(theory: Theory, query: Query, ctx) -> Verdict:
         if outcome == "supported" and binding:
             bindings.update(binding)
             break
-    if status == "supported" and mode in {"single", "forall"}:
+    if status == "supported" and mode in {"single", "forall", "cnf"}:
         target_result = outcomes[0][2]
         unused = _unused_l2(theory, query, target_result.proof if target_result else None)
         if unused:
@@ -582,6 +635,12 @@ def l2_outcomes(theory: Theory, query: Query):
         return clausification, []
     pool = _witness_pool(theory, clausification)
     goals = _goals_of(query)
+    if query.goal_mode == "cnf" and query.goal_clauses:
+        anchor = query.target or query.goal_clauses[0][0]
+        outcome, target, complement, binding = _cnf_outcome(
+            clausification, query.goal_clauses, _logic_budget()
+        )
+        return clausification, [(anchor, outcome, target, complement, binding)]
     if fresh is not None and query.goals:
         outcome, target, complement, binding = _universal_outcome(
             clausification, goals, pool, fresh, _logic_budget()

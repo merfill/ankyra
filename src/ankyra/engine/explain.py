@@ -403,7 +403,14 @@ def _l2_steps(proof, theory: Theory) -> list[ExplanationStep]:
 
 
 def _goal_label(query: Query, goal: Morphism, *, negated: bool = False) -> str:
-    """Readable goal label; a universal clause goal renders ``∀?x(l₁ OR …)`` (T3)."""
+    """Readable goal label; a universal clause goal renders ``∀?x(l₁ OR …)`` (T3),
+    a CNF goal renders ``(l₁ OR l₂) AND (l₃)`` (T4)."""
+    if query.goal_mode == "cnf" and query.goal_clauses:
+        clauses = " AND ".join(
+            "(" + " OR ".join(render_atom(literal) for literal in clause) + ")"
+            for clause in query.goal_clauses
+        )
+        return f"¬({clauses})" if negated else clauses
     if query.goal_mode == "forall" and query.goals:
         variables = sorted(
             {

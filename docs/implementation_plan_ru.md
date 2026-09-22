@@ -439,7 +439,7 @@
     **охват (метод)**, а не язык, поэтому Tier-1 lowering идёт раньше извлечения
     на FOLIO (Phase 2 перед Phase 1 в `docs/folio_extension_plan_ru.md`). Тесты
     `tests/test_evals_folio_fol.py`; полная запись `docs/folio_gold_fed_ru.md`.
-26. **Потолок охвата — разъяснение и план Tier-1 — В РАБОТЕ (T1, T3, T5 DONE).** Gold-fed
+26. **Потолок охвата — разъяснение и план Tier-1 — ЗАВЕРШЁН (T1, T3, T5, T4, T2 DONE).** Gold-fed
     диагностика (пункт 25) показывает, что стена FOLIO L2 — **охват**, а не
     извлечение: 24/45 золотых формул были вне закоммиченного фрагмента.
     `docs/coverage_ceiling_ru.md` объясняет потолок простыми словами и излагает
@@ -449,7 +449,7 @@
     самый крупный и чувствительный к звуковости, T6 бюджет G4), каждый — именованный
     фрагмент на базе `ANKYRA_LOGIC` с синтетическим гейтом в `evals.l2_synthetic` и
     переснятым gold-fed пределом. Извлечение G1–G4 идёт параллельно по охваченным
-    строкам. Открыто: T-D2 (формула цели против `goal_mode`).
+    строкам.
     **T1 DONE** (`docs/t1_plan_ru.md`): экзистенциальная цель с общим свидетелем
     `∃x(A(x)∧B(x))` — совместная цель `all` (один свидетель для всех конъюнктов;
     `refute_conjunction` для отрицательной проверки по свидетелю), признак
@@ -475,7 +475,18 @@
     `out_of_fragment` 18→**6**, gold-fed 23→**35/45**, охват 27→**39/45**, covered
     gold-fed 23/27→**35/39**, **0 grounded false proofs**; LLM-free гейты
     `evals.l2_synthetic` (36→41/41) и `evals.routing_synthetic` (14→15/15); pytest
-    464 passed. Осталось из Tier-1: T4 (2 строки) и T2 (3 строки).
+    464 passed.
+    **T4 + T2 DONE** (`docs/t4_t2_plan_ru.md`): T4 — общая **ground**-формула цели как
+    `Query.goal_clauses` (её CNF) с `goal_mode="cnf"` — supported, когда `T ∪ {¬φ}`
+    невыполнимо, refuted, когда `T ∪ {φ}` (`refute_support` по декартову
+    произведению); это закрывает **T-D2**. T2 — экзистенциальная посылка с вложенной
+    дизъюнкцией как CNF-тело (`Existential.disjunctions`), Skolemize по клаузам.
+    Признаки `clause_goal` и `existential_disjunction`, без нового флага. Gold-fed:
+    `out_of_fragment` 6→**1** (только битая `0109`), gold-fed 35→**40/45**, охват
+    39→**44/45**, covered gold-fed 35/39→**40/44**, **0 grounded false proofs**;
+    LLM-free гейты `evals.l2_synthetic` (41→52/52) и `evals.routing_synthetic`
+    (15→17/17); pytest 476 passed. **Tier-1 завершён**; T6 (бюджет G4) остаётся
+    оптимизацией на покрытых строках.
 
 ## 9. Дорожная карта рассуждений (главная ось)
 
@@ -506,14 +517,15 @@
   резолюция set-of-support (`engine/clause.py`, `engine/resolution.py`),
   дизъюнкция/разбор случаев, кванторы через Skolemization + перебор свидетелей,
   составные/open-цели и шов протокола `Inference` (`engine/inference.py`);
-  первичный LLM-free гейт `evals.l2_synthetic` (**23/23**). **Живой гейт
+  первичный LLM-free гейт `evals.l2_synthetic` (**52/52**). **Живой гейт
   ProntoQA-OOD тир a зелёный** — **41/42 (97.6%), 0 grounded false proofs**; живой
   прогон FOLIO L2 (26/44) смешивает охват и извлечение, а **gold-fed диагностика
-  показывает, что глубинный предел — охват**: лишь 21/45 золотых формул попадают
-  в закоммиченный фрагмент, но на них gold-fed **17/21** опережает text-fed **15/21**
+  показывает, что глубинный предел — охват**: большинство золотых формул было вне
+  закоммиченного фрагмента, но на покрытых gold-fed опережает text-fed
   (`docs/folio_gold_fed_ru.md`; backlog G1–G4 в `docs/quality_findings_ru.md` §G).
-  Следующая ось — **Tier-1 lowering** ради роста охвата: разъяснение и
-  упорядоченный бэклог — `docs/coverage_ceiling_ru.md` (пункт 26).
+  **Tier-1 lowering завершён** (T1/T3/T5/T4/T2): FOLIO L2 тир a gold-fed охват
+  **44/45**, верно 40/45, только битая `0109` остаётся `out_of_fragment` —
+  разъяснение в `docs/coverage_ceiling_ru.md` (пункт 26).
   Полная первопорядковая унификация отложена (`docs/l2_plan_ru.md`).
 - **L3 — конечнодоменные CSP/SAT, отдельный движок.** Бенчмарк AR-LSAT.
 - **L4 — арифметика, отдельный числовой движок или tool-use.** Бенчмарк GSM8K.
