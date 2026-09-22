@@ -60,7 +60,7 @@ Ankyra — не «решатель Хорна», а **оркестратор ф�
 | **L0** | Definite Horn, `is_a`, отрицание парами `P`/`¬P` | `supported / insufficient / unsupported / refuted` (OWA) | semi-naive forward chaining | ProofWriter | — | **готово** (этап D 297/300) |
 | **L1** | Стратифицированное отрицание / NAF, объявленный CWA | открытый/закрытый мир по запросу; `¬atom` по неудаче | стратифицированное замыкание | ProntoQA (negation/disjointness) | `ANKYRA_NEGATION_MODE` | реализовано; гейты зелёные (синтетика 40/40, ProntoQA 208/208) |
 | **L2** | Positive FOL: дизъюнкция, `∃/∀`, proof by cases | выводимость/опровержение в ограниченном клаузальном поиске | ограниченная резолюция | ProntoQA-OOD (compositional), FOLIO | `ANKYRA_LOGIC` | реализовано; ProntoQA-OOD live 41/42 (0 grounded false proofs); FOLIO live смешивает охват и извлечение; gold-fed: предел — охват (`docs/coverage_ceiling_ru.md`) |
-| **L3** | Конечнодоменные ограничения (CSP/SAT) | `must` = истинно во всех моделях, `could` = истинно в некоторой | in-repo поиск по конечным доменам | AR-LSAT | `ANKYRA_CSP` | движок + синтетический + gold + live-гейт зелёные (21/30, 0 grounded) (отдельный движок) |
+| **L3** | Конечнодоменные ограничения (CSP/SAT) | `must` = истинно во всех моделях, `could` = истинно в некоторой | in-repo поиск по конечным доменам | AR-LSAT | `ANKYRA_CSP` | движок + синтетический + gold + live-гейт зелёные (23/30, 0 grounded) (отдельный движок) |
 | **L4** | Арифметические термы и уравнения | числовой ответ, а не выводимость | вычисление / решение уравнений | GSM8K | — | низкий приоритет (отдельный движок / tool-use) |
 | **D** | Дефолты со специфичностью через `is_a` | ответ плюс разрешённый/неразрешённый конфликт | `engine/defeasible.py` | defeasible-NLI / αNLI | `ANKYRA_DEFEASIBLE` | реализовано + синтетический гейт |
 
@@ -207,15 +207,17 @@ Ankyra — не «решатель Хорна», а **оркестратор ф�
   in-repo конечно-доменный решатель (`engine/csp/`) решают пять вручную закодированных
   игр — линейный/круговой порядок, группировка и conditional — и все четыре семантики
   вопроса (`evals.l3_spike` 5/5); закоммиченный синтетический гейт
-  `evals.l3_synthetic` — **27/27** (каждый вид ограничения — включая булеву
-  композицию `all`/`any`/`not` и `count_compare` — и каждая семантика вопроса, плюс
-  негативные контроли), 0 confidently-wrong. Путь извлечения CSP Phase 0 (схема +
-  детерминированный builder + промпт) и gold-fed tier на месте, проверены LLM-free
-  (gold **21/21**, 0 `grounded_mismatch`, 5 реальных игр); dev/eval сэмплы закоммичены,
+  `evals.l3_synthetic` — **31/31** (каждый вид ограничения — включая булеву
+  композицию `all`/`any`/`not`, `count_compare` и проекцию фактора — и каждая
+  семантика вопроса, плюс value-target `complete_list` и негативные контроли), 0
+  confidently-wrong. Путь
+  извлечения CSP Phase 0 (схема + детерминированный builder + промпт) и gold-fed tier
+  на месте, проверены LLM-free
+  (gold **27/27**, 0 `grounded_mismatch`, 7 реальных игр); dev/eval сэмплы закоммичены,
   роутинг/ответ/обоснование подключены (`ANKYRA_CSP`, `Answer.kind "choice"`, шаг
   обоснования `model`). Live-гейты прогнаны один раз (бюджетно): dev 9/12, 0
-  `grounded_mismatch`; **eval 21/30, 0 `grounded_mismatch` → гейт GREEN** (метод
-  зелёный, gold 21/21; фиксы интерфейса/промпта, bounded question-repair, guard
+  `grounded_mismatch`; **eval 23/30, 0 `grounded_mismatch` → гейт GREEN** (метод
+  зелёный, gold 27/27; фиксы интерфейса/промпта, bounded question-repair, guard
   дубликата опций и error-driven language-spec блок внесены; сэмплирование не
   используется, D-L3-10). Провайдер остаётся недетерминированным (C1).
 
@@ -288,6 +290,6 @@ Ankyra — не «решатель Хорна», а **оркестратор ф�
 | L0 | ProofWriter | этап D 300 | 0 grounded false proofs; детерминированные все `proven`; ≥95% | готово (перепрогон 297/300) |
 | L1 | ProntoQA (negation), подмножество отрицаний FOLIO | ProntoQA тир a/b | то же + объявленный CWA | реализовано (движок) + синтетический гейт; ProntoQA зелёный и закрыт; negation-срез FOLIO fragment-bound и скорится на L2 (gold-fed 12/13, живой 11/13, `docs/folio_ru.md` §9) |
 | L2 | ProntoQA-OOD (compositional), затем FOLIO | ProntoQA-OOD тир a (44), FOLIO L2 тир a (45) | то же; FOLIO стратифицирован по конструкции | реализовано; ProntoQA-OOD live 41/42 (0 grounded false proofs), FOLIO live ограничен извлечением (26/44); Tier-1 T1 (общий свидетель `∃`), T3 (универсальная клаузальная цель), T5 (универсальная посылка только по голове), T4 (неплоская ground-цель), T2 (посылка с вложенной дизъюнкцией) и T6 (ground unit propagation, G4) поднимают gold-fed охват до 44/45, верно 42/45 (`docs/t1_plan_ru.md`, `docs/t3_plan_ru.md`, `docs/t5_plan_ru.md`, `docs/t4_t2_plan_ru.md`, `docs/t6_plan_ru.md`); Tier-2 3a конечное равенство (синтетический гейт) `docs/equality_plan_ru.md` |
-| L3 | AR-LSAT | dev/eval + gold закоммичены | проверка опций решателем | движок + синтетический + gold зелёные; live eval 21/30, 0 grounded_mismatch (гейт зелёный) |
+| L3 | AR-LSAT | dev/eval + gold закоммичены | проверка опций решателем | движок + синтетический + gold зелёные; live eval 23/30, 0 grounded_mismatch (гейт зелёный) |
 | L4 | GSM8K | предстоит собрать | числовое совпадение | низкий приоритет |
 | D | defeasible-NLI | предстоит выбрать | разрешённый/неразрешённый конфликт отражён | реализовано + синтетический гейт |

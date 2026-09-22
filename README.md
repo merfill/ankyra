@@ -128,9 +128,9 @@ untethered "reasoning". Committed gates:
 | L1 | disjointness, NAF, declared CWA | synthetic (LLM-free) | 40/40 |
 | L2 | disjunction, case split, finite-domain quantifiers, finite equality | synthetic (LLM-free) | 65/65 |
 | L2 | disjunction, quantifiers, equality | ProntoQA-OOD tier a | 41/42 (97.6%), 0 grounded false proofs |
-| L3 | finite-domain CSP (boolean composition, count_compare) | synthetic (LLM-free) | 27/27 |
-| L3 | finite-domain CSP | AR-LSAT gold-fed, 5 real games (LLM-free) | 21/21 |
-| L3 | finite-domain CSP | AR-LSAT eval tier (live) | 21/30, **0 `grounded_mismatch`** |
+| L3 | finite-domain CSP (boolean composition, count_compare, factor projection) | synthetic (LLM-free) | 31/31 |
+| L3 | finite-domain CSP | AR-LSAT gold-fed, 7 real games (LLM-free) | 27/27 |
+| L3 | finite-domain CSP | AR-LSAT eval tier (live) | **23/30**, **0 `grounded_mismatch`** |
 | D | defeasible | synthetic (LLM-free) | 8/8 |
 
 The ProntoQA runs have **0 grounded false proofs** and every determinate answer is
@@ -194,6 +194,8 @@ is coverage/extraction, not the engine core.
 - `docs/l1_plan.md` — L1: stratified negation/NAF and declared CWA.
 - `docs/l2_plan.md` — L2: positive FOL (implemented).
 - `docs/l3_plan.md` — L3: finite-domain CSP (implemented).
+- `docs/l3_extension_plan.md` — L3 post-gate hardening (composite factors, value-target
+  `complete_list`, `count` membership, AR-LSAT gold invariant).
 - `docs/equality_plan.md` — Tier-2 3a finite equality.
 - `docs/defeasible_reasoning.md` — exceptions/defaults (the D layer).
 
@@ -235,16 +237,19 @@ declared-fragment contract (`docs/fragment_routing.md`) derives the required fra
 from the built structure and refuses an unsupported one with a named
 `out_of_fragment`, instead of guessing; its LLM-free gate is **19/19**.
 **L3 is implemented and gated** as a separate engine behind `ANKYRA_CSP`: a general
-finite-domain CSP IR (boolean composition `all`/`any`/`not`, `count_compare`, declared
-topologies) and a bounded in-repo solver, orchestrated by the LLM. LLM-free gates:
-synthetic **27/27**, gold-fed real games **21/21**, both 0 `grounded_mismatch`. The
-**AR-LSAT live eval gate is green: 21/30, 0 `grounded_mismatch`** (the 9 misses are
+finite-domain CSP IR (boolean composition `all`/`any`/`not`, `count` over a value set,
+`count_compare`, factor projection, declared topologies) and a bounded in-repo solver,
+orchestrated by the LLM. LLM-free gates:
+synthetic **31/31**, gold-fed real games **27/27** (7 games), both 0 `grounded_mismatch`. The
+**AR-LSAT live eval gate is green: 23/30, 0 `grounded_mismatch`** (the 7 misses are
 honest abstentions). The extraction ceiling there was raised not by sampling (rejected,
 `docs/l3_plan.md` D-L3-10) but by an **error-driven, per-collection language
 specification** (`ANKYRA_LANGUAGE_SPEC`, `docs/task.md` §0.6). The guide is packaged as
 a per-collection **skill** (`evals/skills/<collection>/`, loaded by the harness via
-`evals/skills.py`); the format and auto-loading are done, the task-specific content is
-the remaining budgeted step (`docs/implementation_plan.md` §8 item 28).
+`evals/skills.py`); the format and auto-loading are done, and the task-specific content
+is the **budgeted step** — the `count`-rule attempt was dev-validated as a regression and
+reverted, so any further content needs a new dev-validated case
+(`docs/implementation_plan.md` §8 item 28, `docs/l3_extension_plan.md` H5).
 
 Known open items: FOLIO L2 extraction (residual **G2** — missing premises; the deferred
 `A′` repair); the FOLIO **negation slice is fragment-bound** and now scored at L2 (its

@@ -35,6 +35,7 @@ class _Context:
     """Resolved lookups for constraint evaluation (built once per search)."""
 
     domain_of: dict[str, CspDomain]
+    domains: dict[str, CspDomain]
     order: dict[str, dict[str, int]]
     size: dict[str, int]
 
@@ -48,7 +49,28 @@ def _context(game: CspGame) -> _Context:
         domain_of[variable.id] = domains[variable.domain]
     order = {d.id: {value: i for i, value in enumerate(d.values)} for d in game.domains}
     size = {d.id: len(d.values) for d in game.domains}
-    return _Context(domain_of=domain_of, order=order, size=size)
+    return _Context(domain_of=domain_of, domains=domains, order=order, size=size)
+
+
+def _domain_for(constraint: CspConstraint, ctx: _Context, variable: str) -> CspDomain:
+    """The domain a constraint compares on: the projected factor, or the variable's."""
+    if constraint.factor:
+        return ctx.domains[constraint.factor]
+    return ctx.domain_of[variable]
+
+
+def _assigned_value(constraint: CspConstraint, variable: str, assign: dict[str, str], ctx: _Context) -> str | None:
+    """The assigned value, projected onto ``constraint.factor`` when one is named."""
+    raw = assign.get(variable)
+    if raw is None:
+        return None
+    if not constraint.factor:
+        return raw
+    domain = ctx.domain_of[variable]
+    parts = domain.value_factors.get(raw)
+    if parts is None:
+        return None
+    return parts[domain.factors.index(constraint.factor)]
 
 
 def _holds(constraint: CspConstraint, assign: dict[str, str], ctx: _Context) -> bool | None:
@@ -91,24 +113,24 @@ def _holds(constraint: CspConstraint, assign: dict[str, str], ctx: _Context) -> 
             return True
         return None
 
-    if any(variable not in assign for variable in constraint.variables):
+    projected = [_assigned_value(constraint, variable, assign, ctx) for variable in constraint.variables]
+    if any(value is None for value in projected):
         return None
 
     if kind == "eq":
         if len(constraint.variables) == 1:
-            return assign[constraint.variables[0]] == constraint.values[0]
-        return assign[constraint.variables[0]] == assign[constraint.variables[1]]
+            return projected[0] == constraint.values[0]
+        return projected[0] == projected[1]
 
     if kind == "neq":
         if len(constraint.variables) == 1:
-            return assign[constraint.variables[0]] != constraint.values[0]
-        return assign[constraint.variables[0]] != assign[constraint.variables[1]]
+            return projected[0] != constraint.values[0]
+        return projected[0] != projected[1]
 
     if kind == "order":
-        first, second = constraint.variables[0], constraint.variables[1]
-        domain = ctx.domain_of[first]
-        left = ctx.order[domain.id][assign[first]]
-        right = ctx.order[domain.id][assign[second]]
+        domain = _domain_for(constraint, ctx, constraint.variables[0])
+        left = ctx.order[domain.id][projected[0]]
+        right = ctx.order[domain.id][projected[1]]
         if domain.topology == "circular":
             if not constraint.immediate:
                 raise ValueError("circular order without 'immediate' is undefined")
@@ -116,23 +138,22 @@ def _holds(constraint: CspConstraint, assign: dict[str, str], ctx: _Context) -> 
         return right == left + 1 if constraint.immediate else left < right
 
     if kind in ("adjacent", "not_adjacent"):
-        first, second = constraint.variables[0], constraint.variables[1]
-        domain = ctx.domain_of[first]
-        left = ctx.order[domain.id][assign[first]]
-        right = ctx.order[domain.id][assign[second]]
-        distance = abs(left - right)
+        domain = _domain_for(constraint, ctx, constraint.variables[0])
+        distance = abs(ctx.order[domain.id][projected[0]] - ctx.order[domain.id][projected[1]])
         size = ctx.size[domain.id]
         adjacent = distance == 1 or (domain.topology == "circular" and distance == size - 1)
         return adjacent if kind == "adjacent" else not adjacent
 
     if kind in ("same_group", "different_group"):
-        equal = assign[constraint.variables[0]] == assign[constraint.variables[1]]
+        equal = projected[0] == projected[1]
         return equal if kind == "same_group" else not equal
 
     if kind == "count":
         if constraint.count is None or not constraint.values:
-            raise ValueError("count constraint needs a count and a group value")
-        total = sum(1 for variable in constraint.variables if assign[variable] == constraint.values[0])
+            raise ValueError("count constraint needs a count and at least one group value")
+        # A group is the SET of declared values: count the variables whose value belongs
+        # to it, so a single value is the special case and a union is meaningful.
+        total = sum(1 for value in projected if value in constraint.values)
         if constraint.count_mode == "exactly":
             return total == constraint.count
         if constraint.count_mode == "at_least":
@@ -142,8 +163,8 @@ def _holds(constraint: CspConstraint, assign: dict[str, str], ctx: _Context) -> 
     if kind == "count_compare":
         if constraint.comparison is None or len(constraint.values) < 2:
             raise ValueError("count_compare needs a comparison and two group values")
-        left = sum(1 for variable in constraint.variables if assign[variable] == constraint.values[0])
-        right = sum(1 for variable in constraint.variables if assign[variable] == constraint.values[1])
+        left = sum(1 for value in projected if value == constraint.values[0])
+        right = sum(1 for value in projected if value == constraint.values[1])
         if constraint.comparison == "gt":
             return left > right
         if constraint.comparison == "lt":
@@ -178,12 +199,18 @@ def _option_holds(option: list[CspConstraint], assign: dict[str, str], ctx: _Con
 
 @dataclass
 class SearchResult:
-    """The outcome of a model query plus the models found and the nodes visited."""
+    """The outcome of a model query plus the models found and the nodes visited.
+
+    ``complete`` is True only when the search space was fully traversed; an
+    enumeration that stopped early (collect limit or budget) is incomplete, and a
+    complete-and-accurate list must not be read from it.
+    """
 
     status: SearchStatus
     model: dict[str, str] | None = None
     models: list[dict[str, str]] = field(default_factory=list)
     steps: int = 0
+    complete: bool = True
 
 
 def _search(
@@ -229,14 +256,15 @@ def _search(
         return False
 
     recurse(0)
+    complete = not exhausted and len(found) < collect
     if exhausted:
-        return SearchResult("budget", steps=steps, models=found)
+        return SearchResult("budget", steps=steps, models=found, complete=False)
     if found:
         # A single-model query stopped early; the rest were not searched, so report
         # only what was asked for.
         models = found if collect > 1 else found[:1]
-        return SearchResult("sat", model=found[0], models=models, steps=steps)
-    return SearchResult("unsat", steps=steps, models=[])
+        return SearchResult("sat", model=found[0], models=models, steps=steps, complete=complete)
+    return SearchResult("unsat", steps=steps, models=[], complete=True)
 
 
 def satisfiable(
@@ -287,6 +315,26 @@ class CspDecision:
     detail: str = ""
 
 
+def _list_items(models: list[dict[str, str]], question: CspQuestion) -> list[str]:
+    """The items of a complete-and-accurate list, from a complete model enumeration.
+
+    A **variable** target lists the values that variable takes; a **value** target
+    lists the variables assigned to that declared value. ``list_mode`` unions the
+    per-model item sets (a "could" list) or intersects them (a "must" list).
+    """
+    if question.target_kind == "variable":
+        item_sets = [{model.get(question.target, "")} for model in models]
+    else:
+        item_sets = [
+            {variable for variable, value in model.items() if value == question.target}
+            for model in models
+        ]
+    if not item_sets:
+        return []
+    items = set.intersection(*item_sets) if question.list_mode == "must" else set.union(*item_sets)
+    return sorted(items)
+
+
 def decide_question(
     game: CspGame,
     question: CspQuestion,
@@ -313,9 +361,14 @@ def decide_question(
         if not question.target:
             return CspDecision("unknown", detail="complete_list needs a target variable")
         result = enumerate_models(effective, limit=budget, budget=budget)
-        if result.status == "budget":
-            return CspDecision("insufficient", detail="enumeration budget exhausted")
-        possible = sorted({model.get(question.target, "") for model in result.models})
+        if result.status == "budget" or not result.complete:
+            detail = (
+                "enumeration budget exhausted"
+                if result.status == "budget"
+                else "model enumeration did not complete"
+            )
+            return CspDecision("insufficient", detail=detail)
+        possible = _list_items(result.models, question)
         for index, option in enumerate(question.options):
             if sorted(option.values) == possible:
                 verified.append((index, None))

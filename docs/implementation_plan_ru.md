@@ -517,7 +517,9 @@
     автоматически вместе с бенчмарком и описывающий и **язык** (нотация, идиомы), и
     **специфику задачи** (формы вопросов, форматы опций, что объявляет harness).
     Skills — декларативные подсказки, никогда не ключи ответов (`docs/task.md` §3.8,
-    `docs/l3_plan.md` D-L3-10). Доказано на L3: eval AR-LSAT вырос 7→21/30, а
+    `docs/l3_plan.md` D-L3-10). Доказано на L3: eval AR-LSAT вырос 7→21/30 (сейчас
+    **23/30** после membership-семантики `count`, value-target списка и проекции
+    фактора), а
     `grounded_mismatch` 2→0, как только error-driven гид закодировал идиомы игры
     (`docs/l3_plan.md` §11). Deliverable: файл/формат skill'а на коллекцию плюс
     автозагрузка harness'ом; шов `ANKYRA_LANGUAGE_SPEC` — совместимая база.
@@ -585,12 +587,12 @@
 - **L3 — конечнодоменные CSP/SAT, отдельный движок.** Бенчмарк AR-LSAT. План
   `docs/l3_plan.md`. Milestones 1–4 сделаны (LLM-free): CSP IR + in-repo
   конечно-доменный решатель (`engine/csp/`), синтетический гейт `evals.l3_synthetic`
-  (**27/27**, включая `must_be_false`/«if»-assumptions и расширение IR
-  `all`/`any`/`not`/`count_compare`), путь извлечения CSP Phase 0 (схема + builder +
-  промпт), dev/eval сэмплы и адаптер, и gold-fed tier (**21/21**, 0
-  `grounded_mismatch`, 5 реальных игр), плюс роутинг (`ANKYRA_CSP`, `Answer.kind
+  (**31/31**, включая `must_be_false`/«if»-assumptions, расширение IR
+  `all`/`any`/`not`/`count_compare`, value-target `complete_list` и проекцию фактора),
+  путь извлечения CSP Phase 0 (схема + builder + промпт), dev/eval сэмплы и адаптер, и
+  gold-fed tier (**27/27**, 0 `grounded_mismatch`, 7 реальных игр), плюс роутинг (`ANKYRA_CSP`, `Answer.kind
   "choice"`, шаг обоснования `model`). Live-гейты прогнаны один раз: dev 9/12, 0
-  `grounded_mismatch`; **eval 21/30, 0 `grounded_mismatch` → гейт GREEN** (70%).
+  `grounded_mismatch`; **eval 23/30, 0 `grounded_mismatch` → гейт GREEN** (77%).
   Фиксы интерфейса/промпта, bounded question-repair, guard дубликата опций и
   error-driven language-spec блок (`ANKYRA_LANGUAGE_SPEC`) внесены; сэмплирование не
   используется (D-L3-10 и item 4 ниже).

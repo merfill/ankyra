@@ -48,12 +48,14 @@ def _c(
     condition: dict | None = None,
     consequence: dict | None = None,
     constraints: list[dict] | None = None,
+    factor: str | None = None,
 ) -> dict:
     return {
         "kind": kind,
         "variables": list(variables or []),
         "values": list(values or []),
         "immediate": immediate,
+        "factor": factor,
         "count": count,
         "count_mode": count_mode,
         "comparison": comparison,
@@ -84,8 +86,10 @@ def _game(domains: list[dict], variables: list[dict], constraints: list[dict]) -
     return {"domains": domains, "variables": variables, "constraints": constraints, "source_text": ""}
 
 
-def _question(kind: str, options: list[dict], target: str | None = None) -> dict:
-    return {"kind": kind, "options": options, "target": target, "quote": None}
+def _question(kind: str, options: list[dict], target: str | None = None, **extra: object) -> dict:
+    payload = {"kind": kind, "options": options, "target": target, "quote": None}
+    payload.update(extra)
+    return payload
 
 
 def _case(
@@ -589,9 +593,43 @@ def _complete_list_cases() -> list[dict]:
         ],
         target="A",
     )
+    # A value target lists the variables assigned to a declared value ("the books that
+    # could be on the bottom shelf"): "could" unions the per-model sets, "must"
+    # intersects them.
+    shelf = _game(
+        [_dom("shelf", ["top", "bottom"], "set")],
+        [_var("A", "shelf"), _var("B", "shelf")],
+        [_c("all_different", ["A", "B"])],
+    )
+    q_value_could = _question(
+        "complete_list",
+        [
+            _opt(values=["A", "B"]),
+            _opt(values=["A"]),
+            _opt(values=["B"]),
+            _opt(values=[]),
+        ],
+        target="bottom",
+        target_kind="value",
+        list_mode="could",
+    )
+    q_value_must = _question(
+        "complete_list",
+        [
+            _opt(values=[]),
+            _opt(values=["A"]),
+            _opt(values=["B"]),
+            _opt(values=["A", "B"]),
+        ],
+        target="bottom",
+        target_kind="value",
+        list_mode="must",
+    )
     return [
         _case("complete-list-15", "complete_list", ["all_different", "order", "adjacent"], game, q, {"status": "decided", "index": 0}),
         _case("complete-list-single-16", "complete_list", ["eq"], single, q_single, {"status": "decided", "index": 0}),
+        _case("complete-list-value-could-23", "complete_list", ["all_different"], shelf, q_value_could, {"status": "decided", "index": 0, "complete_list": ["A", "B"]}),
+        _case("complete-list-value-must-24", "complete_list", ["all_different"], shelf, q_value_must, {"status": "decided", "index": 0}),
     ]
 
 
@@ -700,6 +738,64 @@ def _control_cases() -> list[dict]:
     ]
 
 
+def _factor_cases() -> list[dict]:
+    """A packed (product) domain with constraints projected onto a factor (D-L3-11)."""
+    slots = ["s1_7", "s1_8", "s1_9", "s2_7", "s2_8", "s2_9"]
+    slot = _dom("slot", slots, "set")
+    slot["factors"] = ["screen", "time"]
+    slot["value_factors"] = {value: value.split("_") for value in slots}
+    screens = _dom("screen", ["s1", "s2"], "set")
+    times = _dom("time", ["7", "8", "9"], "linear")
+    variables = [_var("A", "slot"), _var("B", "slot")]
+
+    # A and B share a screen and B is at 7; A must then be at 8 or 9, i.e. after B.
+    game = _game(
+        [screens, times, slot],
+        variables,
+        [
+            _c("all_different", ["A", "B"]),
+            _c("same_group", ["A", "B"], factor="screen"),
+            _c("eq", ["B"], ["7"], factor="time"),
+        ],
+    )
+    q_must = _question(
+        "must",
+        [
+            _opt([_c("order", ["B", "A"], factor="time")]),
+            _opt([_c("order", ["A", "B"], factor="time")]),
+            _opt([_c("eq", ["A"], ["7"], factor="time")]),
+        ],
+    )
+    # Contradictory factor projections have no model: "could A be on s1" is unknown.
+    unsat = _game(
+        [screens, times, slot],
+        variables,
+        [
+            _c("same_group", ["A", "B"], factor="screen"),
+            _c("different_group", ["A", "B"], factor="screen"),
+        ],
+    )
+    q_unsat = _question("could", [_opt([_c("eq", ["A"], ["s1"], factor="screen")])])
+    return [
+        _case(
+            "factor-projection-must-25",
+            "factor",
+            ["all_different", "same_group", "eq", "order"],
+            game,
+            q_must,
+            {"status": "decided", "index": 0},
+        ),
+        _case(
+            "factor-projection-unsat-control-26",
+            "factor",
+            ["same_group", "different_group"],
+            unsat,
+            q_unsat,
+            {"status": "unknown", "index": None},
+        ),
+    ]
+
+
 def cases() -> list[dict]:
     """The full deterministic collection, grouped by mechanism."""
     return (
@@ -715,6 +811,7 @@ def cases() -> list[dict]:
         + _must_be_false_cases()
         + _assumption_cases()
         + _complete_list_cases()
+        + _factor_cases()
         + _control_cases()
     )
 

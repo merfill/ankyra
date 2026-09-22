@@ -22,7 +22,9 @@ from ankyra.engine.csp.models import (
     Comparison,
     ConstraintKind,
     CountMode,
+    ListMode,
     QuestionKind,
+    TargetKind,
     Topology,
 )
 
@@ -83,6 +85,16 @@ _QUESTION_KIND_ALIASES: dict[str, str] = {
     "list": "complete_list", "enumerate": "complete_list",
 }
 
+_TARGET_KIND_ALIASES: dict[str, str] = {
+    "variable": "variable", "var": "variable", "variables": "variable",
+    "value": "value", "values": "value", "item": "value", "items": "value",
+}
+
+_LIST_MODE_ALIASES: dict[str, str] = {
+    "could": "could", "can": "could", "possible": "could", "union": "could",
+    "must": "must", "necessarily": "must", "all": "must", "intersection": "must",
+}
+
 
 def _scalar(value: Any) -> Any:
     """A bare id or a ``{"id"/"name"/"value": ...}`` object collapses to its string."""
@@ -132,6 +144,16 @@ class CspDomainSpec(BaseModel):
         'or "circular" (around a table). It is what makes order/adjacent meaningful; '
         "declare it from the text, never guess it from variable names.",
     )
+    factors: list[str] = Field(
+        default_factory=list,
+        description="For a packed domain: the atomic factor-domain ids it is the product of "
+        "(e.g. a slot is a screen x time); empty for an atomic domain.",
+    )
+    value_factors: dict[str, list[str]] = Field(
+        default_factory=dict,
+        description="For a packed domain: each value mapped to its factor values, in the "
+        "order of `factors`. Omit for an atomic domain.",
+    )
 
     @field_validator("id", mode="before")
     @classmethod
@@ -142,6 +164,18 @@ class CspDomainSpec(BaseModel):
     @classmethod
     def _coerce_values(cls, value: Any) -> Any:
         return _string_list(value)
+
+    @field_validator("factors", mode="before")
+    @classmethod
+    def _coerce_factors(cls, value: Any) -> Any:
+        return _identifier_list(value)
+
+    @field_validator("value_factors", mode="before")
+    @classmethod
+    def _coerce_value_factors(cls, value: Any) -> Any:
+        if not isinstance(value, dict):
+            return value
+        return {str(key): _string_list(parts) for key, parts in value.items()}
 
     @field_validator("topology", mode="before")
     @classmethod
@@ -171,8 +205,17 @@ class CspConstraintSpec(BaseModel):
 
     kind: ConstraintKind = Field(description="Constraint kind.")
     variables: list[str] = Field(default_factory=list, description="The variable ids in scope.")
-    values: list[str] = Field(default_factory=list, description="Value(s) for eq/neq/count.")
+    values: list[str] = Field(
+        default_factory=list,
+        description="Value(s) for eq/neq. For count, the group as a SET of values (the "
+        "variables whose value is in it are counted); for count_compare, the two groups.",
+    )
     immediate: bool = Field(default=False, description='True for "immediately".')
+    factor: str | None = Field(
+        default=None,
+        description="For a packed domain: evaluate this constraint on one declared factor "
+        '(e.g. factor "screen" or "time" of a slot value). Omit when the value is atomic.',
+    )
     count: int | None = Field(default=None, description="The N for a count constraint.")
     count_mode: CountMode = Field(default="exactly", description="exactly | at_least | at_most.")
     comparison: "Comparison | None" = Field(
@@ -202,6 +245,14 @@ class CspConstraintSpec(BaseModel):
     @classmethod
     def _coerce_values(cls, value: Any) -> Any:
         return _string_list(value)
+
+    @field_validator("factor", mode="before")
+    @classmethod
+    def _coerce_factor(cls, value: Any) -> Any:
+        if value is None:
+            return None
+        item = _identifier(value)
+        return item or None
 
     @field_validator("immediate", mode="before")
     @classmethod
@@ -290,7 +341,18 @@ class CspQuestionStructure(BaseModel):
     options: list[CspOptionSpec] = Field(default_factory=list, description="The candidate answers.")
     target: str | None = Field(
         default=None,
-        description="For complete_list: the id of the variable whose possible values are listed.",
+        description="For complete_list: the id of the variable or declared value that is listed.",
+    )
+    target_kind: TargetKind = Field(
+        default="variable",
+        description='For complete_list: "variable" (list the values this variable can take '
+        'across models) or "value" (list the variables assigned to this declared value, '
+        'e.g. "the books on the bottom shelf").',
+    )
+    list_mode: ListMode = Field(
+        default="could",
+        description='For complete_list: "could" (an item is listed if some model includes '
+        'it) or "must" (only items present in every model).',
     )
     assumptions: list[CspConstraintSpec] = Field(
         default_factory=list,
@@ -312,3 +374,23 @@ class CspQuestionStructure(BaseModel):
             return None
         item = _identifier(value)
         return item or None
+
+    @field_validator("target_kind", mode="before")
+    @classmethod
+    def _coerce_target_kind(cls, value: Any) -> Any:
+        text = str(value or "").strip().lower()
+        if not text:
+            return "variable"
+        if text not in _TARGET_KIND_ALIASES:
+            raise ValueError(f"unknown target_kind {value!r} (expected variable/value)")
+        return _TARGET_KIND_ALIASES[text]
+
+    @field_validator("list_mode", mode="before")
+    @classmethod
+    def _coerce_list_mode(cls, value: Any) -> Any:
+        text = str(value or "").strip().lower()
+        if not text:
+            return "could"
+        if text not in _LIST_MODE_ALIASES:
+            raise ValueError(f"unknown list_mode {value!r} (expected could/must)")
+        return _LIST_MODE_ALIASES[text]

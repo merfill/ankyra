@@ -542,10 +542,16 @@ Source: `docs/quality_findings.md`. Ordered by priority.
     **reverted**: the eval run went 21→18 correct with 1 `grounded_mismatch`, plausibly
     because the added `count` emphasis primed a mis-encoding of "either … but not both"
     as `count(exactly 1)` (provider variance, C1, confounds this, but the side effect is
-    credible). The guide is restored to the known-good text. **To return to:** add the
-    rules against a **dev-validated** case — the dev sample has no `count_compare` row,
-    so it cannot be iterated without new data; extend the dev sample first, then re-try,
-    never tuning on the eval gate (D-L3-10). Details: `docs/ar_lsat.md` §8.
+    credible). The guide is restored to the known-good text.     **To return to:** add the
+    rules against a **dev-validated** case. The dev sample already contains `count_compare`
+    (`201409_3-G_3_15`/`_16`, encoded correctly in the existing run), so it serves as a
+    regression check without new data; it does not reproduce the eval encoding error, so
+    the eval run still decides.     Never tune on the eval gate (D-L3-10). **Dev-validated negative (one run):** the rules
+    kept dev at 9/12, 0 `grounded_mismatch`, but regressed the `count_compare` game
+    `201409_3-G_3` (`q15` `correct`→`no_option`) by **dropping the per-group counts**
+    while keeping `count_compare` — the same failure mode as the eval regression, so the
+    rules are **not promoted**, the guide is restored to the known-good text, and the eval
+    gate is not re-run. Details: `docs/ar_lsat.md` §8, `docs/l3_extension_plan.md` H5.
 29. **FOLIO — fragment-bound vs extraction-bound (research).** **(b) DONE; (a) open.**
     The L1 negation slice is **fragment-bound** (Horn gold-fed == text-fed = 7/13;
     `docs/folio.md` §9), not extraction-bound. **(b)** The residual is reductio /
@@ -607,13 +613,13 @@ Stages:
   Full first-order unification is deferred (`docs/l2_plan.md`).
 - **L3 — finite-domain CSP/SAT, a separate engine.** Benchmark AR-LSAT. Plan:
   `docs/l3_plan.md`. Milestones 1–4 done (LLM-free): CSP IR + in-repo finite-domain
-  solver (`engine/csp/`), the synthetic gate `evals.l3_synthetic` (**27/27**, including
-  `must_be_false`/"if" assumptions and the `all`/`any`/`not`/`count_compare` IR
-  extension), the Phase-0 CSP extraction path (schema + builder + prompt), the
-  dev/eval samples and adapter, and the gold-fed tier (**21/21**, 0
-  `grounded_mismatch`, 5 real games), plus routing (`ANKYRA_CSP`, `Answer.kind
+  solver (`engine/csp/`), the synthetic gate `evals.l3_synthetic` (**31/31**, including
+  `must_be_false`/"if" assumptions, the `all`/`any`/`not`/`count_compare` IR
+  extension, a value-target `complete_list`, and factor projection), the Phase-0 CSP
+  extraction path (schema + builder + prompt), the dev/eval samples and adapter, and
+  the gold-fed tier (**27/27**, 0 `grounded_mismatch`, 7 real games), plus routing (`ANKYRA_CSP`, `Answer.kind
   "choice"`, the `model` explanation step). Live gates ran once: dev 9/12, 0
-  `grounded_mismatch`; **eval 21/30, 0 `grounded_mismatch` → gate GREEN** (70%).
+  `grounded_mismatch`; **eval 23/30, 0 `grounded_mismatch` → gate GREEN** (77%).
   Interface/prompt fixes, a bounded question-repair pass, a duplicate-option guard,
   and an error-driven language-spec block (`ANKYRA_LANGUAGE_SPEC`) landed; sampling is
   not used (D-L3-10, and item 4 below).

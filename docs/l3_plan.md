@@ -3,17 +3,17 @@
 Status: **approved plan** — milestones 1–4 plus the extensions 4b/4c are **done**: the
 Phase-0 spike (§6, five hand-encoded games), the committed CSP IR + in-repo
 finite-domain solver (`engine/csp/`), the LLM-free synthetic gate `evals.l3_synthetic`
-(**27/27**: every constraint kind — including boolean composition and count
-comparison — and every question semantics, plus the negative controls), and the
+(**31/31**: every constraint kind — including boolean composition, count comparison
+and factor projection — and every question semantics, plus the negative controls), and the
 Phase-0 CSP extraction path (`engine/csp/schemas.py`, `build/csp.py`,
 `build/extract_csp.py`; the builder is validated LLM-free). Milestone 5's LLM-free part
 is done: the dev/eval samples are committed, the adapter (`evals/ar_lsat.py`) has
-describe/gold/live modes, the **gold-fed tier is 21/21, 0 `grounded_mismatch`** over 5
+describe/gold/live modes, the **gold-fed tier is 27/27, 0 `grounded_mismatch`** over 7
 real games (`evals/build_ar_lsat_gold.py`), and routing/answer/explanation are wired
 (`ANKYRA_CSP` capability, `Answer.kind "choice"`, the `model` explanation step). The
-live gates ran (budgeted): **dev 9/12, 0 `grounded_mismatch`; eval 21/30, 0
-`grounded_mismatch` → gate GREEN** (accuracy 70%; the 9 misses are honest abstentions;
-the provider stays nondeterministic, C1). The method is green (gold 21/21), and the
+live gates ran (budgeted): **dev 9/12, 0 `grounded_mismatch`; eval 23/30, 0
+`grounded_mismatch` → gate GREEN** (accuracy 77%; the 7 misses are honest abstentions;
+the provider stays nondeterministic, C1). The method is green (gold 27/27), and the
 extraction wall was raised not by sampling but by an **error-driven language
 specification** (`ANKYRA_LANGUAGE_SPEC`, `evals/skills/ar_lsat/`) plus interface
 fixes (options passed to the question call, a stricter option prompt, a bounded
@@ -93,6 +93,12 @@ is a second engine, not the Horn/clausal one.
   `any([])=False`) and silently change the semantics; the builder
   (`ankyra.build.csp`) rejects it as `CspBuildError`, so the model gets an honest
   repair instead of a wrong model.
+- **A counted group is a set of declared values.** `count` counts the variables whose
+  value belongs to its group — the **set** of `values` (one value is the common case;
+  "Venezuela, Yemen or Zambia" is a set of three, which is how "exactly one of A, B is
+  assigned" is encoded). `count_compare` compares two groups. A `count` without a count
+  or with an empty group, or a `count_compare` without exactly two distinct values, is
+  a build error (`docs/l3_extension_plan.md` H1).
 - **Benchmark semantics do not leak.** The question type (must/could/…) is declared
   by the harness/query, never read off the wording.
 - **Separation from the deductive spine.** `csp` is a distinct capability and
@@ -198,7 +204,9 @@ A general finite-domain model; no LSAT-specific vocabulary.
 - **Domain** — a finite set of values and a declared **topology**
   (`set` | `linear` | `circular`). The topology is part of the extracted structure; it
   is what makes an `adjacent`/`order` relation meaningful, and it is declared, never
-  guessed from the text.
+  guessed from the text. A domain may be a **product** of atomic factor domains:
+  `factors` names them and `value_factors` decomposes each value into its factor
+  values (e.g. a slot is a screen × time; D-L3-11).
 - **Variable** — an id ranging over one domain (the entities, the positions, the
   groups, or an assignment variable).
 - **Constraint** — a relation over variables/values, each with a quote:
@@ -215,12 +223,22 @@ A general finite-domain model; no LSAT-specific vocabulary.
     which real analytical-reasoning games need: "T is either earlier than both R and
     S or after than both" is `any(all(order(T,R), order(T,S)), all(order(R,T), order(S,T)))`.
     Composition is three-valued like the rest of the evaluator.
+  - **Factor projection** — a relation over a packed value may name one of the
+    domain's `factors` (e.g. `order(western, horror, factor="time")`,
+    `different_group(horror, mystery, factor="screen")`); the relation is then
+    evaluated on the projected factor values, using that factor domain's topology.
+    `all_different` and the composites stay on the whole value (D-L3-11).
 - **Game** — domains, variables, constraints, and the source text (for quote checks).
 - **Question** — a question kind, a target expression, five **options**, each an
   option-local list of constraints (an arrangement is a conjunction of `eq`; a "list"
   option is a set of admissible values), and an optional **`assumptions`** list
   (Gamma): extra constraints added to the game before deciding, which is what an
-  "if …" question asserts.
+  "if …" question asserts. A **complete-and-accurate list** declares its target with
+  `target_kind` — `variable` (the values that variable takes) or `value` (the
+  variables assigned to a declared value, e.g. "the books on the bottom shelf") — and
+  `list_mode`: `could` unions the per-model item sets, `must` intersects them. The
+  list is read only from a **complete** enumeration; a truncated one is `insufficient`,
+  never a partial list (D-L3-12, `docs/l3_extension_plan.md` H3).
 
 The IR is a *declared* structure (like `Query.world_assumption`, D-L1-4): the model
 proposes it, the deterministic builder assembles it, and the engine never infers a
@@ -359,9 +377,10 @@ rather than in `core.models`/`core.schemas` (which own the Horn/L2 structures):
   `must` with a counter-model is not chosen; a game with two verified options is
   `ambiguous_choice`; a game with none is `unknown`; the assumptions must prune a
   model (dropping them would change the answer).
-- **Gate result (LLM-free):** `evals.l3_synthetic` **27/27** after the semantics and
+- **Gate result (LLM-free):** `evals.l3_synthetic` **31/31** after the semantics and
   IR extensions (20/20 before them). The collection covers every constraint kind
-  (including `count_compare`, `all`, `any`, `not`) and the five question semantics,
+  (including `count_compare`, `all`, `any`, `not` and factor projection) and the five
+  question semantics,
   and the controls hold: the conditional is load-bearing
   (`conditional-soundness-could-14`), two impossible `must_be_false` options are
   `ambiguous` (`must-be-false-ambiguous-22`), the question assumptions pin the answer
@@ -373,13 +392,15 @@ rather than in `core.models`/`core.schemas` (which own the Horn/L2 structures):
 Three tiers (`docs/l3_plan.md` D-L3-8/D-L3-9), mirroring the gate ladder of
 `docs/implementation_plan.md` §10:
 
-- **T0 — gold-fed (LLM-free).** `evals/ar_lsat_gold.jsonl`: **21 real questions over 5
+- **T0 — gold-fed (LLM-free).** `evals/ar_lsat_gold.jsonl`: **27 real questions over 7
   games** from the official **development** split, hand-encoded into the CSP IR by
   `evals/build_ar_lsat_gold.py`, with the dataset's answer option as the expected
   decision. Run LLM-free by `evals/ar_lsat.py --gold`; this separates method/coverage
   from extraction and is the debugging sandbox and the upper bound.
-  **Gate result: 21/21 correct, 0 `grounded_mismatch`** (`could` 8, `must` 3,
-  `must_be_false` 6, `not_violate` 4) — the method handles real games.
+  **Gate result: 27/27 correct, 0 `grounded_mismatch`** (`could` 9, `must` 5,
+  `must_be_false` 7, `not_violate` 5, `complete_list` 1) — the method handles real
+  games. The last two additions are a value-target list (D-L3-12) and the
+  packed-slot factor-projection game `201310_3-G_3` (D-L3-11).
 - **T1 — live dev (budgeted, not a gate).** ~4 games / ~12 questions from
   **development**, for prompt/IR iteration. Sample built: `evals/data/ar_lsat_dev.jsonl`.
   **Result (after the interface fix below): 9/12 correct, 0 `grounded_mismatch`**
@@ -389,11 +410,12 @@ Three tiers (`docs/l3_plan.md` D-L3-8/D-L3-9), mirroring the gate ladder of
 - **T2 — live eval (budgeted, the gate).** ~12 games / ~30 questions from the
   official **test** split, `fatherId`-disjoint from dev by construction,
   stratified and answer-balanced. Sample built: `evals/data/ar_lsat_eval.jsonl`.
-  **Result: 21/30 correct, 0 `grounded_mismatch` → gate GREEN.** Shapes: 4
-  `out_of_fragment` (complete-list over derived), 3 `no_option`, 2 `ambiguous` — all
-  honest abstentions. (Earlier runs in this iteration were 7–18/30 with 1–2
-  `grounded_mismatch`; the error-driven language rules below closed the gap. The
-  provider stays nondeterministic, C1, so a later re-run may differ.) Extraction
+  **Result: 23/30 correct, 0 `grounded_mismatch` → gate GREEN.** Shapes: 4
+  `no_option`, 2 `out_of_fragment`, 1 `ambiguous` — all honest abstentions. (The
+  run history is noisy — C1: the pre-extension baseline was 21/30, and a first attempt
+  at the `count` guard that rejected multi-value groups fell to 17/30 before the
+  membership semantics of `docs/l3_extension_plan.md` H1 restored and raised it; the
+  provider stays nondeterministic, so a later re-run may differ.) Extraction
   improvements landed and measured here:
   (a) the question call receives the five options; (b) the prompt requires a full
   arrangement option to assign every game variable; (c) a bounded game-aware
@@ -404,9 +426,10 @@ Three tiers (`docs/l3_plan.md` D-L3-8/D-L3-9), mirroring the gate ladder of
   every Phase 0 prompt, with `evals/skills/ar_lsat/` for LSAT idioms (per-object
   ordered lists, exclusive "either … but not both", repeated-trial modeling,
   slots-fewer-than-entities). The guide is extended **error-driven**: each recurring
-  live mistake became a notation rule (D-L3-10). This raised eval from 7 to **21/30**
-  and closed `grounded_mismatch` to **0**. No engine unsoundness: the remaining misses
-  are honest abstentions; the method is proven by T0 (gold 21/21). This mirrors the
+  live mistake became a notation rule (D-L3-10). This raised eval from 7 to 21/30 (and,
+  after the value-target list and factor-projection extensions and the `count`
+  membership semantics, **23/30**), closing `grounded_mismatch` to **0**. No engine unsoundness: the remaining misses
+  are honest abstentions; the method is proven by T0 (gold 27/27). This mirrors the
   FOLIO L2 outcome (`docs/folio.md` §10): the wall was extraction, not the procedure —
   and the fix was a language specification, not sampling.
 
@@ -419,16 +442,21 @@ Three tiers (`docs/l3_plan.md` D-L3-8/D-L3-9), mirroring the gate ladder of
   (`no_option`, `ambiguity`, `budget`, `out_of_fragment:*`).
 
 **Gold-set findings (recorded, not worked around).**
-- The committed fragment covers the four most common question kinds; **complete-list
-  questions over a derived sequence or entity** (e.g. "the ordered list of Gold-Room
-  speeches", "the building the Trents owned") are outside the current
-  `complete_list` semantics (which enumerates the values of one variable) and are
-  excluded from T0.
+- The committed fragment covers the four most common question kinds plus, since
+  D-L3-12, **complete-list questions over a declared value** ("the band in slot one"),
+  hand-encoded as a T0 row (§7, `docs/l3_extension_plan.md` H3). **Complete-list
+  questions over an ordered sequence or a derived relation** (e.g. "the ordered list
+  of Gold-Room speeches", "the building the Trents owned") remain outside
+  `complete_list` and are excluded from T0.
 - `201306_2-G_1` q4 ("which manuscript CANNOT be written fourth", stored key D) is
   **excluded: the key is inconsistent with its own constraints.** Faithful encoding
   plus two independent checks show the key's option (P) is satisfiable and the
   alternative (H) is not; per the "no per-id tuning" rule the row is dropped and the
-  discrepancy recorded rather than special-cased.
+  discrepancy recorded rather than special-cased. The exclusion is now a committed
+  artifact (`evals.build_ar_lsat_gold.exclusions()`) whose disagreement is asserted
+  reproducibly by
+  `tests/test_evals_ar_lsat.py::test_excluded_gold_rows_record_their_disagreement`
+  (`docs/l3_extension_plan.md` H2).
 
 ## 14. Config and flags
 
@@ -462,6 +490,9 @@ Three tiers (`docs/l3_plan.md` D-L3-8/D-L3-9), mirroring the gate ladder of
 - `docs/implementation_plan.md` — backlog/milestones entries.
 - `docs/logic_layer.md` / `docs/fragment_routing.md` — the `csp` procedure and
   capability.
+- `docs/l3_extension_plan.md` — the post-gate hardening plan (composite factors,
+  `complete_list`, the `count` guard, the AR-LSAT gold invariant and the
+  `count_compare` guide) that turns the recorded §13.2 findings into general fixes.
 - This document, kept current as the plan evolves.
 
 ## 17. Work order (milestones)
@@ -488,9 +519,9 @@ Three tiers (`docs/l3_plan.md` D-L3-8/D-L3-9), mirroring the gate ladder of
     pytest 546 passed.
 5. ~~AR-LSAT sample (`evals/build_ar_lsat_sample.py`), gold-fed tier
    (`evals/build_ar_lsat_gold.py`), adapter (`evals/ar_lsat.py`).~~ **DONE
-   (LLM-free)**: dev/eval samples committed; gold **21/21**, 0 `grounded_mismatch`
+   (LLM-free)**: dev/eval samples committed; gold **27/27**, 0 `grounded_mismatch`
    (`tests/test_evals_ar_lsat.py`). **Live gates ran** (budgeted): dev 9/12, 0
-   `grounded_mismatch`; **eval 21/30, 0 `grounded_mismatch` → gate GREEN** (70%).
+   `grounded_mismatch`; **eval 23/30, 0 `grounded_mismatch` → gate GREEN** (77%).
    Landed: options passed to the question call; stricter option prompt; bounded
    question-repair; duplicate-option guard; and the error-driven language-spec block
    (`ANKYRA_LANGUAGE_SPEC` + `evals/skills/ar_lsat/`).

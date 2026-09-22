@@ -34,6 +34,14 @@ DOMAINS — each finite set of values, with its declared TOPOLOGY:
 Declare the topology from the text ("in a row" -> linear, "around a table" -> circular);
 never guess it from names. Values are the positions/slots (e.g. "1".."6") or the groups.
 
+PACKED DOMAINS — only when one slot combines two attributes (e.g. a theater slot is a
+screen AND a time). Declare the factor domains too, then the packed domain:
+  {"id": "slot", "values": ["screen1_7pm", ...], "topology": "set",
+   "factors": ["screen", "time"],
+   "value_factors": {"screen1_7pm": ["screen1", "7pm"], ...}}
+Decompose EVERY packed value into its factor values, in the order of "factors". Keep a
+plain flat domain when no position combines attributes.
+
 VARIABLES — each entity or slot that takes a value:
   {"id": "...", "domain": "<a domain id>"}
 Encode one consistent direction: either one variable per entity ranging over the
@@ -47,8 +55,15 @@ CONSTRAINTS — use exactly these kinds, each with ONE verbatim quote from the t
   {"kind": "order", "variables": [a, b], "immediate": true|false}  # a before b ("immediately")
   {"kind": "adjacent"|"not_adjacent", "variables": [a, b]}      # next to / not next to
   {"kind": "same_group"|"different_group", "variables": [a, b]}
-  {"kind": "count", "variables": [...], "values": [group], "count": N, "count_mode": "exactly|at_least|at_most"}
+  {"kind": "count", "variables": [...], "values": [group...], "count": N, "count_mode": "exactly|at_least|at_most"}
+    # "values" is the group as a SET: count the variables whose value is in it (one value
+    # is the common case; "Venezuela, Yemen or Zambia" is a set of three).
   {"kind": "conditional", "condition": <constraint>, "consequence": <constraint>}  # if ... then ...
+- A relation about ONE component of a packed value carries "factor": "<factor id>":
+  "the sci-fi film is not on screen 3" -> {"kind":"neq","variables":["scifi"],
+  "values":["screen3"],"factor":"screen"}; "the western is before the horror" ->
+  {"kind":"order","variables":["western","horror"],"factor":"time"}. Omit "factor" for
+  relations over the whole value.
 
 RULES:
 - There must be an all_different constraint whenever the entities and the positions form
@@ -75,9 +90,16 @@ KIND — read the question's own wording (never a tag):
 - "must": "which one MUST be true" (true in every model of the constraints).
 - "could": "which one COULD be true" (true in some model).
 - "must_be_false": "which one CANNOT be true" / "must be false".
-- "complete_list": "which is the complete and accurate list of ..." (set target to the
-  variable whose possible values are listed; put the candidate lists in options'
-  "values").
+- "complete_list": "which is the complete and accurate list of ...". Set "target" to the
+  thing that is listed and "target_kind" to how it is read:
+  - "variable": the list is the possible values of one game variable (e.g. "the positions
+    X could occupy"); the options' "values" are those values.
+  - "value": the list is the game entities/variables assigned to one DECLARED value (e.g.
+    "the books on the bottom shelf", "the bands that could perform in slot one", "the
+    students who must be assigned"); set "target" to that declared value and put the
+    candidate entity lists in the options' "values".
+  Set "list_mode" to "could" (an item is listed if some arrangement includes it) or
+  "must" (only items present in every arrangement); default "could".
 If the question begins with "If ...", put that hypothetical premise in "assumptions"
 (it is added to the game before the options are checked). Use the SAME domain values
 as the game (e.g. the position labels the game declared).

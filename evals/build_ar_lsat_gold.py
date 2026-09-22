@@ -271,6 +271,39 @@ def _manuscript_records() -> list[dict]:
     ]
 
 
+def exclusions() -> list[dict]:
+    """Rows deliberately kept **out** of the committed gold set, with their reason.
+
+    ``201306_2-G_1`` q4 ("which manuscript CANNOT have been written fourth", stored key
+    D) is excluded because the stored key is inconsistent with the game's own
+    constraints: the engine proves option D (``P``) can be fourth and option C (``H``)
+    cannot, so the key contradicts the constraints. The row is recorded here — not
+    silently dropped and not special-cased — so
+    ``tests/test_evals_ar_lsat.py`` can assert the disagreement reproducibly
+    (``docs/l3_extension_plan.md`` H2, ``docs/l3_plan.md`` §13.2).
+    """
+    return [
+        {
+            "id": "ar-gold-201306_2-G_1-q4",
+            "fatherId": "201306_2-G_1",
+            "source": SOURCE,
+            "question_kind": "must_be_false",
+            "expected_index": 3,  # dataset key D = "P"
+            "engine_index": 2,  # the engine's unique impossible option, C = "H"
+            "reason": (
+                "stored key D ('P' can be fourth) is satisfiable while the engine's "
+                "option C ('H' cannot be fourth) is not; the key contradicts the "
+                "constraints (docs/l3_plan.md §13.2)"
+            ),
+            "game": _manuscript_game().model_dump(),
+            "question": CspQuestion(
+                kind="must_be_false",
+                options=[_option(_eq(name, "3")) for name in ["F", "G", "H", "P", "S"]],
+            ).model_dump(),
+        }
+    ]
+
+
 # --- 200310_2-G_1 — hangers (linear ordering + adjacency) -------------------------
 
 
@@ -333,6 +366,151 @@ def _hangers_records() -> list[dict]:
     ]
 
 
+# --- 201310_3-G_1 — concert slots (linear ordering, range, value list) ------------
+
+
+def _performers_game() -> CspGame:
+    domain = CspDomain(id="slot", values=[str(i) for i in range(1, 7)], topology="linear")
+    return _game(
+        domain,
+        "Uneasy Vegemite Wellspring Xpert Yardsign Zircon",
+        [
+            C(
+                kind="all_different",
+                variables=["Uneasy", "Vegemite", "Wellspring", "Xpert", "Yardsign", "Zircon"],
+            ),
+            _order("Vegemite", "Zircon"),
+            _order("Wellspring", "Xpert"),
+            _order("Zircon", "Xpert"),
+            _any(_eq("Uneasy", "4"), _eq("Uneasy", "5"), _eq("Uneasy", "6")),
+            _any(_eq("Yardsign", "1"), _eq("Yardsign", "2"), _eq("Yardsign", "3")),
+        ],
+    )
+
+
+def _performers_records() -> list[dict]:
+    game = _performers_game()
+    father = "201310_3-G_1"
+    return [
+        _record(father, "q1", "must_be_false", 1, game, CspQuestion(kind="must_be_false", options=[
+            _option(_eq(name, "5")) for name in ["Uneasy", "Vegemite", "Wellspring", "Xpert", "Zircon"]
+        ])),
+        # q5 is a complete_list over a **declared value** ("the band in slot one"), the
+        # D-L3-12 case (docs/l3_extension_plan.md H3): list the variables assigned to
+        # value "1" across models.
+        _record(father, "q5", "complete_list", 3, game, CspQuestion(
+            kind="complete_list",
+            target="1",
+            target_kind="value",
+            list_mode="could",
+            options=[
+                CspOption(values=["Yardsign"]),
+                CspOption(values=["Vegemite", "Wellspring"]),
+                CspOption(values=["Vegemite", "Yardsign"]),
+                CspOption(values=["Vegemite", "Wellspring", "Yardsign"]),
+                CspOption(values=["Vegemite", "Wellspring", "Yardsign", "Zircon"]),
+            ],
+        )),
+    ]
+
+
+# --- 201310_3-G_3 — theater schedule (packed slot = screen x time; D-L3-11) -------
+
+
+def _movies_game() -> CspGame:
+    slots = ["screen1_7pm", "screen1_9pm", "screen2_7pm", "screen2_9pm", "screen3_8pm"]
+    movies = ["horror", "mystery", "romance", "scifi", "western"]
+    raw = CspGame(
+        domains=[
+            CspDomain(id="screen", values=["screen1", "screen2", "screen3"], topology="set"),
+            CspDomain(id="time", values=["7pm", "8pm", "9pm"], topology="linear"),
+            CspDomain(
+                id="slot",
+                values=slots,
+                topology="set",
+                factors=["screen", "time"],
+                value_factors={slot: slot.split("_") for slot in slots},
+            ),
+        ],
+        variables=[CspVariable(id=movie, domain="slot") for movie in movies],
+        constraints=[
+            C(kind="all_different", variables=movies),
+            C(kind="order", variables=["western", "horror"], factor="time"),
+            C(kind="neq", variables=["scifi"], values=["screen3"], factor="screen"),
+            C(kind="neq", variables=["romance"], values=["screen2"], factor="screen"),
+            C(kind="different_group", variables=["horror", "mystery"], factor="screen"),
+        ],
+    )
+    # Validate the hand encoding through the deterministic builder.
+    return build_csp_game(CspGameStructure.model_validate(raw.model_dump()))
+
+
+def _movies_records() -> list[dict]:
+    game = _movies_game()
+    father = "201310_3-G_3"
+
+    def on(movie: str, value: str, factor: str) -> CspConstraint:
+        return C(kind="eq", variables=[movie], values=[value], factor=factor)
+
+    return [
+        _record(father, "q13", "not_violate", 0, game, CspQuestion(kind="not_violate", options=[
+            _option(*_assign(
+                "romance", "screen1_7pm", "horror", "screen1_9pm", "western", "screen2_7pm",
+                "scifi", "screen2_9pm", "mystery", "screen3_8pm",
+            )),
+            _option(*_assign(
+                "mystery", "screen1_7pm", "romance", "screen1_9pm", "horror", "screen2_7pm",
+                "scifi", "screen2_9pm", "western", "screen3_8pm",
+            )),
+            _option(*_assign(
+                "western", "screen1_7pm", "scifi", "screen1_9pm", "mystery", "screen2_7pm",
+                "horror", "screen2_9pm", "romance", "screen3_8pm",
+            )),
+            _option(*_assign(
+                "romance", "screen1_7pm", "mystery", "screen1_9pm", "western", "screen2_7pm",
+                "horror", "screen2_9pm", "scifi", "screen3_8pm",
+            )),
+            _option(*_assign(
+                "western", "screen1_7pm", "mystery", "screen1_9pm", "scifi", "screen2_7pm",
+                "romance", "screen2_9pm", "horror", "screen3_8pm",
+            )),
+        ])),
+        _record(father, "q15", "could", 1, game, CspQuestion(
+            kind="could",
+            assumptions=[C(kind="same_group", variables=["western", "scifi"], factor="screen")],
+            options=[
+                _option(on("horror", "screen2", "screen")),
+                _option(on("mystery", "9pm", "time")),
+                _option(on("romance", "screen3", "screen")),
+                _option(on("scifi", "7pm", "time")),
+                _option(on("western", "8pm", "time")),
+            ],
+        )),
+        _record(father, "q16", "must", 4, game, CspQuestion(
+            kind="must",
+            assumptions=[C(kind="order", variables=["romance", "western"], factor="time")],
+            options=[
+                _option(on("horror", "screen1", "screen")),
+                _option(on("mystery", "7pm", "time")),
+                _option(on("mystery", "screen2", "screen")),
+                _option(on("scifi", "9pm", "time")),
+                _option(on("scifi", "screen2", "screen")),
+            ],
+        )),
+        _record(father, "q18", "must", 0, game, CspQuestion(
+            kind="must",
+            assumptions=[C(kind="same_group", variables=["scifi", "romance"], factor="screen")],
+            options=[
+                _option(on("western", "7pm", "time")),
+                _option(on("scifi", "9pm", "time")),
+                _option(on("mystery", "8pm", "time")),
+                _option(on("romance", "9pm", "time")),
+                _option(on("horror", "8pm", "time")),
+            ],
+        )),
+    ]
+
+
 def cases() -> list[dict]:
     return (
         _cd_records()
@@ -340,6 +518,8 @@ def cases() -> list[dict]:
         + _recital_records()
         + _manuscript_records()
         + _hangers_records()
+        + _performers_records()
+        + _movies_records()
     )
 
 

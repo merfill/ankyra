@@ -166,6 +166,130 @@ def test_complete_list_without_target_raises():
         build_csp_question(structure)
 
 
+def test_complete_list_value_target_must_be_a_declared_value():
+    game = build_csp_game(_seat_game())  # domain "seat" over ["0", "1", "2"]
+    question = build_csp_question(
+        CspQuestionStructure(
+            kind="complete_list",
+            target="0",
+            target_kind="value",
+            options=[CspOptionSpec(values=["A"])],
+        ),
+        game=game,
+    )
+    assert question.target_kind == "value"
+    # A value that no domain declares is out of fragment, not a silent no-op.
+    with pytest.raises(CspBuildError):
+        build_csp_question(
+            CspQuestionStructure(
+                kind="complete_list",
+                target="nowhere",
+                target_kind="value",
+                options=[CspOptionSpec(values=["A"])],
+            ),
+            game=game,
+        )
+
+
+def test_complete_list_target_kind_aliases_and_mislabel():
+    # "values" normalizes to the value kind and "all" to the must list mode.
+    spec = CspQuestionStructure(
+        kind="complete_list",
+        target="bottom",
+        target_kind="values",
+        list_mode="all",
+        options=[],
+    )
+    assert spec.target_kind == "value"
+    assert spec.list_mode == "must"
+    with pytest.raises(ValidationError):
+        CspQuestionStructure(kind="complete_list", target="x", target_kind="sideways", options=[])
+
+
+def _packed_game() -> CspGameStructure:
+    return CspGameStructure(
+        domains=[
+            CspDomainSpec(id="screen", values=["s1", "s2"], topology="set"),
+            CspDomainSpec(id="time", values=["7", "8"], topology="linear"),
+            CspDomainSpec(
+                id="slot",
+                values=["s1_7", "s1_8", "s2_7", "s2_8"],
+                topology="set",
+                factors=["screen", "time"],
+                value_factors={
+                    "s1_7": ["s1", "7"], "s1_8": ["s1", "8"],
+                    "s2_7": ["s2", "7"], "s2_8": ["s2", "8"],
+                },
+            ),
+        ],
+        variables=[CspVariableSpec(id="A", domain="slot"), CspVariableSpec(id="B", domain="slot")],
+    )
+
+
+def test_product_domain_and_factor_projection_build():
+    structure = _packed_game()
+    structure.constraints.append(
+        CspConstraintSpec(kind="same_group", variables=["A", "B"], factor="screen")
+    )
+    game = build_csp_game(structure)
+    assert game.domains[2].factors == ["screen", "time"]
+    assert game.constraints[0].factor == "screen"
+
+
+def test_malformed_product_domains_are_refused():
+    # Missing factor decomposition.
+    bad = _packed_game()
+    bad.domains[2].value_factors.pop("s2_8")
+    with pytest.raises(CspBuildError):
+        build_csp_game(bad)
+    # A factor value outside its factor domain.
+    bad = _packed_game()
+    bad.domains[2].value_factors["s1_7"] = ["s9", "7"]
+    with pytest.raises(CspBuildError):
+        build_csp_game(bad)
+    # Unknown factor domain.
+    bad = _packed_game()
+    bad.domains[2].factors = ["screen", "day"]
+    with pytest.raises(CspBuildError):
+        build_csp_game(bad)
+    # An atomic domain must not declare value_factors.
+    bad = _packed_game()
+    bad.domains[0].value_factors = {"s1": ["s1"]}
+    with pytest.raises(CspBuildError):
+        build_csp_game(bad)
+
+
+def test_factor_constraints_are_validated():
+    # A factor on a variable whose domain has it is fine.
+    structure = _packed_game()
+    structure.constraints.append(
+        CspConstraintSpec(kind="eq", variables=["A"], values=["7"], factor="time")
+    )
+    build_csp_game(structure)
+    # A variable whose domain lacks the factor is refused.
+    bad = _packed_game()
+    bad.variables.append(CspVariableSpec(id="C", domain="screen"))
+    bad.constraints.append(
+        CspConstraintSpec(kind="eq", variables=["C"], values=["7"], factor="time")
+    )
+    with pytest.raises(CspBuildError):
+        build_csp_game(bad)
+    # A factor on all_different is meaningless.
+    bad = _packed_game()
+    bad.constraints.append(
+        CspConstraintSpec(kind="all_different", variables=["A", "B"], factor="time")
+    )
+    with pytest.raises(CspBuildError):
+        build_csp_game(bad)
+    # A value outside the factor domain is refused.
+    bad = _packed_game()
+    bad.constraints.append(
+        CspConstraintSpec(kind="eq", variables=["A"], values=["9"], factor="time")
+    )
+    with pytest.raises(CspBuildError):
+        build_csp_game(bad)
+
+
 def test_question_option_dangling_variable_raises():
     game = build_csp_game(_seat_game())
     structure = CspQuestionStructure(
@@ -232,6 +356,62 @@ def test_not_needs_exactly_one_sub_constraint():
         constraints=[CspConstraintSpec(kind="eq", variables=["A"], values=["0"])],
     )
     build_csp_game(game([good]))
+
+
+def test_count_needs_a_count_and_a_group():
+    # A count group is the SET of declared values; a missing count or an empty group is
+    # a build error, while several values are a meaningful union (not a silent drop).
+    def game(constraint):
+        return CspGameStructure(
+            domains=[CspDomainSpec(id="g", values=["X", "Y"], topology="set")],
+            variables=[CspVariableSpec(id="A", domain="g"), CspVariableSpec(id="B", domain="g")],
+            constraints=[constraint],
+        )
+
+    with pytest.raises(CspBuildError):
+        build_csp_game(game(CspConstraintSpec(kind="count", variables=["A", "B"], values=["X"], count=None)))
+    with pytest.raises(CspBuildError):
+        build_csp_game(game(CspConstraintSpec(kind="count", variables=["A", "B"], values=[], count=1)))
+    build_csp_game(game(CspConstraintSpec(kind="count", variables=["A", "B"], values=["X"], count=1)))
+    build_csp_game(game(CspConstraintSpec(kind="count", variables=["A", "B"], values=["X", "Y"], count=1)))
+
+
+def test_count_compare_needs_two_distinct_group_values():
+    def game(constraint):
+        return CspGameStructure(
+            domains=[CspDomainSpec(id="g", values=["X", "Y"], topology="set")],
+            variables=[CspVariableSpec(id="A", domain="g"), CspVariableSpec(id="B", domain="g")],
+            constraints=[constraint],
+        )
+
+    with pytest.raises(CspBuildError):
+        build_csp_game(game(CspConstraintSpec(kind="count_compare", variables=["A", "B"], values=["X"], comparison="gt")))
+    with pytest.raises(CspBuildError):
+        build_csp_game(game(CspConstraintSpec(kind="count_compare", variables=["A", "B"], values=["X", "X"], comparison="gt")))
+    build_csp_game(game(CspConstraintSpec(kind="count_compare", variables=["A", "B"], values=["X", "Y"], comparison="gt")))
+
+
+def test_counted_group_in_an_option_is_checked():
+    game = build_csp_game(_seat_game())
+    bad = CspQuestionStructure(
+        kind="could",
+        options=[
+            CspOptionSpec(
+                constraints=[CspConstraintSpec(kind="count", variables=["A", "B"], values=[], count=1)]
+            )
+        ],
+    )
+    with pytest.raises(CspBuildError):
+        build_csp_question(bad, game=game)
+    good = CspQuestionStructure(
+        kind="could",
+        options=[
+            CspOptionSpec(
+                constraints=[CspConstraintSpec(kind="count", variables=["A", "B"], values=["0", "1"], count=1)]
+            )
+        ],
+    )
+    build_csp_question(good, game=game)
 
 
 def test_conditional_needs_both_halves():

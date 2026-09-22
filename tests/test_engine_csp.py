@@ -143,6 +143,27 @@ def test_count_modes() -> None:
     assert satisfiable(unreachable).status == "unsat"
 
 
+def test_count_group_is_a_set_of_values() -> None:
+    # A count group is the SET of declared values (membership), so a group that spans the
+    # whole domain counts every variable, and a subset counts the variables in it.
+    countries = CspDomain(id="c", values=["V", "Y", "Z"], topology="set")
+    # Both A and B always take a country, so "exactly one is on V, Y or Z" is impossible.
+    everything = C(
+        kind="count", variables=["A", "B"], values=["V", "Y", "Z"], count=1, count_mode="exactly"
+    )
+    assert satisfiable(_game(countries, "A B", []), [everything]).status == "unsat"
+
+    region = CspDomain(id="region", values=["east", "west"], topology="set")
+    exactly_one_east = C(
+        kind="count", variables=["A", "B"], values=["east"], count=1, count_mode="exactly"
+    )
+    either_region = C(
+        kind="count", variables=["A", "B"], values=["east", "west"], count=2, count_mode="exactly"
+    )
+    assert satisfiable(_game(region, "A B", [exactly_one_east])).status == "sat"
+    assert satisfiable(_game(region, "A B", [either_region])).status == "sat"
+
+
 def test_conditional_prunes() -> None:
     domain = CspDomain(id="g", values=["X", "Y"], topology="set")
     game = _game(
@@ -227,6 +248,126 @@ def test_decide_complete_list() -> None:
     assert decision.status == "decided"
     assert decision.index == 0
     assert decision.complete_list == ["0", "1"]
+
+
+def test_complete_list_over_a_value_unions_the_variables() -> None:
+    # "the books that could be on the bottom shelf": across models each book can be the
+    # one on the bottom, so a "could" list unions the per-model sets.
+    shelf = CspDomain(id="shelf", values=["top", "bottom"], topology="set")
+    game = _game(shelf, "A B", [C(kind="all_different", variables=["A", "B"])])
+    could = CspQuestion(
+        kind="complete_list",
+        target="bottom",
+        target_kind="value",
+        list_mode="could",
+        options=[
+            CspOption(values=["A", "B"]),
+            CspOption(values=["A"]),
+            CspOption(values=["B"]),
+            CspOption(values=[]),
+        ],
+    )
+    decision = decide_question(game, could)
+    assert decision.index == 0
+    assert decision.complete_list == ["A", "B"]
+
+    must = could.model_copy(
+        update={
+            "list_mode": "must",
+            "options": [
+                CspOption(values=[]),
+                CspOption(values=["A"]),
+                CspOption(values=["B"]),
+                CspOption(values=["A", "B"]),
+            ],
+        }
+    )
+    # No book is on the bottom in every model, so the "must" list is empty.
+    must_decision = decide_question(game, must)
+    assert must_decision.index == 0
+    assert must_decision.complete_list == []
+
+
+def test_complete_list_over_a_variable_can_intersect_models() -> None:
+    # A is always 0, so a "must" list over the variable A is ["0"] even though the list
+    # mode is normally a union.
+    game = _game(_seat(2), "A B", [_eq("A", "0")])
+    question = CspQuestion(
+        kind="complete_list",
+        target="A",
+        target_kind="variable",
+        list_mode="must",
+        options=[CspOption(values=["0"]), CspOption(values=["1"]), CspOption(values=[])],
+    )
+    decision = decide_question(game, question)
+    assert decision.index == 0
+    assert decision.complete_list == ["0"]
+
+
+def test_incomplete_enumeration_is_insufficient_not_a_partial_list() -> None:
+    # A list read from a truncated enumeration could silently omit an item; it must be
+    # the honest insufficient, never a partial complete_list.
+    game = _game(_seat(2), "A B", [C(kind="all_different", variables=["A", "B"])])
+    question = CspQuestion(
+        kind="complete_list",
+        target="A",
+        options=[CspOption(values=["0", "1"])],
+    )
+    decision = decide_question(game, question, budget=1)
+    assert decision.status == "insufficient"
+    assert decision.index is None
+
+
+def _slots_game() -> CspGame:
+    """A packed slot domain: a slot is a (screen, time) pair (D-L3-11)."""
+    slots = ["s1_7", "s1_8", "s1_9", "s2_7", "s2_8", "s2_9"]
+    return CspGame(
+        domains=[
+            CspDomain(id="screen", values=["s1", "s2"], topology="set"),
+            CspDomain(id="time", values=["7", "8", "9"], topology="linear"),
+            CspDomain(
+                id="slot",
+                values=slots,
+                topology="set",
+                factors=["screen", "time"],
+                value_factors={slot: slot.split("_") for slot in slots},
+            ),
+        ],
+        variables=[CspVariable(id="A", domain="slot"), CspVariable(id="B", domain="slot")],
+        constraints=[C(kind="all_different", variables=["A", "B"])],
+    )
+
+
+def test_factor_projection_is_load_bearing() -> None:
+    game = _slots_game()
+    forward = C(kind="order", variables=["A", "B"], factor="time")
+    backward = C(kind="order", variables=["B", "A"], factor="time")
+    assert satisfiable(game, [forward]).status == "sat"
+    # Time order is irreflexive, and the projection is what makes "before" compare the
+    # time component rather than the packed value.
+    assert satisfiable(game, [forward, backward]).status == "unsat"
+    # "Same screen" is not equal packed values: two different slots on s1 satisfy it.
+    same = C(kind="same_group", variables=["A", "B"], factor="screen")
+    different = C(kind="different_group", variables=["A", "B"], factor="screen")
+    assert satisfiable(game, [same]).status == "sat"
+    assert satisfiable(game, [same, different]).status == "unsat"
+
+
+def test_factor_projection_compares_factor_values() -> None:
+    game = _slots_game()
+    on_s1 = C(kind="eq", variables=["A"], values=["s1"], factor="screen")
+    at_7 = C(kind="eq", variables=["A"], values=["7"], factor="time")
+    counted = C(
+        kind="count",
+        variables=["A", "B"],
+        values=["s1"],
+        count=2,
+        count_mode="exactly",
+        factor="screen",
+    )
+    assert satisfiable(game, [on_s1, at_7]).status == "sat"
+    assert countermodel(game, [on_s1, counted]).status == "sat"  # B need not be on s1
+    assert satisfiable(game, [on_s1, C(kind="eq", variables=["B"], values=["s1"], factor="screen"), counted]).status == "sat"
 
 
 def test_boolean_any_and_all_compose_relations() -> None:

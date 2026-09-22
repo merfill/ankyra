@@ -206,7 +206,8 @@ harnesses auto-load their skill (`evals/ar_lsat.py`, `evals/folio.py`).
 is **content** — distilling task-specific rules into `task.md` and re-running the
 affected gate once to confirm no regression (AR-LSAT eval, FOLIO L2 text-fed). See
 `docs/implementation_plan.md` §8 item 28; the mechanism proved its worth on L3
-(AR-LSAT eval 7→21/30, `grounded_mismatch` 2→0).
+(AR-LSAT eval 7→21/30 initially, `grounded_mismatch` 2→0; now **23/30** after the L3
+`count` membership, value-target list and factor-projection extensions).
 
 ## 6. Phase 1 — The Deterministic Engine (the spine)
 

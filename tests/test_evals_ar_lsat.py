@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 
+from ankyra.config.settings import setting_overrides
+from ankyra.engine.csp import CspGame, CspQuestion, decide
 from evals import build_ar_lsat_gold, build_ar_lsat_sample as B
 from evals.ar_lsat import load_sample, run_gold, sample_path
 
@@ -21,7 +23,26 @@ def test_gold_gate_is_green_without_grounded_mismatch():
     assert results, "gold set is empty"
     shapes = {result["shape"] for result in results}
     assert shapes == {"correct"}, [r for r in results if r["shape"] != "correct"]
-    assert len(results) == 21  # 5 games, committed
+    assert len(results) == 27  # 7 games, committed
+
+
+def test_excluded_gold_rows_record_their_disagreement():
+    # The one row whose stored key contradicts its own constraints stays excluded, and
+    # the disagreement is asserted here so a future dataset or engine change cannot
+    # silently re-classify it (docs/l3_extension_plan.md H2).
+    excluded = build_ar_lsat_gold.exclusions()
+    assert excluded, "the known dataset inconsistency must stay recorded"
+    committed_ids = {row["id"] for row in load_sample(GOLD)}
+    for row in excluded:
+        assert row["id"] not in committed_ids
+        with setting_overrides(CSP=True):
+            decision = decide(
+                CspGame.model_validate(row["game"]),
+                CspQuestion.model_validate(row["question"]),
+            )
+        assert decision.status == "decided"
+        assert decision.index == row["engine_index"] != row["expected_index"]
+        assert row["reason"]
 
 
 def test_dev_eval_samples_are_game_disjoint_and_balanced():

@@ -119,20 +119,22 @@ Horn-позвоночник.
 Отдельный движок. План L3 (`docs/l3_plan.md`) утверждён, milestones 1–3 **зелёные**
 (LLM-free): общий CSP IR плюс in-repo конечно-доменный решатель (`engine/csp/`) решают
 вручную закодированные игры (spike 5/5), а закоммиченный синтетический гейт
-`evals.l3_synthetic` — **27/27** (каждый вид ограничения — включая булеву композицию и
-сравнение количеств — и каждая семантика вопроса, с негативными контролями), 0
+`evals.l3_synthetic` — **31/31** (каждый вид ограничения — включая булеву композицию,
+сравнение количеств и проекцию фактора — и каждая семантика вопроса, включая
+value-`complete_list`, с негативными контролями), 0
 confidently-wrong. Реальная коллекция также вынудила булеву композицию IR
 (`all`/`any`/`not`): ограничения аналитических игр часто — дизъюнкции отношений, а не
 плоские конъюнкции (`docs/l3_plan.md` D-L3-2). Путь извлечения CSP Phase 0 (схема +
 детерминированный builder + промпт) на месте и проверен LLM-free
-(`tests/test_build_csp.py`). **Gold-fed tier зелёный: 21/21 реальных вопросов на 5
+(`tests/test_build_csp.py`). **Gold-fed tier зелёный: 27/27 реальных вопросов на 7
 играх development, 0 `grounded_mismatch`** (`evals/build_ar_lsat_gold.py`,
 `evals/ar_lsat.py --gold`), т.е. метод справляется с реальными играми; dev/eval сэмплы
 закоммичены. Роутинг/ответ/обоснование подключены (`ANKYRA_CSP`, `Answer.kind "choice"`,
 шаг обоснования `model`). **Live-гейты прогнаны (бюджетно): dev 9/12, 0
-`grounded_mismatch`; eval 21/30, 0 `grounded_mismatch` → гейт eval GREEN**
+`grounded_mismatch`; eval 23/30, 0 `grounded_mismatch` → гейт eval GREEN**
 (точность 70%; 9 промахов — честные отказы) — engine-unsoundness нет; метод зелёный
-(gold 21/21). Внесены: вызов вопроса получает пять вариантов; строже промпт опций;
+(gold 27/27; value-target `complete_list`, D-L3-12, и проекция фактора, D-L3-11,
+добавили T0-строки — `docs/l3_extension_plan.md` H3, H4). Внесены: вызов вопроса получает пять вариантов; строже промпт опций;
 bounded question-repair; guard дубликата опций; **error-driven language-spec блок**
 (`ANKYRA_LANGUAGE_SPEC`, `evals/skills/ar_lsat/`). Это подняло eval 7→21 и закрыло
 confidently-wrong до 0; провайдер остаётся недетерминированным (C1). См.

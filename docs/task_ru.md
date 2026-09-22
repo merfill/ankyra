@@ -202,7 +202,7 @@ per-id tuning, §3.8). Коллекция включает свой skill чер
 **контент** — вынести специфичные для задачи правила в `task.md` и один раз
 перепрогнать затронутый гейт на отсутствие регресса (eval AR-LSAT, FOLIO L2
 text-fed). См. `docs/implementation_plan.md` §8 item 28; механизм доказал пользу на
-L3 (eval AR-LSAT 7→21/30, `grounded_mismatch` 2→0).
+L3 (eval AR-LSAT 7→21/30, `grounded_mismatch` 2→0; сейчас **23/30**).
 
 ## 6. Фаза 1 — детерминированное ядро (спина)
 

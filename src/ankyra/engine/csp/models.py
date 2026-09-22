@@ -37,17 +37,35 @@ ConstraintKind = Literal[
 ]
 CountMode = Literal["exactly", "at_least", "at_most"]
 Comparison = Literal["gt", "lt", "eq"]
+# A complete-and-accurate list enumerates either a variable's possible values or, for a
+# value target, the variables assigned to that declared value; the mode unions the
+# per-model item sets ("could") or intersects them ("must").
+TargetKind = Literal["variable", "value"]
+ListMode = Literal["could", "must"]
 # The model-theoretic question semantics in the committed fragment (D-L3-3):
 # not-violate, must, could, cannot-be-true/must-be-false, complete-and-accurate-list.
 QuestionKind = Literal["not_violate", "must", "could", "must_be_false", "complete_list"]
 
 
 class CspDomain(BaseModel):
-    """A finite set of values plus the topology under which they are ordered."""
+    """A finite set of values plus the topology under which they are ordered.
+
+    A domain may be a **product** of atomic factor domains: ``factors`` names them and
+    ``value_factors`` decomposes each value into factor values (aligned to ``factors``),
+    so a constraint can be evaluated on one factor (D-L3-11).
+    """
 
     id: str
     values: list[str] = Field(default_factory=list)
     topology: Topology = "set"
+    factors: list[str] = Field(
+        default_factory=list,
+        description="Atomic factor-domain ids this domain is the product of; empty = atomic.",
+    )
+    value_factors: dict[str, list[str]] = Field(
+        default_factory=dict,
+        description="For a product domain: value -> its factor values, aligned to `factors`.",
+    )
 
 
 class CspVariable(BaseModel):
@@ -69,6 +87,11 @@ class CspConstraint(BaseModel):
     variables: list[str] = Field(default_factory=list)
     values: list[str] = Field(default_factory=list)
     immediate: bool = Field(default=False, description="For order/adjacent: 'immediately'.")
+    factor: str | None = Field(
+        default=None,
+        description="Project each variable's value onto this declared factor before evaluating "
+        "(e.g. compare 'screen' or 'time' of a packed slot value); D-L3-11.",
+    )
     count: int | None = Field(default=None, description="For count: the N.")
     count_mode: CountMode = Field(default="exactly", description="For count: exactly/at_least/at_most.")
     comparison: Comparison | None = Field(
@@ -116,7 +139,17 @@ class CspQuestion(BaseModel):
 
     kind: QuestionKind
     options: list[CspOption] = Field(default_factory=list)
-    target: str | None = Field(default=None, description="Variable for complete_list.")
+    target: str | None = Field(default=None, description="Variable or value for complete_list.")
+    target_kind: TargetKind = Field(
+        default="variable",
+        description="For complete_list: whether target names a variable (list its possible "
+        "values) or a declared value (list the variables assigned to it).",
+    )
+    list_mode: ListMode = Field(
+        default="could",
+        description='For complete_list: "could" (union the per-model item sets) or "must" '
+        "(intersection, the items present in every model).",
+    )
     assumptions: list[CspConstraint] = Field(
         default_factory=list,
         description="Gamma: extra constraints added to the game before deciding.",
