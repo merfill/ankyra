@@ -82,12 +82,37 @@ def test_unsupported_for_a_builtin_condition():
     assert prove(theory, _lit("big", "x")).status == "unsupported"
 
 
-def test_unsupported_for_an_unsafe_rule():
+def test_head_only_variable_is_grounded_over_individuals():
+    # T5: ``p(x) -> q(?y)`` reads ``forall y (p(x) -> q(y))``; grounding ``?y`` over
+    # the individual domain entails ``q`` for the only individual (docs/t5_plan.md).
     theory = Theory(
         morphisms=[_m("p", "x")],
         rules=[_rule([_m("p", "x")], _m("q", "?y"))],
     )
+    assert prove(theory, _lit("q", "x")).status == "entailed"
+
+
+def test_unsupported_when_no_individual_can_bind_a_head_only_variable():
+    # A head-only variable with no individual to range over keeps the honest refusal.
+    theory = Theory(rules=[_rule([_m("p", "?x")], _m("q", "?y"))])
     assert prove(theory, _lit("q", "x")).status == "unsupported"
+
+
+def test_head_only_grounding_excludes_class_names():
+    # T5 soundness: the head-only ``?y`` must not be instantiated at the class name
+    # ``prim`` (the object of ``is_a(rex, prim)``), so a goal about ``prim`` is not
+    # entailed. Grounding over the full pool would fabricate ``is_a(prim, c)``.
+    head_only = _rule([], _m("is_a", "?y", "a"), alternatives=[_m("is_a", "?y", "b")])
+    theory = Theory(
+        morphisms=[_m("is_a", "rex", "prim")],
+        rules=[
+            head_only,
+            _rule([_m("is_a", "?x", "a")], _m("is_a", "?x", "c")),
+            _rule([_m("is_a", "?x", "b")], _m("is_a", "?x", "c")),
+        ],
+    )
+    assert prove(theory, _lit("is_a", "rex", "c")).status == "entailed"
+    assert prove(theory, _lit("is_a", "prim", "c")).status == "not_entailed"
 
 
 def test_clausify_marks_the_unsupported_constructs():

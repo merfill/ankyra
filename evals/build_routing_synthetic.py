@@ -7,10 +7,11 @@ and expected verdict. Run by ``evals.routing_synthetic``. No LLM, no natural
 language, zero provider variance.
 
 Coverage: every fragment feature (horn, negation, disjunction, existential,
-builtin, compound_goal, shared_witness) and every refusal code (non_horn, compound_goal,
-existential, naf_in_l2, defeasible_with_clausal_fragment), plus controls for the
-A1 policy (the L2 flag selects the clausal procedure even for a Horn structure)
-and the second refusal layer (clausification refuses a builtin).
+builtin, compound_goal, shared_witness, universal_goal, head_only_rule) and every
+refusal code (non_horn, compound_goal, existential, naf_in_l2,
+defeasible_with_clausal_fragment), plus controls for the A1 policy (the L2 flag
+selects the clausal procedure even for a Horn structure) and the second refusal
+layer (clausification refuses a builtin).
 
 Usage:
     uv run python -m evals.build_routing_synthetic [--out PATH]
@@ -195,6 +196,24 @@ def cases() -> list[dict]:
             status="supported",
             kind="yes",
             note="a universal clause goal is the universal_goal feature and requires the clausal procedure",
+        ),
+        _case(
+            "head-only-15",
+            "head_only_rule",
+            _theory(
+                morphisms=[_is_a("rex", "prim")],
+                rules=[
+                    _rule([], _is_a("?x", "a"), alternatives=[_is_a("?x", "b")]),
+                    _rule([_is_a("?x", "a")], _is_a("?x", "c")),
+                    _rule([_is_a("?x", "b")], _is_a("?x", "c")),
+                ],
+            ),
+            _query(_is_a("rex", "c")),
+            fragment=["head_only_rule", "disjunction", "horn"],
+            procedure="clausal",
+            status="supported",
+            kind="yes",
+            note="a head-only universal premise is the head_only_rule feature and requires the clausal procedure",
         ),
         _case(
             "refuse-non-horn-06",

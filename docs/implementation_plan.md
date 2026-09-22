@@ -450,7 +450,7 @@ Source: `docs/quality_findings.md`. Ordered by priority.
     extraction on FOLIO (Phase 2 before Phase 1 in
     `docs/folio_extension_plan.md`). Tests `tests/test_evals_folio_fol.py`; full
     record `docs/folio_gold_fed.md`.
-26. **Coverage ceiling — explained, and the Tier-1 plan — IN PROGRESS (T1, T3 DONE).**
+26. **Coverage ceiling — explained, and the Tier-1 plan — IN PROGRESS (T1, T3, T5 DONE).**
     The gold-fed diagnostic (item 25) shows the FOLIO L2 wall is **coverage**, not
     extraction: 24/45 gold formulas were outside the committed fragment.
     `docs/coverage_ceiling.md` explains the ceiling in plain terms and lays out the
@@ -459,8 +459,7 @@ Source: `docs/quality_findings.md`. Ordered by priority.
     grounding `∀x (A(x) ∨ B(x))` — the largest and soundness-sensitive, T6 G4 budget),
     each a named fragment reusing `ANKYRA_LOGIC` with a synthetic gate in
     `evals.l2_synthetic` and a re-measured gold-fed bound. Extraction G1–G4 runs in
-    parallel on covered rows. Open: T-D1 (domain for head-only grounding), T-D2
-    (goal-formula vs `goal_mode`).
+    parallel on covered rows. Open: T-D2 (goal-formula vs `goal_mode`).
     **T1 DONE** (`docs/t1_plan.md`): a shared-witness existential goal `∃x(A(x)∧B(x))`
     is a joint `all` goal (one witness for every conjunct; `refute_conjunction` for
     the per-witness negative check), feature `shared_witness`, no new flag. Gold-fed
@@ -475,6 +474,16 @@ Source: `docs/quality_findings.md`. Ordered by priority.
     **0 grounded false proofs**; LLM-free gates `evals.l2_synthetic` (36/36) and
     `evals.routing_synthetic` (14/14). **T-D3 resolved:** one `clausal` capability with
     per-item named fragments and synthetic gates (the T1 pattern, followed by T3).
+    **T5 DONE** (`docs/t5_plan.md`): a head-only universal premise `∀x(l₁ ∨ … ∨ lₙ)`
+    (and Horn `∀x A(x)`, and a body rule with an extra head variable) grounds the
+    head-only variable over the **individual domain** `D_ind` = pool \ `is_a` objects
+    (`_individual_pool`, `_groundings`); body variables keep the full pool. This
+    resolves **T-D1** (class names are lowered predicates, not universe elements).
+    Feature `head_only_rule`, no new flag. Gold-fed: `out_of_fragment` 18→**6**,
+    gold-fed 23→**35/45**, coverage 27→**39/45**, covered gold-fed 23/27→**35/39**,
+    **0 grounded false proofs**; LLM-free gates `evals.l2_synthetic` (36→41/41) and
+    `evals.routing_synthetic` (14→15/15); pytest 464 passed. Remaining Tier-1: T4
+    (2 rows) and T2 (3 rows).
 
 ## 9. Reasoning roadmap (main axis)
 

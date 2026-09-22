@@ -524,6 +524,18 @@ Recon (§6) показывает, что доминирующие не-Horn фо
     gold-fed 21→**23/45**, охват 25→**27/45**, covered 23/27, 0 grounded false proofs.
     `evals.l2_synthetic` 36/36, `evals.routing_synthetic` 14/14. **T-D3 закрыто:** одна
     capability `clausal` с именованными фрагментами и синтетическими гейтами на пункт.
+14. **Tier-1 lowering — T5 СДЕЛАНО** (`docs/coverage_ceiling_ru.md` §6–§7,
+    `docs/t5_plan_ru.md`). Универсальная посылка только по голове `∀x (l₁ ∨ … ∨ lₙ)`
+    (а также Horn `∀x A(x)` и правило с телом и лишней переменной головы) заземляет
+    головную переменную по **домену индивидов** `D_ind` = пул \ `is_a`-объекты
+    (`clause._individual_pool`, `_groundings`); переменные тела сохраняют полный пул.
+    Это разрешает **T-D1**: имена классов — пониженные унарные предикаты, а не
+    элементы универсума, поэтому подстановка туда сфабриковала бы доказательства и
+    заблокировала опровержения. Признак `head_only_rule` (`engine/inference.py`),
+    нового флага нет. FOLIO L2 тир a, gold-fed `out_of_fragment` 18→**6**, gold-fed
+    23→**35/45**, охват 27→**39/45**, covered 35/39, 0 grounded false proofs.
+    `evals.l2_synthetic` 41/41, `evals.routing_synthetic` 15/15. Осталось из Tier-1:
+    T4 (2 строки), T2 (3 строки).
 
 Каждый milestone ложится отдельно ревьюируемым; ни один не начинается на красном
 soundness-гейте. Milestone 5 гейтит 2–4; milestone 3 (Horn-путь нетронут) может

@@ -504,6 +504,17 @@ a contradiction shows both branches. `answer` is unchanged (`refuted` now carrie
     21→**23/45**, coverage 25→**27/45**, covered 23/27, 0 grounded false proofs.
     `evals.l2_synthetic` 36/36, `evals.routing_synthetic` 14/14. **T-D3 resolved:**
     one `clausal` capability with per-item named fragments and synthetic gates.
+14. **Tier-1 lowering — T5 DONE** (`docs/coverage_ceiling.md` §6–§7,
+    `docs/t5_plan.md`). A head-only universal premise `∀x (l₁ ∨ … ∨ lₙ)` (and Horn
+    `∀x A(x)`, and a body rule with an extra head variable) grounds the head-only
+    variable over the **individual domain** `D_ind` = pool \ `is_a` objects
+    (`clause._individual_pool`, `_groundings`); body variables keep the full pool.
+    This resolves **T-D1**: class names are lowered unary predicates, not elements of
+    the universe, so instantiating there would fabricate proofs and block refutations.
+    Feature `head_only_rule` (`engine/inference.py`), no new flag. FOLIO L2 tier a
+    gold-fed `out_of_fragment` 18→**6**, gold-fed 23→**35/45**, coverage 27→**39/45**,
+    covered 35/39, 0 grounded false proofs. `evals.l2_synthetic` 41/41,
+    `evals.routing_synthetic` 15/15. Remaining Tier-1: T4 (2 rows), T2 (3 rows).
 
 Each milestone lands reviewable on its own; no milestone starts on a red soundness
 gate. Milestone 5 gates 2–4; milestone 3 (Horn path untouched) can proceed while the

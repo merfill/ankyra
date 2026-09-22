@@ -34,6 +34,7 @@ method-only accuracy.
   | `∀x (… → B(x) ∨ C(x))`, `A → ¬(B ∨ C)` | `Rule.alternatives` |
   | `A ∨ B → C` | two rules `A → C`, `B → C` |
   | `A ∨ B` (ground) | conditionless `Rule` with `alternatives` |
+  | `∀x (A(x) ∨ B(x))` premise (head-only) | conditionless `Rule` with a head-only variable (T5) |
   | `¬(A ∧ B)` / `¬(A ∨ B)` | De Morgan, pushed to literals |
   | `∃x (φ ∧ …)` premise | `Theory.existentials` |
   | ground / `∧` / `∨` / `∃x P(x)` conclusion | `Query.target`, or `Query.goals` + `goal_mode` |
@@ -47,7 +48,9 @@ method-only accuracy.
   (`docs/t1_plan.md`): it is a joint `all` goal, decided with one witness for all
   conjuncts. A universal clause conclusion was added by **T3** (`docs/t3_plan.md`):
   it is a `goal_mode="forall"` goal, supported at a fresh constant and refuted by one
-  named witness.
+  named witness. A head-only universal premise (`∀x (A(x) ∨ B(x))`) was added by
+  **T5** (`docs/t5_plan.md`): the head-only variable is grounded over the individual
+  domain (the pool minus the `is_a` objects / class names).
 - **`evals/analyze_folio.py`** — `--subset {negation,l2}`. The L2 gold pass runs
   under `setting_overrides(LOGIC="ground")` (the L2 clausal procedure); the negation
   pass stays on the Horn/L1 path. An `out_of_fragment` gold verdict is an abstention
@@ -80,48 +83,46 @@ labels need reductio/CWA), as recorded in `docs/folio.md` §9.
 | source | correct |
 |---|---|
 | text-fed (LLM extraction) | 25/45 |
-| gold-fed open (= closed) | 23/45 |
-| gold `out_of_fragment` | 18/45 |
+| gold-fed open (= closed) | 35/45 |
+| gold `out_of_fragment` | 6/45 |
 
-Coverage (rows the committed L2 procedure can express and decide) is **27/45** —
+Coverage (rows the committed L2 procedure can express and decide) is **39/45** —
 Tier-1 item **T1** (`docs/t1_plan.md`) added four shared-witness rows
-(`0033`, `0058`, `0059`, `0069`) and **T3** (`docs/t3_plan.md`) added the
-universal/`¬∃` rows (`0045`, `0107`). On the covered rows:
+(`0033`, `0058`, `0059`, `0069`), **T3** (`docs/t3_plan.md`) added the
+universal/`¬∃` rows (`0045`, `0107`), and **T5** (`docs/t5_plan.md`) added the twelve
+head-only-universal rows. On the covered rows:
 
 | label | gold-fed | text-fed |
 |---|---|---|
-| True | 8/9 | 6/9 |
-| False | 7/10 | 4/10 |
-| Uncertain | 8/8 | 7/8 |
-| **total** | **23/27** | **17/27** |
+| True | 12/13 | 6/13 |
+| False | 10/13 | 4/13 |
+| Uncertain | 13/13 | 12/13 |
+| **total** | **35/39** | **22/39** |
 
 No grounded false proof: every wrong gold answer is an abstention — `insufficient`
 from the resolution budget (G4) or `unsupported`; none is a wrong determinate
 answer.
 
-The 18 remaining out-of-fragment rows:
+The 6 remaining out-of-fragment rows:
 
 - **6 the parser cannot express:** compound/conditional conclusions (nested `∧`/`∨`
-  or an implication as the goal, T4), an existential premise with a nested
-  disjunction (`∃x (A(x) ∧ (B(x) ∨ …))`, T2), and one malformed annotation.
-- **12 the engine refuses as `unsafe_rule`:** a universal disjunctive fact
-  `∀x (A(x) ∨ B(x))` grounds a head variable its body never binds
-  (`engine/clause.py`, `_groundings`, T5).
+  or an implication as the goal, T4: `0073`, `0020`), an existential premise with a
+  nested disjunction (`∃x (A(x) ∧ (B(x) ∨ …))`, T2: `0006`, `0007`, `0008`), and one
+  malformed annotation (`0109`). No `unsafe_rule` row remains.
 
 ## 4. Interpretation and decision
 
-The raw gold-fed number (17/45) is below text-fed (25/45) only because 24 rows are
-honest abstentions; the text-fed path decides those rows by abstracting the hard
-disjunction away and pays with 3 extraction errors. Restricted to the rows the
-committed L2 procedure covers, **gold-fed (17/21) leads text-fed (15/21)**.
+The raw gold-fed number (35/45) now leads text-fed (25/45); the remaining gap is the
+6 honest abstentions (T4 goal, T2 premise, one malformed row) and the text-fed path's
+abstraction errors. Restricted to the rows the committed L2 procedure covers,
+**gold-fed (35/39) far leads text-fed (22/39)**.
 
-Conclusion: the dominant ceiling on the L2 slice is **coverage (the method)**, not
-the language. Per `docs/folio_ceilings.md` §7 and `D-FE-1`/`D-FE-2`, Tier-1 lowering
-(`docs/folio_extension_plan.md` §5) precedes extraction work: universal/conditional
-targets (the G3 target form), head-only grounding for `∀x (A(x) ∨ B(x))`, existential
-conjunctions, and nested-existential premises. The explained plan, per-item yields and
-open decisions are in `docs/coverage_ceiling.md`. Extraction G1–G4 remains worth doing
-on the rows the method already covers.
+Conclusion: the dominant ceiling on the L2 slice remains **coverage (the method)**,
+not the language, and Tier-1 lowering closed most of it (T1/T3/T5: coverage
+27→39/45). Per `docs/folio_ceilings.md` §7 and `D-FE-1`/`D-FE-2`, the remaining
+Tier-1 items are T4 (non-flat goal) and T2 (nested-disjunction existential premise);
+extraction G1–G4 remains worth doing on the rows the method already covers. The
+explained plan, per-item yields and open decisions are in `docs/coverage_ceiling.md`.
 
 Caveat: this is a **method bound, not a strict upper bound** — a more complex gold
 formalization can cost more than the LLM's abstraction (the budget misses and the L2

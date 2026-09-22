@@ -15,6 +15,7 @@ L1), `docs/l2_plan_ru.md` (план реализации L2), `docs/proofwriter_
 `docs/coverage_ceiling_ru.md` (объяснение потолка охвата и план Tier-1),
 `docs/t1_plan_ru.md` (пункт Tier-1 T1: экзистенциальная цель с общим свидетелем),
 `docs/t3_plan_ru.md` (пункт Tier-1 T3: универсальная/`¬∃` цель),
+`docs/t5_plan_ru.md` (пункт Tier-1 T5: универсальная посылка только по голове),
 `docs/ar_lsat_ru.md`,
 `docs/gsm8k_ru.md`, `docs/defeasible_reasoning_ru.md`,
 `docs/task_ru.md`, `docs/implementation_plan_ru.md`.
@@ -133,7 +134,7 @@ Ankyra — не «решатель Хорна», а **оркестратор ф�
 - **Статус:** движок реализован за `ANKYRA_LOGIC` — ground клаузальный IR +
   ограниченная резолюция set-of-support, дизъюнкция/разбор случаев, конечно-доменные
   кванторы (Skolemization + перебор свидетелей), составные/open-цели и шов протокола
-  `Inference`. LLM-free синтетический гейт `evals.l2_synthetic` зелёный (**36/36**,
+  `Inference`. LLM-free синтетический гейт `evals.l2_synthetic` зелёный (**41/41**,
   0 grounded false proofs); **живой гейт ProntoQA-OOD тир a зелёный** (**41/42
   (97.6%), 0 grounded false proofs**), а живой гейт FOLIO L2 **ограничен извлечением**
   (26/44; промахи — отсутствие цели/`out_of_fragment` или свёртка универсального
@@ -147,7 +148,13 @@ Ankyra — не «решатель Хорна», а **оркестратор ф�
   **Tier-1 T3 (универсальная клаузальная цель `∀x(l₁ ∨ … ∨ lₙ)`, покрывающая
   `∀x(A→B)` и `¬∃x φ`) сделано** (`docs/t3_plan_ru.md`): `goal_mode="forall"`,
   supported на *свежей* константе и refuted одним именованным свидетелем, подняло
-  охват до 27/45, gold-fed до 23/45 (covered 23/27), 0 grounded false proofs. Полная
+  охват до 27/45, gold-fed до 23/45 (covered 23/27), 0 grounded false proofs.
+  **Tier-1 T5 (универсальная посылка только по голове `∀x(l₁ ∨ … ∨ lₙ)`) сделано**
+  (`docs/t5_plan_ru.md`): головная переменная заземляется по **домену индивидов**
+  (пул минус `is_a`-объекты; закрывает T-D1), подняв охват до 39/45, gold-fed до
+  35/45 (covered 35/39), 0 grounded false proofs; `evals.l2_synthetic` 41/41,
+  `evals.routing_synthetic` 15/15. Осталось из Tier-1: T4 (неплоская цель) и T2
+  (экзистенциальная посылка с вложенной дизъюнкцией). Полная
   первопорядковая
   **унификация** отложена: прототип расходится на `not_entailed` (полуразрешимость);
   заявленные коллекции — конечные именованные домены, где grounding sound и
@@ -235,7 +242,7 @@ Ankyra — не «решатель Хорна», а **оркестратор ф�
 |---|---|---|---|---|
 | L0 | ProofWriter | этап D 300 | 0 grounded false proofs; детерминированные все `proven`; ≥95% | готово (перепрогон 297/300) |
 | L1 | ProntoQA (negation), подмножество отрицаний FOLIO | ProntoQA тир a/b | то же + объявленный CWA | реализовано (движок) + синтетический гейт; ProntoQA зелёный и закрыт |
-| L2 | ProntoQA-OOD (compositional), затем FOLIO | ProntoQA-OOD тир a (44), FOLIO L2 тир a (45) | то же; FOLIO стратифицирован по конструкции | реализовано; ProntoQA-OOD live 41/42 (0 grounded false proofs), FOLIO live ограничен извлечением (26/44); Tier-1 T1 (общий свидетель `∃`) и T3 (универсальная клаузальная цель) поднимают gold-fed охват до 27/45, верно 23/45 (`docs/t1_plan_ru.md`, `docs/t3_plan_ru.md`) |
+| L2 | ProntoQA-OOD (compositional), затем FOLIO | ProntoQA-OOD тир a (44), FOLIO L2 тир a (45) | то же; FOLIO стратифицирован по конструкции | реализовано; ProntoQA-OOD live 41/42 (0 grounded false proofs), FOLIO live ограничен извлечением (26/44); Tier-1 T1 (общий свидетель `∃`), T3 (универсальная клаузальная цель) и T5 (универсальная посылка только по голове) поднимают gold-fed охват до 39/45, верно 35/45 (`docs/t1_plan_ru.md`, `docs/t3_plan_ru.md`, `docs/t5_plan_ru.md`) |
 | L3 | AR-LSAT | предстоит собрать | проверка опций решателем | в планах (отдельный движок) |
 | L4 | GSM8K | предстоит собрать | числовое совпадение | низкий приоритет |
 | D | defeasible-NLI | предстоит выбрать | разрешённый/неразрешённый конфликт отражён | реализовано + синтетический гейт |

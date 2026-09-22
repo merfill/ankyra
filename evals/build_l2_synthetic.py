@@ -6,10 +6,12 @@ theory/query pair with an independently written expected verdict, graded by
 
 Coverage (``docs/l2_plan.md`` §12.1): disjunctive head + case split, disjunctive body,
 De Morgan, proof by contradiction/reductio, conjunctive and disjunctive goals (D-L2-7),
-a disjunctive ground fact with a case split, budget exhaustion, out-of-fragment
-constructs, and mandatory negative controls (the Horn flag must not consume a
-disjunctive clause; an exhausted budget must not yield a proof; a Horn theory gives
-the same answer under both engines).
+a disjunctive ground fact with a case split, a shared-witness existential goal (T1), a
+universal clause goal (T3), a head-only universal premise grounded over the individual
+domain (T5), budget exhaustion, out-of-fragment constructs, and mandatory negative
+controls (the Horn flag must not consume a disjunctive clause; an exhausted budget must
+not yield a proof; a Horn theory gives the same answer under both engines; a class name
+must not be instantiated by a head-only universal).
 
 Usage:
     uv run python -m evals.build_l2_synthetic [--out PATH]
@@ -503,14 +505,93 @@ def _out_of_fragment_cases() -> list[dict]:
             "unknown",
             note="a builtin comparison is outside the ground clause fragment",
         ),
+    ]
+
+
+def _head_only_cases() -> list[dict]:
+    """A head-only universal premise `∀x (l₁(x) ∨ … ∨ lₙ(x))` (T5).
+
+    The variable in the head is not bound by any body; the engine grounds it over
+    the **individual domain** (the pool minus the `is_a` objects / class names,
+    `docs/t5_plan.md`). The mandatory controls are `head-only-03` (a class name must
+    not be instantiated) and `head-only-06` (no individual ⇒ honest refusal).
+    """
+    head_only = _rule([], _is_a("?x", "a"), alternatives=[_is_a("?x", "b")])
+    supporting = _theory(
+        morphisms=[_is_a("rex", "prim")],
+        rules=[
+            head_only,
+            _rule([_is_a("?x", "a")], _is_a("?x", "c")),
+            _rule([_is_a("?x", "b")], _is_a("?x", "c")),
+        ],
+    )
+    refuting = _theory(
+        morphisms=[_is_a("rex", "prim")],
+        rules=[
+            head_only,
+            _rule([_is_a("?x", "a")], _is_a("?x", "d", neg=True)),
+            _rule([_is_a("?x", "b")], _is_a("?x", "d", neg=True)),
+        ],
+    )
+    no_individual = _theory(rules=[_rule([], _is_a("?y", "b"))])
+    return [
         _case(
-            "oof-unsafe-01",
+            "head-only-01",
+            "head_only",
+            supporting,
+            _query(_is_a("rex", "c")),
+            "supported",
+            "yes",
+            note="a head-only universal is grounded over the individual domain",
+        ),
+        _case(
+            "head-only-02",
+            "head_only",
+            refuting,
+            _query(_is_a("rex", "d")),
+            "refuted",
+            "no",
+            note="every individual is a or b, hence not d",
+        ),
+        _case(
+            "head-only-03",
+            "head_only",
+            supporting,
+            _query(_is_a("prim", "c")),
+            "unsupported",
+            "unknown",
+            note="soundness control: a class name is not instantiated "
+            "(full-pool grounding would fabricate is_a(prim, c))",
+        ),
+        _case(
+            "head-only-04",
+            "head_only",
+            refuting,
+            _query(_is_a("rex", "d")),
+            "insufficient",
+            "unknown",
+            budget=1,
+            note="negative control: an exhausted budget is never a proof",
+        ),
+        _case(
+            "head-only-05",
+            "head_only",
+            supporting,
+            _query(_is_a("rex", "c")),
             "out_of_fragment",
-            _theory(morphisms=[_is_a("rex", "a")], rules=[_rule([_is_a("?x", "a")], _is_a("?y", "b"))]),
+            "unknown",
+            logic="off",
+            note="negative control: with L2 off a head-only disjunctive rule is refused",
+        ),
+        _case(
+            "head-only-06",
+            "head_only",
+            no_individual,
             _query(_is_a("rex", "b")),
             "out_of_fragment",
             "unknown",
-            note="a head variable not bound by the body is an unsafe rule",
+            note="negative control: a head-only rule with no individual to ground over "
+            "stays an honest refusal, never a false proof",
         ),
     ]
 
@@ -604,6 +685,7 @@ def cases() -> list[dict]:
         + _open_goal_cases()
         + _shared_witness_cases()
         + _universal_goal_cases()
+        + _head_only_cases()
         + _budget_cases()
         + _out_of_fragment_cases()
         + _control_cases()

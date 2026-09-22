@@ -17,6 +17,7 @@ Related: `docs/folio_gold_fed.md` (the measurement this plan follows),
 (the staged extension plan and decisions `D-FE-1`…`D-FE-7`), `docs/folio.md`
 (§9–§10), `docs/l2_plan.md` (the L2 procedure Tier 1 extends), `docs/t1_plan.md`
 (the shared-witness goal), `docs/t3_plan.md` (the universal/`¬∃` goal form),
+`docs/t5_plan.md` (the head-only universal premise),
 `docs/fragment_routing.md` (how a named fragment is declared),
 `docs/quality_findings.md` §G (G1–G4), `docs/implementation_plan.md` §8–§10,
 `docs/reasoning_roadmap.md`.
@@ -48,24 +49,25 @@ its logic. This is a deliberate choice: a silent drop would be a lie.
 ## 3. The FOLIO-L2 coverage wall, concretely
 
 On the committed L2 tier a (45 gold problems), **24/45 formulas were outside the
-committed fragment** when this plan was written (18/45 after Tier-1 T1 and T3, §6).
+committed fragment** when this plan was written (6/45 after Tier-1 T1, T3 and T5, §6).
 They fall into two families.
 
-**(a) The engine refuses — 12 rows.** They all contain the same shape, a *universal
-disjunctive fact*:
+**(a) The engine refuses — 12 rows — covered by T5.** They all contain the same shape,
+a *universal disjunctive fact*:
 
 > `∀x (Rabbit(x) ∨ Squirrel(x))` — "every individual is a rabbit or a squirrel".
 > Real rows: `∀x (FemaleTennis…(x) ∨ MaleTennis…(x))`,
 > `∀x (Study(x) ∨ Teach(x))`, `∀x (ZahaHadidDesignStyle(x) ∨ KellyWearstlerDesignStyle(x))`, …
 
 To use such a sentence you must instantiate it **for every individual in the story**
-("Tom is a rabbit or a squirrel", "Dick is a rabbit or a squirrel", …). The current
-grounding only instantiates the variables that appear in a rule's *body*; here the
-whole sentence is a head, and it is refused as `unsafe_rule`. This is **not a
-five-minute fix**: the ground term pool currently mixes individuals with class names
-(`rabbit`, `squirrel`), and naively instantiating over all of them can manufacture a
-false proof. It needs a proper soundness design (separate the individual domain from
-the class names, or a fresh-domain semantics).
+("Tom is a rabbit or a squirrel", "Dick is a rabbit or a squirrel", …). The original
+grounding only instantiated the variables that appear in a rule's *body*; here the
+whole sentence is a head, and it was refused as `unsafe_rule`. This was **not a
+five-minute fix**: the ground term pool mixes individuals with class names (`rabbit`,
+`squirrel`), and naively instantiating over all of them fabricates proofs. **T5**
+(`docs/t5_plan.md`) resolves it: the head-only variable is grounded over the *individual
+domain* (the pool minus the `is_a` objects / class names), with a synthetic soundness
+control; the 12 rows are decided, 0 grounded false proofs.
 
 **(b) The formula has no representation — 12 rows.** The structure itself is absent
 from the IR:
@@ -92,15 +94,16 @@ From `docs/folio_gold_fed.md` (FOLIO L2 tier a, 45):
 | verdict source | correct |
 |---|---|
 | text-fed (live LLM extraction) | 25/45 |
-| gold-fed (perfect formulas, L2 procedure) | 23/45 |
-| gold `out_of_fragment` | 18/45 |
+| gold-fed (perfect formulas, L2 procedure) | 35/45 |
+| gold `out_of_fragment` | 6/45 |
 
-`gold-fed < text-fed` is **not a paradox**. The live path sometimes "wins" hard rows
-by *simplifying the hard construct away* and answering — occasionally correctly,
-three times wrongly. The gold path refuses to guess on 18 rows. Restricted to the
-**27 rows the committed L2 procedure covers, gold-fed is 23/27 versus text-fed
-17/27**: wherever the engine *can* decide, it already beats the translator. (Numbers
-after Tier-1 T1 and T3, `docs/t3_plan.md` §13.)
+The older `gold-fed < text-fed` was **not a paradox**: the live path sometimes "won"
+hard rows by *simplifying the hard construct away* and answering — occasionally
+correctly, three times wrongly — while the gold path refused to guess. After T1/T3/T5
+the gold path leads (35 vs 25). Restricted to the **39 rows the committed L2 procedure
+covers, gold-fed is 35/39 versus text-fed 22/39**: wherever the engine *can* decide,
+it already beats the translator. (Numbers after Tier-1 T1, T3 and T5,
+`docs/t5_plan.md` §13.)
 
 So the dominant wall is **coverage**, not language.
 
@@ -119,7 +122,7 @@ out-of-fragment rows whose *first* blocker is that item.
 | T2 | existential premise with nested disjunction `∃x (A(x) ∧ (B∨C))` | 3 | `Existential` (a disjunctive part) + `engine/clause.py` | Skolemize, emit a disjunctive ground clause over the fresh constant |
 | T3 | universal / conditional / `¬∃` goal form (G3) — **DONE** | 2 | `Query.goal_mode="forall"` + `engine/verify.py` | supported at a *fresh* constant (universal generalization); refuted by one named witness |
 | T4 | non-flat compound / conditional goal | 2 | target formula (CNF/DNF over literals), not only flat `all`/`any` | general flat-goal shape; keeps `proven` sound |
-| T5 | head-only grounding `∀x (A(x) ∨ B(x))` | 12 | `engine/clause.py:_groundings` | **sensitive**: separate the individual domain from class names before instantiating head-only variables, or the extra instances can fabricate proofs |
+| T5 | head-only grounding `∀x (A(x) ∨ B(x))` — **DONE** | 12 | `engine/clause.py:_groundings` | head-only variables range over the **individual domain** (pool minus `is_a` objects); a class name is not a universe element, so instantiating there would fabricate proofs |
 | T6 | G4 resolution budget / unit propagation | 2 covered (+ enables others) | `engine/resolution.py` | exhaustion stays an honest `insufficient` |
 | — | malformed annotation | 1 | — | not fixable (data) |
 
@@ -150,16 +153,30 @@ gold-fed **21 → 23/45**, coverage **25 → 27/45**, covered gold-fed **21/25 �
 is named `universal_goal` in the fragment, decided by the existing `clausal` capability
 (`ANKYRA_LOGIC`) with no new flag.
 
+**T5 done.** A head-only universal premise `∀x (l₁(x) ∨ … ∨ lₙ(x))` — and a Horn
+`∀x A(x)`, and a body rule with an extra head variable — is now decided: the head-only
+variable is grounded over the **individual domain** `D_ind` = pool \ `is_a` objects
+(`engine/clause.py:_individual_pool`, `_groundings`); body variables keep the full pool
+(a class variable must reach class names). Class names are lowered unary predicates,
+not elements of the universe, so instantiating a universal there is not a consequence
+of it and can both fabricate proofs and block legitimate refutations. FOLIO L2 tier a
+gold-fed: `out_of_fragment` **18 → 6**, gold-fed **23 → 35/45**, coverage
+**27 → 39/45**, covered gold-fed **23/27 → 35/39**, **0 grounded false proofs**
+(`docs/t5_plan.md`, `docs/folio_gold_fed.md` §3). The feature is named `head_only_rule`
+in the fragment, decided by the existing `clausal` capability (`ANKYRA_LOGIC`) with no
+new flag.
+
 ## 7. Order and open decisions
 
-- **Order (proposal).** Start with the *goal-form family* (T1 **done**, T3 **done**,
-  T4: 8 rows), which is IR-only and carries no new semantics (`D-FE-3`), then **T2** (3
-  rows), then **T5** (12 rows, the largest but soundness-sensitive, so it waits for
-  its design), then **T6**. Extraction G1–G4 (`docs/quality_findings.md` §G) runs on
-  the rows the method already covers, in parallel, not first.
-- **Open decision T-D1.** T5's domain: keep the strict refusal, or split the pool into
-  individuals vs class names and ground head-only variables over individuals only?
-  Needs a soundness argument and a synthetic negative control before any live run.
+- **Order (proposal).** The goal-form family is **done** (T1, T3) and the largest item
+  **T5 is done**. Remaining: **T4** (2 rows — `0073` closes with T4 alone, and `0020`
+  now closes too because its head-only premise is already decided by T5), then **T2**
+  (3 rows), then **T6**. Extraction G1–G4 (`docs/quality_findings.md` §G) runs on the
+  rows the method already covers, in parallel, not first.
+- **Open decision T-D1 (resolved).** T5's domain: ground head-only variables over the
+  **individual domain** (`D_ind` = pool minus `is_a` objects), not the full pool. The
+  soundness argument and the synthetic negative control (`head-only-03`) are in
+  `docs/t5_plan.md` §4/§8.
 - **Open decision T-D2.** T4's goal form: a general goal *formula* (CNF/DNF) versus
   more `goal_mode` values. The former is more expressive but touches `Query` broadly.
 - **Open decision T-D3 (resolved).** One `clausal` capability with per-item named
@@ -173,6 +190,8 @@ is named `universal_goal` in the fragment, decided by the existing `clausal` cap
 - **Never lower the semantics to pass a row.** Collapsing `∀x (P(x) → ¬Cat(x))` to the
   ground `¬is_a(pet, cat)` proves a sound fact about the *wrong* target
   (`docs/folio_ceilings.md` §8).
+- A head-only universal never ranges over `is_a` objects (class names): they are not
+  elements of the universe (`docs/t5_plan.md` §4).
 - No per-id tuning; the gold-fed bound (`evals.analyze_folio --subset l2`) is the
   free gate after each item: coverage up, **0 grounded false proofs**.
 - Budget: no new live LLM run without an explicit, separate decision

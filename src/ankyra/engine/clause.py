@@ -113,15 +113,60 @@ def _ground_literal(morphism: Morphism, subst: dict[str, str]) -> Literal | None
     return (morphism.predicate, subject, obj, morphism.negated, morphism.modality)
 
 
-def _groundings(rule, pool: list[str]) -> list[dict[str, str]] | None:
-    """Every grounding of the rule's body variables, or ``None`` when unsafe."""
+def _groundings(
+    rule, pool: list[str], individuals: list[str]
+) -> list[dict[str, str]] | None:
+    """Every grounding of the rule's variables, or ``None`` when unsafe.
+
+    A variable bound by the body ranges over the full ``pool``: a class variable
+    (``?c`` in ``is_a(?x, ?c)``) must reach class names. A **head-only** variable
+    (T5, ``docs/t5_plan.md``) ranges over the individual domain only: the committed
+    encoding lowers a unary ``P(t)`` to ``is_a(t, p)``, so a class name is not an
+    element of the intended universe and instantiating the universal there is not a
+    consequence of it (and can fabricate a proof). A head-only variable with no
+    individual to range over keeps the honest ``unsafe_rule`` refusal.
+    """
     body_vars, head_vars = _rule_variables(rule)
-    if head_vars - body_vars:
+    if (head_vars - body_vars) and not individuals:
         return None
-    names = sorted(body_vars)
-    return [
-        dict(zip(names, combo)) for combo in product(pool or [""], repeat=len(names))
+    names = sorted(body_vars | head_vars)
+    domains = [
+        (pool or [""]) if name in body_vars else individuals for name in names
     ]
+    return [dict(zip(names, combo)) for combo in product(*domains)]
+
+
+def _class_names(theory: Theory) -> set[str]:
+    """Objects of ``is_a`` atoms and constraint sides — lowered predicates (T5)."""
+    atoms: list[Morphism] = list(theory.morphisms)
+    for rule in theory.rules:
+        atoms.extend(rule.conditions)
+        atoms.extend(rule.head)
+    for existential in theory.existentials:
+        atoms.extend(existential.atoms)
+    names = {
+        atom.object
+        for atom in atoms
+        if atom.predicate == _IS_A and atom.object and not is_var(atom.object)
+    }
+    for constraint in theory.constraints:
+        names.update(side for side in (constraint.left, constraint.right) if side)
+    return names
+
+
+def _individual_pool(theory: Theory, pool: list[str]) -> list[str]:
+    """The individual domain of the theory: ``pool`` minus class names (T5).
+
+    ``pool`` is the full grounding pool (objects ∪ Skolems ∪ extra terms);
+    excluding the ``is_a`` objects leaves the intended universe of discourse
+    (``docs/t5_plan.md`` §4.1). Variables are never domain elements.
+    """
+    classes = _class_names(theory)
+    return sorted(
+        term
+        for term in pool
+        if term and not is_var(term) and term not in classes
+    )
 
 
 def _clause_of_rule(rule, subst: dict[str, str]) -> Clause | None:
@@ -255,12 +300,13 @@ def clausify(
 
     _add_existentials(result, theory)
     pool = sorted(set(build_context(theory).obj_pool) | set(result.skolems) | set(extra_pool))
+    individuals = _individual_pool(theory, pool)
 
     for index, rule in enumerate(theory.rules, 1):
         if any(canonical_builtin(condition.predicate) for condition in rule.conditions):
             result.unsupported.append(f"builtin:rule:{index}")
             continue
-        groundings = _groundings(rule, pool)
+        groundings = _groundings(rule, pool, individuals)
         if groundings is None:
             result.unsupported.append(f"unsafe_rule:{index}")
             continue

@@ -34,6 +34,7 @@ FragmentFeature = Literal[
     "compound_goal",
     "shared_witness",
     "universal_goal",
+    "head_only_rule",
 ]
 
 # The features whose presence makes the clausal (L2) procedure the required one.
@@ -97,6 +98,26 @@ def _has_universal_goal(query: Query) -> bool:
     return query.goal_mode == "forall"
 
 
+def _has_head_only_rule(theory: Theory) -> bool:
+    """True when a rule grounds a head variable not bound by its body (T5)."""
+    from ankyra.build.normalize import is_var
+
+    for rule in theory.rules:
+        body = {
+            variable
+            for condition in rule.conditions
+            for variable in (condition.subject, condition.object)
+            if is_var(variable)
+        }
+        if any(
+            is_var(variable) and variable not in body
+            for literal in rule.head
+            for variable in (literal.subject, literal.object)
+        ):
+            return True
+    return False
+
+
 def _has_builtin(theory: Theory) -> bool:
     from ankyra.engine.builtins import is_builtin
 
@@ -131,6 +152,8 @@ def _fragment(theory: Theory, query: Query) -> frozenset[str]:
         features.add("shared_witness")
     if _has_universal_goal(query):
         features.add("universal_goal")
+    if _has_head_only_rule(theory):
+        features.add("head_only_rule")
     return frozenset(features)
 
 
