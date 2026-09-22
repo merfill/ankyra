@@ -214,7 +214,7 @@ text-fed теперь совпадает с gold-fed (оба 7/13), т.е. ос�
 `docs/l1_plan_ru.md`.
 
 **Эксперимент с language spec (L1 negation).** Общий гид по нотации
-(`ANKYRA_LANGUAGE_SPEC`, `evals/prompts/folio.md`; `docs/task.md` §0.6) применён к
+(`ANKYRA_LANGUAGE_SPEC`, `evals/skills/folio/`; `docs/task.md` §0.6) применён к
 13-примерному L1 negation срезу и прокидывается в промпты Phase 0 end-to-end
 (проверено в трейсах). Результат: **7/12 correct** (~ baseline 7/13; одна строка без
 target), т.е. **прироста нет — как и предсказывает gold-fed диагностика**, потому что

@@ -204,6 +204,62 @@ def test_nested_sub_constraints_are_validated():
         build_csp_game(structure)
 
 
+def test_empty_composite_constraints_are_refused():
+    # An empty all/any evaluates vacuously (True/False) and silently changes the
+    # semantics; it is a build error, not a guess.
+    for kind in ("all", "any"):
+        structure = CspGameStructure(
+            domains=[CspDomainSpec(id="seat", values=["0", "1"], topology="linear")],
+            variables=[CspVariableSpec(id="A", domain="seat")],
+            constraints=[CspConstraintSpec(kind=kind, constraints=[])],
+        )
+        with pytest.raises(CspBuildError):
+            build_csp_game(structure)
+
+
+def test_not_needs_exactly_one_sub_constraint():
+    def game(constraints):
+        return CspGameStructure(
+            domains=[CspDomainSpec(id="seat", values=["0", "1"], topology="linear")],
+            variables=[CspVariableSpec(id="A", domain="seat")],
+            constraints=constraints,
+        )
+
+    with pytest.raises(CspBuildError):
+        build_csp_game(game([CspConstraintSpec(kind="not", constraints=[])]))
+    good = CspConstraintSpec(
+        kind="not",
+        constraints=[CspConstraintSpec(kind="eq", variables=["A"], values=["0"])],
+    )
+    build_csp_game(game([good]))
+
+
+def test_conditional_needs_both_halves():
+    def game(constraints):
+        return CspGameStructure(
+            domains=[CspDomainSpec(id="seat", values=["0", "1"], topology="linear")],
+            variables=[CspVariableSpec(id="A", domain="seat")],
+            constraints=constraints,
+        )
+
+    eq = CspConstraintSpec(kind="eq", variables=["A"], values=["0"])
+    with pytest.raises(CspBuildError):
+        build_csp_game(game([CspConstraintSpec(kind="conditional", condition=eq)]))
+    with pytest.raises(CspBuildError):
+        build_csp_game(game([CspConstraintSpec(kind="conditional", consequence=eq)]))
+    build_csp_game(game([CspConstraintSpec(kind="conditional", condition=eq, consequence=eq)]))
+
+
+def test_empty_option_sub_constraints_are_refused():
+    game = build_csp_game(_seat_game())
+    structure = CspQuestionStructure(
+        kind="could",
+        options=[CspOptionSpec(constraints=[CspConstraintSpec(kind="any", constraints=[])])],
+    )
+    with pytest.raises(CspBuildError):
+        build_csp_question(structure, game=game)
+
+
 def test_question_assumptions_are_built_and_validated():
     game = build_csp_game(_seat_game())
     structure = CspQuestionStructure(

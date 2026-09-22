@@ -43,6 +43,36 @@ def _iter_constraints(constraint: CspConstraint):
         yield from _iter_constraints(sub)
 
 
+def _check_shape(constraints: list[CspConstraint], context: str) -> None:
+    """Reject composite constraints with missing parts.
+
+    ``all``/``any`` over an empty list evaluate vacuously (``True``/``False``) and a
+    ``conditional`` without both halves (or a ``not`` without exactly one operand)
+    would silently change the semantics; a malformed composite is a build error, not a
+    guess (``docs/l3_plan.md`` §3).
+    """
+    for constraint in constraints:
+        for statement in _iter_constraints(constraint):
+            _check_composite(statement, context)
+
+
+def _check_composite(statement: CspConstraint, context: str) -> None:
+    kind = statement.kind
+    if kind in ("all", "any"):
+        if not statement.constraints:
+            raise CspBuildError(
+                f"{context}: {kind!r} has no sub-constraints; supply its parts"
+            )
+    elif kind == "not":
+        if len(statement.constraints) != 1:
+            raise CspBuildError(f"{context}: 'not' needs exactly one sub-constraint")
+    elif kind == "conditional":
+        if statement.condition is None or statement.consequence is None:
+            raise CspBuildError(
+                f"{context}: 'conditional' needs both a condition and a consequence"
+            )
+
+
 def _known_variables(game: CspGame) -> set[str]:
     return {variable.id for variable in game.variables}
 
@@ -86,6 +116,7 @@ def build_csp_game(structure: CspGameStructure, *, source_text: str = "") -> Csp
                 f"variable {variable.id!r} references unknown domain {variable.domain!r}"
             )
     known = _known_variables(game)
+    _check_shape(game.constraints, "game")
     _check_references(game.constraints, known, "game")
     _check_values(game, game.constraints)
     return game
@@ -105,8 +136,10 @@ def build_csp_question(structure: CspQuestionStructure, *, game: CspGame | None 
             raise CspFragmentError(
                 f"complete_list target {question.target!r} is not a known variable"
             )
+        _check_shape(question.assumptions, "assumption")
         _check_references(question.assumptions, known, "assumption")
         _check_values(game, question.assumptions)
         for option in question.options:
+            _check_shape(option.constraints, "option")
             _check_references(option.constraints, known, "option")
     return question

@@ -15,7 +15,7 @@ builder проверен LLM-free). LLM-free часть milestone 5 сделан
 гейт GREEN** (точность 70%; 9 промахов — честные отказы; провайдер остаётся
 недетерминированным, C1). Метод зелёный (gold 21/21), а стена извлечения поднята не
 сэмплированием, а **error-driven спецификацией языка** (`ANKYRA_LANGUAGE_SPEC`,
-`evals/prompts/ar_lsat.md`) плюс фиксы интерфейса (варианты передаются в вызов
+`evals/skills/ar_lsat/`) плюс фиксы интерфейса (варианты передаются в вызов
 вопроса, строже промпт опций, bounded question-repair, guard дубликата опций).
 Решения в §19 (D-L3-1…D-L3-10) **РЕШЕНЫ**.
 Это рабочий план стадии **L3** из
@@ -313,7 +313,7 @@ clause/resolution.
   `build/extract.language_spec_block`) добавляется к каждому системному промпту Phase 0
   (Horn и CSP). По умолчанию пуст (промпты байт-в-байт), несёт **нотацию/грамматику**,
   никогда — ответы конкретных примеров. Адаптер AR-LSAT включает
-  `evals/prompts/ar_lsat.md` (списки по объектам в порядке; эксклюзивное «either … but
+  `evals/skills/ar_lsat/` (списки по объектам в порядке; эксклюзивное «either … but
   not both»). Это общий шов для коллекции со специализированным языком источника
   (`docs/task.md` §0.6). Следующий инкремент — превратить этот единый текстовый блок в
   пер-коллекционные **skills** (язык + специфика задачи), загружаемые автоматически
@@ -390,7 +390,7 @@ clause/resolution.
   `ambiguous`/`no_option`/`build_error` плюс общий **guard дубликата опций**;
   (d) общий **language-spec блок** (`ANKYRA_LANGUAGE_SPEC`) — задаваемый
   пользователем/harness'ом гид по специализированному языку нотации, добавляемый к
-  каждому промпту Phase 0, с `evals/prompts/ar_lsat.md` для LSAT-идиом (списки по
+  каждому промпту Phase 0, с `evals/skills/ar_lsat/` для LSAT-идиом (списки по
   объектам в порядке; эксклюзивное «either … but not both»; repeated trials;
   слотов меньше сущностей). Гид расширяется **error-driven**: каждая повторяющаяся
   ошибка становится правилом нотации (D-L3-10). Это подняло eval 7→**21/30** и
@@ -481,7 +481,7 @@ clause/resolution.
    `grounded_mismatch`; **eval 21/30, 0 `grounded_mismatch` → гейт GREEN** (70%).
    Внесены: варианты передаются в вызов вопроса; строже промпт опций; bounded
    question-repair; guard дубликата опций; error-driven language-spec блок
-   (`ANKYRA_LANGUAGE_SPEC` + `evals/prompts/ar_lsat.md`).
+   (`ANKYRA_LANGUAGE_SPEC` + `evals/skills/ar_lsat/`).
 6. ~~Роутинг (feature/capability/отказ `csp`), ответ и обоснование.~~ **СДЕЛАНО** —
    `FragmentFeature "csp"` и capability `ANKYRA_CSP` в `engine/inference.py`
    (`analyze_csp_routing`); `engine/csp/decide.py` — публичный вход (отказывает

@@ -15,7 +15,7 @@ live gates ran (budgeted): **dev 9/12, 0 `grounded_mismatch`; eval 21/30, 0
 `grounded_mismatch` → gate GREEN** (accuracy 70%; the 9 misses are honest abstentions;
 the provider stays nondeterministic, C1). The method is green (gold 21/21), and the
 extraction wall was raised not by sampling but by an **error-driven language
-specification** (`ANKYRA_LANGUAGE_SPEC`, `evals/prompts/ar_lsat.md`) plus interface
+specification** (`ANKYRA_LANGUAGE_SPEC`, `evals/skills/ar_lsat/`) plus interface
 fixes (options passed to the question call, a stricter option prompt, a bounded
 question-repair pass, a duplicate-option guard). The decisions in §19
 (D-L3-1…D-L3-10) are **DECIDED**. This is the working plan for stage
@@ -88,6 +88,11 @@ is a second engine, not the Horn/clausal one.
 - **Encoding failures are honest.** If no option is verified, or more than one is,
   the verdict is `unknown`/`out_of_fragment:ambiguous_choice` — a soundness signal,
   never a tie-break by wording.
+- **An incomplete composite is a build error, not a silent vacuity.** An empty
+  `all`/`any`/`not`/`conditional` would evaluate vacuously (`all([])=True`,
+  `any([])=False`) and silently change the semantics; the builder
+  (`ankyra.build.csp`) rejects it as `CspBuildError`, so the model gets an honest
+  repair instead of a wrong model.
 - **Benchmark semantics do not leak.** The question type (must/could/…) is declared
   by the harness/query, never read off the wording.
 - **Separation from the deductive spine.** `csp` is a distinct capability and
@@ -309,14 +314,17 @@ rather than in `core.models`/`core.schemas` (which own the Horn/L2 structures):
   **language-spec block** (`ANKYRA_LANGUAGE_SPEC`, `build/extract.language_spec_block`)
   is appended to every Phase 0 system prompt (Horn and CSP). It is empty by default
   (prompts byte-identical) and carries *notation/grammar guidance*, never per-example
-  answers. The AR-LSAT harness activates `evals/prompts/ar_lsat.md` (per-object
+  answers. The AR-LSAT harness activates `evals/skills/ar_lsat/` (per-object
   ordered lists; exclusive "either … but not both"). This is the general seam for a
   collection whose source language is specialized (`docs/task.md` §0.6). The guide is
   extended **error-driven**: inspect live extraction failures, turn each recurring
   mistake into a notation rule plus a worked example, and re-run — the honest,
-  generalizable alternative to sampling (D-L3-10). The next increment is to turn this
-  single text block into per-collection **skills** (language + task specifics) loaded
-  automatically with the benchmark; see `docs/implementation_plan.md` §8 item 28.
+  generalizable alternative to sampling (D-L3-10). This text block is now packaged as a
+  per-collection **skill** (`evals/skills/<collection>/{language.md,task.md}`), loaded
+  automatically by the harness and composed by `evals/skills.py` (language + task
+  specifics); the format and auto-loading are done, the task-specific content is the
+  remaining budgeted step. See `docs/task.md` §0.6 and `docs/implementation_plan.md`
+  §8 item 28.
 
 ## 12. verify / answer / explain
 
@@ -393,7 +401,7 @@ Three tiers (`docs/l3_plan.md` D-L3-8/D-L3-9), mirroring the gate ladder of
   yields `ambiguous`/`no_option`/`build_error`, plus a general **duplicate-option
   guard**; (d) a shared **language-spec block** (`ANKYRA_LANGUAGE_SPEC`): a
   user/harness-supplied guide to a specialized task-notation language, appended to
-  every Phase 0 prompt, with `evals/prompts/ar_lsat.md` for LSAT idioms (per-object
+  every Phase 0 prompt, with `evals/skills/ar_lsat/` for LSAT idioms (per-object
   ordered lists, exclusive "either … but not both", repeated-trial modeling,
   slots-fewer-than-entities). The guide is extended **error-driven**: each recurring
   live mistake became a notation rule (D-L3-10). This raised eval from 7 to **21/30**
@@ -485,7 +493,7 @@ Three tiers (`docs/l3_plan.md` D-L3-8/D-L3-9), mirroring the gate ladder of
    `grounded_mismatch`; **eval 21/30, 0 `grounded_mismatch` → gate GREEN** (70%).
    Landed: options passed to the question call; stricter option prompt; bounded
    question-repair; duplicate-option guard; and the error-driven language-spec block
-   (`ANKYRA_LANGUAGE_SPEC` + `evals/prompts/ar_lsat.md`).
+   (`ANKYRA_LANGUAGE_SPEC` + `evals/skills/ar_lsat/`).
 6. ~~Routing (`csp` feature/capability/refusal), answer and explanation.~~ **DONE** —
    `FragmentFeature "csp"` and the `ANKYRA_CSP` capability in `engine/inference.py`
    (`analyze_csp_routing`); `engine/csp/decide.py` is the public entry (refuses

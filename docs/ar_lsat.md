@@ -136,8 +136,43 @@ the `model` explanation step). **The live gates were run once (budgeted): dev 9/
 is green (gold 21/21). Landed: the question call receives the five options; a stricter
 option prompt; a bounded question-repair pass; a duplicate-option guard; and an
 **error-driven language-spec block** (`ANKYRA_LANGUAGE_SPEC`,
-`evals/prompts/ar_lsat.md` for LSAT idioms). These raised eval from 7→21 correct and
+`evals/skills/ar_lsat/` for LSAT idioms). These raised eval from 7→21 correct and
 closed confidently-wrong to 0; the provider stays nondeterministic (C1). See
 `docs/reasoning_roadmap.md` L3 and, for the language guide and its next increment
 (collection skills), `docs/implementation_plan.md` §8 items 28 and
 `docs/l3_plan.md` §11.
+
+### 8.1 Extraction-error triage (LLM-free, from the live dumps)
+
+`evals/out/ar_lsat_{dev,eval}_live.jsonl` hold the extracted game/question per record
+(`--dump`), so the abstentions can be classified without new calls:
+
+- **Fragment-bound (6 of 9 eval + 2 of 3 dev).** Every `out_of_fragment` is a
+  `complete_list` whose target is a **derived sequence/entity**, not a declared
+  variable ("the Gold-Room speeches", "the building the Trents owned"). The committed
+  `complete_list` semantics enumerates one variable's values, so this is an IR/fragment
+  limit, not mis-reading (`docs/l3_plan.md` §13.2).
+- **Composite-factor games (3).** When one slot value packs two factors (room+time,
+  screen+time), `same_group`/`different_group` compare whole values and go vacuous,
+  and a single-factor claim ("begins at 9", "same room") is not expressible with the
+  packed domain. Likely needs IR work (a factor/projection), not guide wording.
+- **Encoding errors (2 in this run).** "More X than Y" was written as two `count`
+  constraints instead of one `count_compare`, and "at least N on each group" missed one
+  group value; both under-constrain the game → `no_option`.
+- **Latent vacuity.** The builder formerly accepted an empty `all`/`any`/`not`/
+  `conditional`, which evaluates vacuously (`all([])=True`, `any([])=False`); it now
+  raises `CspBuildError` (`docs/l3_plan.md` §3), so an incomplete composite becomes an
+  honest, repairable build error.
+
+### 8.2 Error-driven guide experiment (tried, reverted — research)
+
+The two encoding errors above were attacked with a guide patch (explicit `count_compare`
+negative example, "one `count` per group value", "never leave a composite empty"). It
+was **reverted**: the eval run fell 21→18 correct with **1 `grounded_mismatch`**. The
+new `count` emphasis is the plausible cause — the "Either … but not both" premise of
+another game was encoded as `count(exactly 1)` (which counts only `values[0]`), changing
+that game's semantics wholesale. Provider variance (C1) confounds a single run, but the
+side effect is credible. The guide is back to the known-good text (checksum-locked).
+The rules themselves are correct and worth re-trying **against a dev-validated case**;
+the dev sample has no `count_compare` row, so the dev sample must be extended first.
+Never tune on the eval gate (D-L3-10). See `docs/implementation_plan.md` §8 item 28.

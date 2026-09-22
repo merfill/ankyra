@@ -262,3 +262,13 @@ def test_language_spec_block_reads_inline_text_and_files(tmp_path):
         from_file = language_spec_block()
     assert "a per-object list is ordered" in from_file
     assert "guide.md" in from_file
+
+
+def test_language_spec_block_accepts_long_inline_text():
+    # A real guide is multi-line and longer than the OS path limit: inline text must not
+    # be mistaken for a path (``Path.is_file`` raises OSError/ENAMETOOLONG, not False).
+    resolved = "\n".join(f"- notation rule {i}" for i in range(200))
+    with setting_overrides(LANGUAGE_SPEC=resolved):
+        block = language_spec_block()
+    assert "notation rule 0" in block
+    assert "notation rule 199" in block

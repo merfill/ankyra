@@ -30,12 +30,14 @@ from ankyra.build.csp import CspBuildError, CspFragmentError, build_csp_game, bu
 from ankyra.build.extract_csp import extract_csp_game, extract_csp_question
 from ankyra.config.settings import get_setting, setting_overrides
 from ankyra.engine.csp import CspGame, CspQuestion, decide
+from evals.skills import skill_block
 
 ROOT = Path(__file__).resolve().parent
 DATA = ROOT / "data"
-# The AR-LSAT task-notation guide, injected into the Phase 0 prompts only for this
-# harness (docs/task.md §5, `ANKYRA_LANGUAGE_SPEC`). Not part of the engine.
-SPEC = ROOT / "prompts" / "ar_lsat.md"
+# The AR-LSAT skill (language + task specifics) is auto-loaded and injected into the
+# Phase 0 prompts only for this harness (docs/task.md §0.6, `ANKYRA_LANGUAGE_SPEC`).
+# Not part of the engine.
+COLLECTION = "ar_lsat"
 
 
 def sample_path(sample: str) -> Path:
@@ -281,7 +283,7 @@ def main(argv: list[str] | None = None) -> int:
         print("empty sample")
         return 1
     dump = Path(args.dump) if args.dump else None
-    language_spec = str(SPEC) if SPEC.is_file() else ""
+    language_spec = skill_block(COLLECTION)
     with setting_overrides(CSP=True, LANGUAGE_SPEC=language_spec):
         results = run_live(sample, limit=args.limit, dump=dump)
     return 0 if report(results, title=f"live {args.sample}") else 1

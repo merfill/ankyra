@@ -134,7 +134,7 @@ confidently-wrong. Реальная коллекция также вынудил
 (точность 70%; 9 промахов — честные отказы) — engine-unsoundness нет; метод зелёный
 (gold 21/21). Внесены: вызов вопроса получает пять вариантов; строже промпт опций;
 bounded question-repair; guard дубликата опций; **error-driven language-spec блок**
-(`ANKYRA_LANGUAGE_SPEC`, `evals/prompts/ar_lsat.md`). Это подняло eval 7→21 и закрыло
+(`ANKYRA_LANGUAGE_SPEC`, `evals/skills/ar_lsat/`). Это подняло eval 7→21 и закрыло
 confidently-wrong до 0; провайдер остаётся недетерминированным (C1). См.
 `docs/reasoning_roadmap_ru.md` L3 и, про language guide и его следующий инкремент
 (skills коллекции), `docs/implementation_plan.md` §8 item 28 и `docs/l3_plan.md` §11.

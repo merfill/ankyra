@@ -32,13 +32,15 @@ from pathlib import Path
 from ankyra.build.normalize import is_var
 from ankyra.core.models import Query
 from evals.run import iter_run_many
+from evals.skills import skill_block
 
 ROOT = Path(__file__).resolve().parent
 SAMPLE = ROOT / "data" / "folio_negation_tier_a.jsonl"
 OUT = ROOT / "out" / "folio"
-# FOLIO task-notation guide, injected into Phase 0 only for this harness
-# (docs/task.md §0.6, `ANKYRA_LANGUAGE_SPEC`). Not part of the engine.
-SPEC = ROOT / "prompts" / "folio.md"
+# The FOLIO skill (language + task specifics) is auto-loaded and injected into Phase 0
+# only for this harness (docs/task.md §0.6, `ANKYRA_LANGUAGE_SPEC`). Not part of the
+# engine.
+COLLECTION = "folio"
 
 _LABEL_TO_KIND = {"True": "yes", "False": "no", "Uncertain": "unknown"}
 _SUBSETS = {"negation": "negation", "l2": "l2"}
@@ -147,7 +149,7 @@ def _to_problem(record: dict, *, allow_hypotheses: bool, logic: str = "off") -> 
         "allow_hypotheses": allow_hypotheses,
         "max_waves": 4,
         "world_assumption": "open",
-        "language_spec": str(SPEC) if SPEC.is_file() else "",
+        "language_spec": skill_block(COLLECTION),
     }
 
 

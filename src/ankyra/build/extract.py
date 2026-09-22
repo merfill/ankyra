@@ -310,7 +310,13 @@ def language_spec_block() -> str:
     if not text:
         return ""
     path = Path(text)
-    if path.is_file():
+    try:
+        is_file = path.is_file()
+    except OSError:
+        # Inline text (e.g. a long multi-line guide) is not a valid path; on some
+        # platforms ``is_file`` raises OSError (ENAMETOOLONG) instead of returning False.
+        is_file = False
+    if is_file:
         content = path.read_text(encoding="utf-8").strip()
         if not content:
             return ""

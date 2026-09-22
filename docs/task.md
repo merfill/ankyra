@@ -190,16 +190,23 @@ game/question prompts). It is configured by `ANKYRA_LANGUAGE_SPEC` — a path to
 text file (read when it exists) or inline text — and is **empty by default**, so
 prompts are unchanged when unset. It documents *how to read the source notation*
 (grammar, conventions, idioms); it must never enumerate per-example answers (that
-would be per-id tuning, §3.8). A collection activates its own file through its
-harness (e.g. `evals/prompts/ar_lsat.md`, `evals/prompts/folio.md`); the engine
-carries no collection semantics.
+would be per-id tuning, §3.8). A collection activates its own skill through its
+harness; the engine carries no collection semantics.
 
-**Next increment (planned):** turn this single text block into a per-collection
-**skill** — loaded automatically with the benchmark — that describes both the
-**language** (notation, idioms) and the **task specifics** (question shapes, option
-formats, what the harness declares). It stays declarative guidance, never answer
-keys. See `docs/implementation_plan.md` §8 item 28; the mechanism proved its worth on
-L3 (AR-LSAT eval 7→21/30, `grounded_mismatch` 2→0).
+**Per-collection skills.** A collection's guide is packaged as a **skill**: a
+directory `evals/skills/<collection>/` holding `language.md` (notation, idioms) and
+`task.md` (question shapes, option formats, what the harness declares). The harness
+loads it by collection name (`evals/skills.py`: `load_skill`/`skill_block`) and passes
+the composed block through `ANKYRA_LANGUAGE_SPEC`; the loader takes **only a
+collection name**, never a record, so per-id tuning is structurally impossible. A
+missing skill composes to `""`, keeping the prompts byte-identical. Both existing
+harnesses auto-load their skill (`evals/ar_lsat.py`, `evals/folio.py`).
+
+**Next increment (planned):** the format and auto-loading are done; the remaining work
+is **content** — distilling task-specific rules into `task.md` and re-running the
+affected gate once to confirm no regression (AR-LSAT eval, FOLIO L2 text-fed). See
+`docs/implementation_plan.md` §8 item 28; the mechanism proved its worth on L3
+(AR-LSAT eval 7→21/30, `grounded_mismatch` 2→0).
 
 ## 6. Phase 1 — The Deterministic Engine (the spine)
 

@@ -210,8 +210,10 @@ synthetic **27/27**, gold-fed real games **21/21**, both 0 `grounded_mismatch`. 
 **AR-LSAT live eval gate is green: 21/30, 0 `grounded_mismatch`** (the 9 misses are
 honest abstentions). The extraction ceiling there was raised not by sampling (rejected,
 `docs/l3_plan.md` D-L3-10) but by an **error-driven, per-collection language
-specification** (`ANKYRA_LANGUAGE_SPEC`, `docs/task.md` §0.6); the next increment is
-per-collection **skills** (`docs/implementation_plan.md` §8 item 28).
+specification** (`ANKYRA_LANGUAGE_SPEC`, `docs/task.md` §0.6). The guide is packaged as
+a per-collection **skill** (`evals/skills/<collection>/`, loaded by the harness via
+`evals/skills.py`); the format and auto-loading are done, the task-specific content is
+the remaining budgeted step (`docs/implementation_plan.md` §8 item 28).
 
 Known open items: FOLIO L2 extraction (residual **G2** — missing premises; the deferred
 `A′` repair); the FOLIO **L1 slice is fragment-bound, not extraction-bound** (needs L2

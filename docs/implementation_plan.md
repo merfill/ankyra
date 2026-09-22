@@ -517,17 +517,35 @@ Source: `docs/quality_findings.md`. Ordered by priority.
     LLM-free gates `evals.l2_synthetic` (56→**65/65**) and `evals.routing_synthetic`
     (17→**19/19**); pytest **505 passed**. **3b (bounded function terms) deferred**
     (no data; semi-decidability trap). Plan: `docs/equality_plan.md`.
-28. **Collection skills — next increment (planned).** Today a specialized source
-    language is handled by a single text block (`ANKYRA_LANGUAGE_SPEC`,
-    `docs/task.md` §0.6). The next step is a per-collection **skill** loaded
-    automatically with the benchmark, describing both the **language** (notation,
+28. **Collection skills — format + auto-loading DONE; task-specific content is a
+    research item.** A per-collection **skill** packages the **language** (notation,
     idioms) and the **task specifics** (question shapes, option formats, what the
-    harness declares). Skills are declarative guidance, never answer keys
-    (`docs/task.md` §3.8, `docs/l3_plan.md` D-L3-10). Proven on L3: the AR-LSAT eval
-    rose 7→21/30 and `grounded_mismatch` 2→0 once the error-driven guide encoded the
-    game's idioms (`docs/l3_plan.md` §11). Deliverable: a skill file/format per
-    collection plus harness auto-loading; the `ANKYRA_LANGUAGE_SPEC` seam is the
-    forward-compatible base.
+    harness declares) under `evals/skills/<collection>/{language.md,task.md}`.
+    `evals/skills.py` (`load_skill`/`skill_block`) composes them and takes **only a
+    collection name** (never a record), so per-id tuning is structurally impossible; a
+    missing skill is `""`, keeping prompts byte-identical. `evals/ar_lsat.py` and
+    `evals/folio.py` auto-load their skill through the `ANKYRA_LANGUAGE_SPEC` seam,
+    unchanged in the engine except (a) a guard so long inline text is not mistaken for a
+    path and (b) an L3 builder guard (below). Skills stay declarative guidance, never
+    answer keys (`docs/task.md` §3.8, `docs/l3_plan.md` D-L3-10).
+
+    **Landed (engine):** the CSP builder now rejects a composite (`all`/`any`/`not`/
+    `conditional`) with missing parts instead of letting it evaluate vacuously
+    (`docs/l3_plan.md` §3), gated by `tests/test_build_csp.py`.
+
+    **Experiment — error-driven AR-LSAT guide (tried, reverted; research).** The live
+    dumps of `evals/out/ar_lsat_{dev,eval}_live.jsonl` classify the abstentions:
+    `complete_list` over a derived sequence/entity (6) and composite-factor games (3)
+    are **fragment-bound**; the remaining misses are the encoding of "more X than Y"
+    (two `count`s instead of one `count_compare`) and of "each group" counts. A guide
+    patch adding those rules plus a "never leave a composite empty" rule was tried and
+    **reverted**: the eval run went 21→18 correct with 1 `grounded_mismatch`, plausibly
+    because the added `count` emphasis primed a mis-encoding of "either … but not both"
+    as `count(exactly 1)` (provider variance, C1, confounds this, but the side effect is
+    credible). The guide is restored to the known-good text. **To return to:** add the
+    rules against a **dev-validated** case — the dev sample has no `count_compare` row,
+    so it cannot be iterated without new data; extend the dev sample first, then re-try,
+    never tuning on the eval gate (D-L3-10). Details: `docs/ar_lsat.md` §8.
 29. **FOLIO — fragment-bound vs extraction-bound (research).** The L1 negation slice
     is **fragment-bound** (gold-fed == text-fed = 7/13; `docs/folio.md` §9): it needs
     **L2 (reductio / declared CWA)**, not better text reading. The language guide
