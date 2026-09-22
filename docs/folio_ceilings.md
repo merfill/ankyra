@@ -70,10 +70,16 @@ ceilings:
 Observed, FOLIO L1 negation (13 in-fragment): text-fed 7/13, gold-fed open 7/13,
 gold-fed closed 8/13 — i.e. **coverage-bound**: even the gold formulas need
 reductio (L2) or a closed-world step, so no single world assumption fits
-(`docs/folio.md` §9). The gold-fed bound for the **L2** slice does not exist yet:
-`evals/folio_fol.py` parses only the L1 shape; extending it to `∨`/`∃` (one file,
-LLM-free) is the **next step before L3** — `gold-fed ≫ text-fed` means the limit
-is language, otherwise method.
+(`docs/folio.md` §9). The **L2** bound now exists (`docs/folio.md` §10):
+`evals/folio_fol` parses `∨`/`∃` and `evals.analyze_folio --subset l2` runs it
+LLM-free. On tier a (45): text-fed 25/45, gold-fed 17/45, **out_of_fragment 24/45**
+(so coverage is only 21/45). On the covered rows gold-fed is 17/21 versus text-fed
+15/21 — the dominant limit is the **method** (coverage), and where the committed L2
+procedure can express the gold formula it already beats the extractor. The 24
+out-of-fragment rows name the Tier-1 work: 12 the parser cannot represent
+(universal/conditional goals, shared-witness existential conjunctions, nested
+existentials, `¬∃`), 12 the engine refuses as `unsafe_rule` (a universal disjunctive
+fact `∀x (A(x) ∨ B(x))` grounds an unbounded head variable).
 
 ## 5. Constructs: in fragment, reachable, out of reach
 
@@ -102,15 +108,16 @@ is language, otherwise method.
 
 ## 7. Recommended order
 
-1. **Gold-fed L2 bound** (LLM-free, cheap, decisive). Without it, engine work is
-   aimed in the dark.
-2. **Extraction G1–G4** (`docs/quality_findings.md` §G) — the measured bottleneck
-   and the highest-value work now.
-3. **Tier 1 engine extension** — only if the gold-fed bound shows the limit is the
-   method.
+1. ~~**Gold-fed L2 bound** (LLM-free, cheap, decisive).~~ **DONE** (see §4): the
+   limit on the L2 slice is the **method** (coverage 21/45), not the language, so
+   Tier 1 (item 3) comes before extraction on FOLIO.
+2. **Extraction G1–G4** (`docs/quality_findings.md` §G) — still worth doing on the
+   rows the method now covers.
+3. **Tier 1 engine extension** — justified by the gold-fed bound.
 4. **Tier 2** (equality/functions) — a separate fragment decision, not a bug fix.
 
-The staged plan is `docs/folio_extension_plan.md`.
+The staged plan is `docs/folio_extension_plan.md`; the plain-language explanation of
+the ceiling and the ordered Tier-1 backlog are `docs/coverage_ceiling.md`.
 
 ## 8. Guardrails
 

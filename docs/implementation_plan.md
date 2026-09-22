@@ -435,6 +435,32 @@ Source: `docs/quality_findings.md`. Ordered by priority.
     `evals.defeasible_synthetic` (8/8). ProntoQA and FOLIO harnesses with committed
     samples are in place; their live runs invoke the paid extractor and are
     pending budget. Plan and decisions: `docs/l1_plan.md`.
+25. ~~**FOLIO gold-fed diagnostic (L2) — method vs extraction.**~~ **DONE.**
+    `evals/folio_fol` parses the annotated FOL into the L1/L2 models (`∨`/`∃` via
+    NNF+CNF, disjunctive heads as `Rule.alternatives`, conjunctive existentials as
+    `Theory.existentials`, ground/open/flat compound goals); a formula outside the
+    committed shape raises `FolParseError` (`out_of_fragment`, never a guessed
+    encoding). `evals/analyze_folio --subset l2` runs the gold pass under
+    `LOGIC="ground"`, LLM-free; `--subset negation` keeps the L1 path unchanged
+    (7/13 open, 8/13 closed). Result on FOLIO L2 tier a (45): text-fed 25/45,
+    gold-fed 17/45, `out_of_fragment` 24/45 (**coverage 21/45**); on the covered
+    rows gold-fed **17/21** versus text-fed **15/21**, with no grounded false
+    proof (the 4 misses are budget/`unsupported` abstentions). The dominant limit
+    is **coverage (the method)**, not the language, so Tier-1 lowering precedes
+    extraction on FOLIO (Phase 2 before Phase 1 in
+    `docs/folio_extension_plan.md`). Tests `tests/test_evals_folio_fol.py`; full
+    record `docs/folio_gold_fed.md`.
+26. **Coverage ceiling — explained, and the Tier-1 plan — NEXT.** The gold-fed
+    diagnostic (item 25) shows the FOLIO L2 wall is **coverage**, not extraction:
+    24/45 gold formulas are outside the committed fragment. `docs/coverage_ceiling.md`
+    explains the ceiling in plain terms and lays out the ordered Tier-1 backlog
+    (T1 shared-witness ∃ goal, T2 nested-∃ premise, T3 universal/conditional/`¬∃`
+    goal form, T4 non-flat compound goal, T5 head-only grounding `∀x (A(x) ∨ B(x))`
+    — the largest and soundness-sensitive, T6 G4 budget), each a named fragment
+    reusing `ANKYRA_LOGIC` with a synthetic gate in `evals.l2_synthetic` and a
+    re-measured gold-fed bound. Extraction G1–G4 runs in parallel on covered rows.
+    Open: T-D1 (domain for head-only grounding), T-D2 (goal-formula vs `goal_mode`),
+    T-D3 (one fragment or three).
 
 ## 9. Reasoning roadmap (main axis)
 
@@ -466,8 +492,13 @@ Stages:
   quantifiers by Skolemization + witness enumeration, compound/open goals, and the
   `Inference` protocol seam (`engine/inference.py`); primary LLM-free gate
   `evals.l2_synthetic` (**23/23**). **ProntoQA-OOD tier-a live gate green** —
-  **41/42 (97.6%), 0 grounded false proofs**; **FOLIO L2 live is extraction-bound**
-  (26/44, no engine unsoundness; backlog G1–G4 in `docs/quality_findings.md` §G).
+  **41/42 (97.6%), 0 grounded false proofs**; the FOLIO L2 live run (26/44) mixes
+  coverage and extraction, and the **gold-fed diagnostic shows the deeper limit is
+  coverage** — only 21/45 gold formulas fall in the committed fragment, but on
+  those gold-fed **17/21** out-scores text-fed **15/21** (`docs/folio_gold_fed.md`;
+  backlog G1–G4 in `docs/quality_findings.md` §G). The next axis is therefore
+  **Tier-1 lowering** to raise that coverage — the explained plan and ordered
+  backlog are `docs/coverage_ceiling.md` (item 26).
   Full first-order unification is deferred (`docs/l2_plan.md`).
 - **L3 — finite-domain CSP/SAT, a separate engine.** Benchmark AR-LSAT.
 - **L4 — arithmetic, a separate numeric engine or tool-use.** Benchmark GSM8K.
@@ -512,8 +543,11 @@ multi-variable quantification).
   the last is deliberately extraction-heavy.
 - **Gold-fed upper bound is the counterfactual that separates the ceilings.** Feed
   the engine the gold FOL formulas and measure method-only accuracy on the same
-  slice. It exists for the L1 negation shape but **not yet for L2**:
-  `evals/folio_fol.py` parses only the L1 shape. **Next step before L3:** extend
-  the parser to `∨`/`∃` (one file, LLM-free) so the L2 slice gains its gold-fed
-  bound — if gold-fed ≫ text-fed the limit is language, otherwise method. This
-  settles "model vs method" empirically rather than by intuition.
+  slice. It exists for the L1 negation shape and now for L2: `evals/folio_fol`
+  parses `∨`/`∃`, `evals.analyze_folio --subset l2` runs it LLM-free. On FOLIO L2
+  tier a (45): text-fed 25/45, gold-fed 17/45, **out_of_fragment 24/45** (coverage
+  21/45); on the covered rows gold-fed **17/21** versus text-fed **15/21**. So the
+  limit is the **method** (coverage), not the language — Tier-1 lowering comes
+  before extraction (`docs/folio.md` §10, `docs/folio_ceilings.md` §4); the plan
+  itself is `docs/coverage_ceiling.md`. This settles
+  "model vs method" empirically rather than by intuition.

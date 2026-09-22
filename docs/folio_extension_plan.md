@@ -93,6 +93,9 @@ unchanged; new features flow through the declared-fragment contract
 **Gate.** Synthetic cases per construct; `out_of_fragment` beyond the finite
 domain; the gold-fed L2 number re-measured.
 
+The ordered Tier-1 backlog with per-item yields, loci, soundness notes and the open
+decisions (`T-D1`…`T-D3`) is `docs/coverage_ceiling.md`.
+
 ## 6. Phase 3 — Tier 2: fragment decisions (with a soundness gate)
 
 These leave "positive FOL" and are **separate fragment decisions**, not fixes.
@@ -156,8 +159,11 @@ composite benchmark (`docs/implementation_plan.md` §10).
 
 ## 11. Status
 
-Draft, deferred to a later iteration. No implementation. Phase 0 is the first
-action when the work starts; it is LLM-free and decides the rest of the plan.
+**Phase 0 done** (`docs/folio.md` §10): the L2 gold-fed bound exists and is
+LLM-free. On tier a (45), coverage is 21/45 and on the covered rows gold-fed
+(17/21) leads text-fed (15/21) — the limit is the **method**, so Phase 2 (Tier-1
+lowering) is justified ahead of Phase 1 (extraction). The remaining phases are
+still draft and deferred.
 
 ## 12. References
 

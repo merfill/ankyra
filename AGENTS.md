@@ -59,6 +59,10 @@ language, default `en`).
 - `docs/proofwriter.md` — ProofWriter collection notes (eval harness).
 - `docs/prontoqa.md` — ProntoQA collection notes (planned L1 gate).
 - `docs/folio.md` — FOLIO collection notes (planned L2 gate, FOL with quantifiers).
+- `docs/folio_gold_fed.md` — FOLIO gold-fed diagnostic: method vs extraction
+  (Phase 0 result; the L2 coverage ceiling).
+- `docs/coverage_ceiling.md` — what the coverage ceiling is, in plain terms, and
+  the ordered Tier-1 plan to raise it.
 - `docs/ar_lsat.md` — AR-LSAT collection notes (planned L3 gate, separate engine).
 - `docs/gsm8k.md` — GSM8K collection notes (planned L4 stage, separate engine).
 - `docs/defeasible_reasoning.md` — non-monotonic exceptions design note.

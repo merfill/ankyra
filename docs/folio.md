@@ -231,9 +231,8 @@ remains a documented limitation of v0.0 (§9).
 existential, no equality/XOR/biconditional/multi-variable quantification).
 `evals.folio` gained `--subset negation|l2` and a `logic` level (the L2 subset runs
 `logic="ground"`, open world); the L1 negation subset is unchanged. Offline tests:
-`tests/test_evals_folio.py`. The gold-fed diagnostic (`evals/folio_fol.py`) still
-parses only the L1 negation shape; extending its parser to `∨`/`∃` (to separate
-fragment from extraction on the L2 slice) is a follow-up.
+`tests/test_evals_folio.py`. The gold-fed diagnostic (`evals/folio_fol.py`) now parses
+the L2 shape too (see below).
 
 **Live gate (L2 tier a, `--jobs 5`).** 45 problems: **26/44 scored targets** after the
 compound/open scoring fix. 6 are `out_of_fragment` (functions/equality/multi-variable
@@ -241,5 +240,36 @@ quantification), 9 had no extracted target, 12 `insufficient` (budget/complex go
 **no engine unsoundness was observed**. The proven-but-wrong cases are **extraction
 collapses** — a universal or conditional conclusion formalized as a ground atom (e.g.
 "No pets are cats" → `¬is_a(pet,cat)`, whose refutation in that formalization is
-genuinely valid), so the score stays extraction-bound, consistent with the gold-fed
-diagnostic above. FOLIO remains a hard extraction gate, not an engine gap.
+genuinely valid). No engine unsoundness was observed.
+
+**Gold-fed diagnostic on L2 (LLM-free, decisive; `docs/folio_ceilings.md` §4).**
+`evals/folio_fol` now parses the annotated FOL into the L1/L2 models — universal
+implications, `∧`/`∨` via NNF+CNF, conjunctive existentials, and ground/open/flat
+compound goals — and raises `FolParseError` for a formula outside the committed
+fragment (universal/conditional goals, an existential conjunction with a shared
+witness, an existential premise with a nested disjunction, function terms).
+`evals.analyze_folio --subset l2` runs it with `ANKYRA_LOGIC=ground` over the same
+committed tier a (45 problems):
+
+| verdict source | correct |
+|---|---|
+| text-fed (LLM extraction) | 25/45 |
+| gold-fed, open (= closed) | 17/45 |
+| gold `out_of_fragment` | 24/45 |
+
+The raw gold-fed number is below text-fed only because 24 rows are honest
+abstentions. Coverage (what the method can express and decide) is **21/45**; on the
+covered rows gold-fed is **17/21** (True 6/7, False 5/8, Uncertain 6/6) versus
+text-fed **15/21** (True 5/7, False 4/8, Uncertain 6/6). The 24 out-of-fragment rows
+split evenly: **12** the parser cannot express (compound/conditional conclusions, an
+existential premise with a nested disjunction, existential conjunctions with a shared
+witness, a universal `¬∃` conclusion, one malformed annotation) and **12** the engine
+refuses as `unsafe_rule` — a universal disjunctive fact `∀x (A(x) ∨ B(x))` grounds a
+head variable its body never binds. The 4 covered misses are honest abstentions
+(`insufficient` from the resolution budget — G4 — or `unsupported`), with no grounded
+false proof. **The dominant ceiling on this slice is coverage (the method), not
+language**: wherever the committed L2 procedure can represent the gold formula it
+already out-scores the extractor, so Tier-1 lowering (universal/conditional targets,
+head-only grounding, existential conjunctions) precedes further extraction work
+(`docs/folio_extension_plan.md` Phase 2). Full record: `docs/folio_gold_fed.md`;
+the explained plan to raise coverage is `docs/coverage_ceiling.md`.
