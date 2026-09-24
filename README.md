@@ -217,9 +217,9 @@ by sampling.
 
 **Theory**
 
-- `docs/doxa_and_logos.md` — *Doxa and Logos*: the non-formalizable source and the
+- `docs/doxa_and_logos.tex` — *Doxa and Logos*: the non-formalizable source and the
   formal functions through which it interacts with the engine (Russian mirror
-  `docs/doxa_and_logos_ru.md`).
+  `docs/doxa_and_logos_ru.tex`).
 
 **Spec and roadmap**
 

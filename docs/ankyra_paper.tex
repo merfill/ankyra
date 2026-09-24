@@ -1,16 +1,15 @@
-% !TeX program = xelatex
-% DRAFT working paper: system + evaluation. Sections and numbers are recorded here;
-% prose is intentionally skeletal and marked with % TODO. Build with xelatex, then
-% convert to Markdown with pandoc if needed.
+% !TeX program = pdflatex
+% Working paper: system and evaluation. Full draft; numbers are measured values.
+% Build: pdflatex. Russian mirror: ankyra_paper_ru.tex.
 
 \documentclass[11pt,a4paper]{article}
 
-% ---- Encoding and language ----
+% ---- Language ----
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage[english]{babel}
 
-% ---- Math ----
+% ---- Mathematics ----
 \usepackage{amsmath}
 \usepackage{amssymb}
 
@@ -25,14 +24,14 @@
 % ---- Spacing ----
 \usepackage{parskip}
 \usepackage{setspace}
-\onehalfspacing
+\singlespacing
 
 % ---- Links ----
 \usepackage[hidelinks]{hyperref}
 
 % ---- Title ----
 \title{Ankyra: Sound Neuro-Symbolic Reasoning\\
-across Staged Decidable Formalisms\\[0.5em]\large (working draft)}
+with Machine-Checkable Proofs over Staged Decidable Logics}
 \author{Vladimir Lapshin\thanks{\texttt{merfill@yandex.ru}}}
 \date{}
 
@@ -40,147 +39,503 @@ across Staged Decidable Formalisms\\[0.5em]\large (working draft)}
 \maketitle
 
 \begin{abstract}
-We present Ankyra, a domain-general neuro-symbolic reasoning engine in which a large
-language model \emph{proposes} a formalization and a deterministic symbolic engine
-\emph{decides} it. The engine covers a family of decidable formalisms (definite Horn
-logic, stratified negation, positive first-order logic with disjunction and
-quantifiers, finite-domain constraints, exact arithmetic, and defeasible defaults),
-each with a sound decision procedure and a declared fragment. Every answer carries a
-mechanically verifiable provenance trace, and no statement enters the theory without a
-verbatim quote or an explicit hypothesis tag. We report a proof-of-concept evaluation
-on standard collections: the engine attains high accuracy on the slices it covers while
-producing \emph{zero grounded false proofs}, and it abstains honestly
-(\texttt{out\_of\_fragment}) where its committed logic cannot express a problem. We
-make no state-of-the-art claim: the evaluation uses committed subsets rather than full
-test splits, and we state the resulting statistical and protocol limitations explicitly.
+We present Ankyra, a domain-general neuro-symbolic reasoning system built on a strict
+separation of roles: the language model \emph{proposes} a formalization, and a deterministic
+symbolic engine \emph{decides} it. The system spans a family of decidable formalisms ---
+from definite Horn clauses and stratified negation to positive first-order logic with
+disjunction and quantifiers, finite-domain constraints, exact arithmetic, and defeasible
+defaults with specificity. Each formalism comes with a sound decision procedure and a
+declared fragment. Every answer carries a machine-checkable proof trace, and no statement
+enters the theory without either a verbatim quotation or an explicit hypothesis tag. We
+report a demonstration-scale evaluation on standard collections: on covered slices the
+system achieves high accuracy while producing no confidently wrong conclusions, and it
+abstains honestly (\texttt{out\_of\_fragment}) where the implemented logic cannot express
+the problem. We make no claim to state-of-the-art performance: the evaluation uses fixed
+subsamples rather than full test sets, and we state the statistical and methodological
+limitations explicitly.
 \end{abstract}
 
 % ======================================================================
 \section{Introduction}
+\label{sec:intro}
 
-% TODO: expand the motivation (LLM hallucinated reasoning; verifiability; the
-% propose/decide boundary). Keep the explicit scope statement below.
+Large language models read text well and translate it into a precise formal language. They
+do poorly what symbolic procedures do well: they derive consequences \emph{soundly}, track
+exactly which premises were used, and refuse to guess. A free chain of thought sounds
+plausible, but it does not distinguish a correct step from a merely convincing one: it
+carries neither a certificate of soundness nor a history from which one could reconstruct
+what the answer rests on. Verifiability is therefore the central problem of reasoning with
+language models.
 
-The central design commitment is: \emph{the LLM proposes, the engine decides}. The
-language model never owns truth. Every statement it contributes is deterministically
-classified as \texttt{derivable}, \texttt{cited} (supported by a verbatim quote),
-\texttt{hypothesis} (knowledge absent from the text, tagged), or \texttt{rejected}. An
-answer is never stronger than its grounds: a conclusion from quotations is
-\texttt{proven}, one resting on assumptions is \texttt{proven\_under(H)}.
+Ankyra~\cite{ankyra} gives each side the work it is good at. The language model reads the
+text and does two things: it decomposes the problem into \emph{structure} (objects, facts,
+rules, quotations), and, while the answer is still open, it proposes individual steps. The
+symbolic engine handles the \emph{formal} side: it turns the structure into a theory, closes
+it under inference rules, matches it against the question, and certifies what actually
+follows.
 
-\paragraph{Contributions.} % TODO: turn into a list.
+The central design principle is short: \emph{the language model proposes, the engine
+decides}. The model never owns truth. Every statement it produces is deterministically
+classified as \texttt{derivable}, \texttt{cited} (supported by a verbatim quotation),
+\texttt{hypothesis} (knowledge absent from the text, tagged), or \texttt{rejected}. The
+strength of an answer never exceeds the strength of its premises: a derivation from
+quotations is \texttt{proven}; a derivation resting on assumptions is
+\texttt{proven\_under(H)}.
+
+This separation is not an engineering compromise. It reflects the distinction between an
+\emph{unformalizable source} (doxa) and formal \emph{logos}: the language model here is the
+bearer of doxa, which logos consults for proposals but never for truth, and the proposal
+protocol, deterministic classification, journal, and text-grounding checks form the
+interface between them~\cite{doxa}. A full account of the operator family is the subject of
+a separate paper; here we focus on the system that implements it and on its empirical
+evaluation.
+
+\paragraph{Contributions.}
 \begin{itemize}
-	\item A propose/decide architecture with mechanically verifiable provenance.
-	\item A family of decidable formalisms behind a \emph{declared-fragment contract},
-	      with honest \texttt{out\_of\_fragment} abstention instead of silent downgrade.
-	\item A gating methodology for \emph{composite} benchmarks that separates the
-	      coverage (formalism) ceiling from the extraction (model) ceiling via a
-	      gold-fed counterfactual.
-	\item An empirical proof of concept on standard collections with a measured
-	      soundness invariant (zero grounded false proofs).
+\item A propose/decide architecture with two separated participants and a machine-checkable
+proof trace.
+\item A proposal protocol in which every statement is classified deterministically, and the
+strength of an answer (\texttt{proven}, \texttt{proven\_under(H)}, \texttt{not\_proven})
+never exceeds the strength of its premises.
+\item A family of decidable formalisms under a \emph{declared-fragment protocol}, with
+honest abstention \texttt{out\_of\_fragment} instead of a silent downgrade to a weaker
+logic.
+\item A staged-evaluation methodology for \emph{composite} benchmarks that separates the
+coverage ceiling (formalism) from the extraction ceiling (model) via a gold-fed mode.
+\item A demonstration prototype on standard collections with a measurable soundness
+invariant: no confidently wrong conclusions.
 \end{itemize}
 
-\paragraph{Scope (explicit).} This is a proof-of-concept report, not a
-state-of-the-art claim. We evaluate \emph{committed subsets} of standard collections,
-describe the budget that prevents full test-split runs, and give confidence intervals.
-Whole-collection coverage is unreachable by design for mixed-construct benchmarks such
-as FOLIO (Section~\ref{sec:results}).
+\paragraph{Scope (explicit).} This is a report on a demonstration prototype, not a claim to
+state-of-the-art performance. We evaluate \emph{fixed subsamples} of standard collections,
+explain the budget that prevents full test-set runs, and report confidence intervals. Full
+coverage of a collection is unattainable by construction for sets with mixed constructions,
+such as FOLIO (Section~\ref{sec:results}).
+
+\paragraph{Structure.} Section~\ref{sec:system} describes the architecture and the proposal
+protocol; Section~\ref{sec:example} gives worked examples per stage;
+Section~\ref{sec:formalisms} lists the formalisms and decision procedures;
+Section~\ref{sec:method} presents the evaluation methodology; Section~\ref{sec:results}
+reports results; Section~\ref{sec:limitations} discusses limitations;
+Section~\ref{sec:related} covers related work.
 
 % ======================================================================
 \section{System overview}
+\label{sec:system}
 
-% TODO: expand. Keep this section short and factual for now.
+Ankyra is not a monolithic solver but a system that coordinates formalizations and decision
+procedures. For each problem the model produces a formalization in some logic, and a sound
+procedure for that logic decides it. Different classes of problems require different
+procedures, each with its own internal representation; the implemented logics are described
+in Section~\ref{sec:formalisms}.
 
-Ankyra is an orchestrator of formalizations and decision procedures, not a monolithic
-solver. A problem passes through: (0)~decomposition of the text into a theory and a
-question; (1)~deterministic closure of the theory; (2)~a bounded proposal cycle (the
-LLM proposes one typed step per wave); and (3)~mechanical explanation assembled from
-provenance. Rules, facts and hypotheses form a base that only grows; the answer may be
-revised, and each revision is recorded.
+\subsection{Four phases}
 
-Deterministic code never interprets natural language. Normalizing identifiers and closed
-enum fields the LLM has already extracted is allowed; heuristics over raw text keyed on
-words or cue phrases are not. The only raw-text operations are structural witness checks
-(verbatim-quote substring/span, coverage, length).
+A problem passes through four phases. Only one of them --- inference --- belongs to the
+engine; the other two consult the model.
 
-% ======================================================================
-\section{Formalisms and decision procedures}
+\begin{itemize}
+\item \textbf{Phase 0 --- decomposition.} The text is split into a descriptive part and a
+question, and from that point they are treated as separate objects. Two calls to the
+language model follow in a fixed order: first, a structural decomposition of the descriptive
+part (objects, facts, conditional statements, alternatives and groupings, negations and
+modalities, a short verbatim quotation per element); then an expression of the question over
+the canonical vocabulary already established by the theory. Between and after these calls, a
+deterministic builder unrolls and enriches the structure into a \emph{theory} and a
+\emph{query}. A strict rule applies: \emph{the question is never asserted as a fact}.
+\item \textbf{Phase 1 --- decide.} The symbolic engine derives all consequences of the
+theory to a fixed point and checks whether the goal follows. Every derived fact carries a
+history: which facts and which rule produced it. The engine adds no knowledge of its own: it
+is sound and complete \emph{relative to} the formalization it receives.
+\item \textbf{Phase 2 --- guided cycle.} If the constructed theory does not yet settle the
+question, the system does not stop at a bare ``unknown'': it reports exactly where the
+difficulty lies, and the model gets a bounded opportunity to help by proposing one step per
+iteration (Section~\ref{sec:cycle}).
+\item \textbf{Phase 3 --- explanation.} The finished proof trace is assembled
+\emph{automatically} from the proof history, not by the model. The model may later
+paraphrase the finished trace in prose, but it may not introduce new facts.
+\end{itemize}
 
-Each stage of the reasoning roadmap is a named formalism with a sound decision
-procedure, entered only after an LLM-free synthetic gate and an external collection
-gate.
+The key boundary runs between Phases 0 and 1: everything the model formulates must either
+rest on a verbatim quotation or be explicitly tagged as an assumption. Nothing enters the
+theory without such grounding.
+
+\subsection{The proposal protocol}
+
+Every statement the model wishes to add is classified deterministically. The classification
+is not a subjective judgment: it depends only on whether the statement already follows, is
+grounded in the text, or is an assumption.
 
 \begin{center}
-\begin{tabular}{p{0.8cm}p{5.4cm}p{5.6cm}}
+\begin{tabular}{p{2.4cm}p{6.2cm}p{4.6cm}}
 \toprule
-\textbf{Stage} & \textbf{Formalism} & \textbf{Procedure} \\
+\textbf{Category} & \textbf{Condition} & \textbf{Engine action} \\
 \midrule
-L0 & definite Horn, \texttt{is\_a}, complementary-pair negation (open world) & semi-naive forward chaining \\
-L1 & stratified negation / NAF, declared closed world & stratified closure, disjointness constraints \\
-L2 & positive FOL: disjunction, $\exists/\forall$, proof by cases & bounded resolution (finite-domain grounding) \\
-L3 & finite-domain constraints (CSP/SAT) & in-repo finite-domain search \\
-L4 & arithmetic terms and equations & exact rational evaluation / linear elimination \\
-D  & defaults with specificity via \texttt{is\_a} & defeasible layer (NFA + specificity) \\
+\texttt{derivable} & already follows from the current theory & accepted as narration only \\
+\texttt{cited} & new statement with a verbatim quotation from the text & added to the axioms \\
+\texttt{hypothesis} & knowledge absent from the text & recorded in the journal, tagged $H$ \\
+\texttt{rejected} & fails a schema, safety, or quotation check & dropped with a reason code \\
 \bottomrule
 \end{tabular}
 \end{center}
 
-A query declares the required fragment; a mismatch is reported as
-\texttt{out\_of\_fragment}, never guessed. L3 and L4 are separate engines behind the
-same orchestration.
+It is the distinction between \texttt{cited} and \texttt{hypothesis} that makes answers
+honest. A derivation using only quoted facts is \texttt{proven}. A derivation resting on
+assumptions is \texttt{proven\_under(H)}, and the answer names those assumptions. If nothing
+is established, the answer is \texttt{not\_proven}. The strength of an answer therefore
+never exceeds the strength of its premises, and an assumption cannot pass itself off as a
+fact.
+
+\subsection{The guided cycle and the journal}
+\label{sec:cycle}
+
+The inner cycle (Phase 2) is fully deterministic; the only call to the model is a
+\emph{proposal}. The cycle alternates a hint, a free proposal, and a deterministic
+classification, and accepts at most one proposal per iteration --- so each iteration leaves
+a checkable trace. An iteration proceeds as follows:
+
+\begin{enumerate}
+\item \textbf{Verify.} The engine closes the current theory and checks the goal, producing a
+verdict and structured gaps (for example \texttt{target\_unmatched:} when the goal predicate
+appears nowhere).
+\item \textbf{Termination check.} If the verdict is already decisive --- \texttt{supported},
+\texttt{refuted}, \texttt{contradiction}, or \texttt{insufficient} --- the cycle stops.
+\item \textbf{Hint.} The model receives the problem structure, the admissible predicates and
+objects of the theory, a summary of what has been derived, the current gaps, the goal, and
+the kinds of proposals allowed.
+\item \textbf{Proposal.} The model returns a short narrative and exactly one typed proposal:
+reformulate the question in the theory's vocabulary, add a rule, assert a quoted fact, or
+select the next subgoal.
+\item \textbf{Classification and application.} The engine checks the proposal against the
+schema, safety rules, and the text, assigns it to one of the four categories above, and
+either applies or drops it. Application is monotone: the theory only grows.
+\item \textbf{Record.} The iteration is written to the journal, and the inner cycle
+restarts.
+\end{enumerate}
+
+The cycle stops on a decisive verdict, on \texttt{no\_progress} (two consecutive iterations
+without change), on exhausting the iteration budget, or when assumptions are disallowed.
+None of these outcomes is a correctness violation: each is an honest stopping point.
+
+\emph{Monotone base, moving answer.} The \emph{base} --- axioms, rules, hypotheses --- only
+grows: premises are never deleted, the goal is never weakened. The \emph{answer}, however,
+may change as new information arrives. Such changes are not hidden: each is recorded as a
+\texttt{Revision} with the source iteration and the assumptions involved, and the revisions
+are kept alongside the explanation. The system thus remains checkable under non-monotonic
+reasoning without ever changing its base.
+
+\subsection{Data model}
+
+Everything the system reasons about is assembled from a few simple elements. An
+\emph{object} (\texttt{Object}) is a canonical named entity. A \emph{relation}
+(\texttt{Morphism}) is a single predicate applied to a subject and an object, with a
+modality and a negation flag; negation is the same predicate marked false, not a separate
+name. A \emph{rule} (\texttt{Rule}) is a conditional statement: a conjunction of conditions
+entails a consequence, marked as an implication or an exception and carrying a source (a
+quotation or a hypothesis identifier). A \emph{theory} (\texttt{Theory}) collects objects,
+asserted relations, and rules, while a \emph{query} (\texttt{Query}) stores the conditions
+the question asserts ($\Gamma$), the goal ($\phi$), and the answer type. Inside the engine,
+a \emph{fact} (\texttt{Fact}) is the ground atom together with its proof history.
+
+\subsection{A principled limitation: deterministic code does not parse language}
+
+Deterministic code never interprets natural language. Normalizing identifiers and closed
+enumerations that the model has \emph{already} extracted (predicate and object identifiers,
+modality, \texttt{relation\_kind}, field keys) is permitted: it operates on the structured
+result, not on the source text. Heuristics over the source text that rely on words,
+morphology, characteristic phrases, or hand-made term lists are not permitted: they do not
+generalize across domains, and semantics are set by the extraction instruction. The only
+operations over the source text are structural checks: exact quotation occurrence, coverage,
+and length.
+
+% ======================================================================
+\section{Worked examples per stage}
+\label{sec:example}
+
+We give examples for each stage --- from pure deduction and abduction through defaults,
+negation, disjunction, a composite FOLIO case, finite-domain constraints, and exact
+arithmetic. They show how the proposal protocol, answer strength, and choice of decision
+procedure work on concrete inputs.
+
+\subsection{Pure deduction}
+
+Text: \emph{``It is raining. If it is raining, the ground is wet. Is the ground wet?''}
+
+Phase 0 splits the text into a descriptive part and a question. The descriptive part yields
+one fact and one rule; the question becomes the goal:
+
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+\textbf{Element} & \textbf{Content} & \textbf{Source} \\
+\midrule
+Fact & \texttt{raining()} & \texttt{cited} (``It is raining.'') \\
+Rule $R_1$ & \texttt{raining()} $\Rightarrow$ \texttt{is\_wet(ground)} & \texttt{cited} (``If it is raining, the ground is wet.'') \\
+Goal $\phi$ & \texttt{is\_wet(ground)}, type \texttt{yes\_no} & question (not a fact) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Phase 1 closes the theory: rule $R_1$ fires on the fact and derives
+\texttt{is\_wet(ground)}, carrying the premise and the firing rule in its history.
+Verification gives the verdict \texttt{supported}, the answer \texttt{yes}, and strength
+\texttt{proven}; the cycle makes no call to the model. Phase 3 assembles the trace
+automatically:
+
+\begin{enumerate}
+\item \texttt{raining()} --- axiom, \texttt{cited};
+\item \texttt{is\_wet(ground)} --- rule $R_1$, from step 1.
+\end{enumerate}
+
+\subsection{Abduction and answer strength}
+
+Text: \emph{``The vehicle has an engine, four wheels, 150 horsepower and four doors. What
+kind of vehicle is it?''}
+
+Phase 0 extracts only the observed facts --- \texttt{has\_engine}, \texttt{wheel\_count},
+\texttt{power}, \texttt{door\_count}. The text contains no classification rules, so the
+theory has none either. The goal is open: \texttt{is\_a($X$, ?c)}. Phase 1 derives nothing
+for this predicate and reports the gap \texttt{target\_unmatched: is\_a}, after which the
+guided cycle starts.
+
+In the first iteration the model proposes classification rules, for example: ``engine
+$\Rightarrow$ motor vehicle'', ``motor vehicle and four wheels $\Rightarrow$ car''. There
+are no quotations under them, so the classification tags them as \texttt{hypothesis}, and
+the rules are entered in the journal with tags $H_1, H_2, \dots$ (Section~\ref{sec:cycle}).
+The theory grows monotonically, closure derives \texttt{is\_a($X$, car)} and
+\texttt{is\_a($X$, sedan)}, and the goal variable is bound along the \texttt{is\_a} chain
+rather than guessed. Verification gives \texttt{supported}, but the derivation rests on
+assumptions, so the answer strength is \texttt{proven\_under($H_1,H_2,\dots$)}, and the
+answer names those assumptions.
+
+Running the same problem with \texttt{ANKYRA\_ALLOW\_HYPOTHESES=false} rejects the same
+rules, and the system answers honestly \texttt{not\_proven}. The difference between
+\texttt{proven} and \texttt{proven\_under} in these two examples is not cosmetic: it
+reflects exactly what the answer rests on.
+
+\subsection{Defaults and specificity}
+
+Text: \emph{``Birds can fly. Penguins are birds, but penguins cannot fly. Tweety is a
+penguin. Can Tweety fly?''}
+
+Phase 0 gives the facts \texttt{is\_a(tweety, penguin)} and \texttt{is\_a(penguin, bird)},
+together with two default rules: \texttt{is\_a(?x, bird)} $\Rightarrow$ \texttt{fly(?x)} and
+\texttt{is\_a(?x, penguin)} $\Rightarrow$ \texttt{$\neg$fly(?x)}. Under plain monotone
+closure both rules would fire and produce a contradiction. With the defaults layer enabled,
+the penguin rule is strictly more specific --- it rests on the edge \texttt{is\_a(penguin,
+bird)} --- and wins: the verdict is \texttt{refuted}, the answer is ``no'', and the flag
+\texttt{defeasible=true}.
+
+The symmetric example --- ``birds do not fly, penguins fly'' --- gives \texttt{supported}
+and the answer ``yes'': specificity does not depend on polarity. In the classic example
+``Nixon is a Quaker and a Republican'' with rules \texttt{quaker} $\Rightarrow$
+\texttt{pacifist} and \texttt{republican} $\Rightarrow$ \texttt{$\neg$pacifist}, specificity
+is undefined --- both rules are equally specific --- and the system honestly answers
+\texttt{unsupported} with the gap \texttt{undecided\_conflict}, rather than guessing a
+winner. Source: \texttt{evals/defeasible\_synthetic}, 8/8.
+
+\subsection{Negation and disjointness (L1)}
+
+Text: \emph{``No real number is imaginary. $a$ is a real number. Is $a$ imaginary?''}
+
+The statement ``no real number is imaginary'' is formalized not as a general rule but as a
+disjointness constraint \texttt{disjoint(real\_number, imaginary)}. Together with the fact
+\texttt{is\_a(a, real\_number)}, it yields \texttt{$\neg$is\_a(a, imaginary)} and hence
+refutes the goal: verdict \texttt{refuted}, answer ``no''. It is essential that the
+refutation rests on an explicit disjointness rather than on a silent closed-world
+assumption: under the open world, the system does not declare the goal false merely because
+it failed to derive it. Source: \texttt{evals/l1\_synthetic}, identifier
+\texttt{disjoint-refute-01}; gate 40/40.
+
+\subsection{Disjunction and case split (L2)}
+
+Theory: fact \texttt{is\_a(rex, prim)}; rule \texttt{is\_a(?x, prim)} $\Rightarrow$
+\texttt{is\_a(?x, a)} $\lor$ \texttt{is\_a(?x, b)}; rules \texttt{is\_a(?x, a)}
+$\Rightarrow$ \texttt{is\_a(?x, c)} and \texttt{is\_a(?x, b)} $\Rightarrow$
+\texttt{is\_a(?x, c)}; goal \texttt{is\_a(rex, c)}. The Horn procedure cannot handle a
+disjunctive head, so the clausal L2 procedure is enabled: it splits into cases over the two
+disjuncts and derives \texttt{c} in each, after which the verdict is \texttt{supported}.
+With L2 disabled, the same input yields an honest \texttt{out\_of\_fragment}, not a silent
+downgrade to a weaker logic. Source: \texttt{evals/l2\_synthetic}, identifier
+\texttt{head-case-split-01}; gate 65/65.
+
+\subsection{A composite FOLIO case}
+
+The FOLIO gold formalization mixes constructions from several stages, so the collection is
+evaluated by intra-fragment slices. In row \texttt{folio-validation-0010} (``wild turkey''),
+the premises contain a disjunction of six subspecies and the fact \texttt{WildTurkey(tom)}.
+Conditional negations together with this fact yield \texttt{$\neg$Eastern(tom)},
+\texttt{$\neg$Osceola(tom)}, and the negation of the Goulds/Merriams/Riogrande disjunction;
+the goal \texttt{Eastern(tom)}, labeled \texttt{False}, is therefore refuted. The clausal
+procedure gives \texttt{refuted} (``no''), matching the label.
+
+Row \texttt{folio-validation-0027} (``Marvin'') is different: the goal is labeled
+\texttt{False}, but the annotated premises entail neither the goal nor its negation, and the
+system honestly abstains (\texttt{unknown}) rather than issuing an unconfirmed ``no''. On
+the negation slice (13 rows) the gold-fed mode gives 12/13 with zero confidently wrong
+conclusions; on the L2 tier-a slice (45 rows) coverage is 44/45 and gold-fed is 42/44.
+Sources: \texttt{evals/data/folio\_l2\_tier\_a.jsonl},
+\texttt{folio\_negation\_tier\_a.jsonl}.
+
+\subsection{Finite-domain constraints (L3)}
+
+An AR-LSAT problem: five instrumental pieces run on a compact disc in some order; conditions
+of order, adjacency, and grouping are given, and the question asks which of the proposed
+sequences is admissible. The formalization is finite-domain: a domain of positions $0..4$,
+five variables with an \texttt{all\_different} constraint, ordering and composite
+constraints. A \texttt{not\_violate} question is checked by enumeration, and ``must be'' and
+``could be'' questions are decided as truth in all or at least one admissible placement. On
+hand-encoded real games the gold-fed mode gives 27/27, including 5/5 for
+\texttt{not\_violate} questions; the live run on the eval split gives 23/30. Sources:
+\texttt{evals/data/ar\_lsat\_dev.jsonl}, \texttt{evals/data/ar\_lsat\_gold.jsonl}.
+
+\subsection{Exact arithmetic (L4)}
+
+A GSM8K problem: ``Henry made two stops during a 60-mile trip; the first was after 20 miles,
+the second was 15 miles before the end. How many miles did he drive between the stops?''
+Phase 0 builds a directed graph of quantities: \texttt{total=60}, \texttt{first=20},
+\texttt{before\_end=15}, and the target quantity \texttt{between} is given by an equation.
+The linear system is solved in exact rational arithmetic: $60-20-15=25$. An arithmetic error
+is impossible here by construction: a wrong number can only be a \emph{modeling} error,
+never a counting one. Source: \texttt{evals/data/gsm8k\_gold.jsonl}, identifier
+\texttt{gsm8k-gold-0028}; gold-fed 8/8.
+
+% ======================================================================
+\section{Formalisms and decision procedures}
+\label{sec:formalisms}
+
+Ankyra is not a ``Horn-clause solver'' but a system that coordinates formalizations. The end
+goal is to cover the largest practically important class of reasoning for which a decidable
+decision procedure exists: the model produces a formalization in a logic $L$, and a sound
+procedure for $L$ decides it. Coverage is therefore measured in named formalisms, not in an
+undefined notion of ``reasoning''.
+
+\subsection{The stage protocol}
+
+Each stage is described by the same six items: the \emph{formalism} $L$ and the answer
+semantics; the \emph{decision procedure}, sound for $L$ (and, where claimed, complete); the
+\emph{engine change}; the \emph{extraction change} --- what Phases 0 and 2 must be able to
+express for the model to propose in $L$; the \emph{staged gate on a reference collection}
+with a small fixed subsample and hard invariants (no confidently wrong conclusions, every
+determinate answer \texttt{proven}, accuracy above threshold, every remainder categorized);
+and a \emph{switch}, off by default, so that the semantics of the reference collection does
+not leak into the engine.
+
+\begin{center}
+\begin{tabular}{p{0.8cm}p{5.6cm}p{5.4cm}}
+\toprule
+\textbf{Stage} & \textbf{Formalism} & \textbf{Procedure} \\
+\midrule
+L0 & definite Horn clauses, \texttt{is\_a}, negation as complementary pairs (open world) & semi-naive forward chaining to a fixed point \\
+L1 & stratified negation / negation as failure (NAF), declared closed world & stratified closure, disjointness constraints \\
+L2 & positive first-order logic: disjunction, $\exists/\forall$, proof by cases & bounded resolution (grounding over a finite domain) \\
+L3 & finite-domain constraints (CSP/SAT) & search over finite value domains \\
+L4 & arithmetic terms and equations & exact rational evaluation / linear elimination \\
+D  & defaults with specificity via \texttt{is\_a} & defeasible layer (specificity over the strict core) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+L3 and L4 are separate engines within the same system, each with its own internal
+representation: finite-domain constraints are not logical derivability but constraint
+satisfaction, and an arithmetic problem yields a number, not a consequence.
+
+\subsection{The declared fragment}
+
+Since the procedures differ, the system must decide which one runs --- and do so without
+ever guessing. The \emph{declared-fragment protocol} provides the answer. The system
+analyzes the \emph{constructed} theory and query and derives the set of required features:
+is there a disjunctive head, an existential quantifier, a composite goal, a negation, a
+built-in comparison, an equality? This is the \emph{fragment} --- an objective property of
+the formalization, not an intention. Separately, a run \emph{declares} its semantics: which
+procedures are enabled (\texttt{ANKYRA\_*} switches) and whether the query is read under an
+open or closed world. The routing decision combines the two and checks them against each
+other.
+
+If the fragment fits within the enabled capabilities, the corresponding procedure is chosen.
+If not --- the structure needs a logic that the run did not enable, or a combination the
+chosen procedure cannot honor --- the result is the named gap \texttt{out\_of\_fragment},
+not a silent downgrade to a weaker procedure.
+
+The extension point is the \texttt{Inference} protocol: the semantics (derivability, verdict
+shape, closure against which a proposal is classified) become swappable, while procedure
+selection and mechanisms stay in place. There are currently two implementations --- Horn and
+clausal; L3 and L4 are plugged in as separate engines.
+
+\subsection{What the engines share}
+
+Every engine is sound \emph{relative to} the formalization it receives, and every engine
+abstains honestly instead of guessing. The symbolic components are complete relative to the
+formalization (forward chaining reaches a fixed point), but completeness of the
+\emph{translation} is not claimed: the model can always miss a premise in the text. The
+distinction between a wrong answer and a missing one is therefore preserved throughout.
 
 % ======================================================================
 \section{Evaluation methodology}
 \label{sec:method}
 
-\paragraph{Metrics.} For each collection we report \emph{kind accuracy} (a
-three-way or multiple-choice label), with Wilson 95\% confidence intervals. The gate
-also enforces a \emph{soundness invariant}: every determinate answer is
-\texttt{proven}, and there are \emph{zero grounded false proofs} (a confidently wrong
-determinate answer).
+\paragraph{Metrics.} For each collection we report \emph{class accuracy} (three-class or
+multiple-choice) with Wilson 95\% confidence intervals. The staged gate also requires a
+\emph{soundness invariant}: every determinate answer \texttt{proven} and no confidently
+wrong conclusions.
 
-\paragraph{Two ceilings.} For a composite benchmark we separate:
-\emph{coverage} (the share of gold formulas the committed logic can express and
-decide; the remainder is an honest \texttt{out\_of\_fragment}) from
-\emph{extraction} (the share of covered rows the LLM translates correctly). The
-\emph{gold-fed} counterfactual feeds the engine the annotated formalization instead of
-the LLM extraction, isolating method accuracy from language accuracy.
+\paragraph{Two ceilings.} For a composite reference collection we separate \emph{coverage}
+(the share of gold formulas the implemented logic can express and decide; the remainder is
+an honest \texttt{out\_of\_fragment}) and \emph{extraction} (the share of covered rows the
+language model translates correctly). The \emph{gold-fed mode} feeds the engine annotated
+formalizations instead of model-extracted ones, separating the accuracy of the method from
+the accuracy of translation.
 
-\paragraph{Budget and reproducibility.} There is no free LLM access; live runs are
-paid. Each collection therefore enters as a small committed sample, run once, and is
-re-run only on a mismatch. All LLM-free gates (synthetic suites, the gold-fed
-diagnostic) are reproducible from the repository alone.
+\paragraph{Budget and reproducibility.} There is no free access to the language model; runs
+that call it are paid. Each collection therefore enters as a small fixed subsample, runs
+once, and is repeated only on a discrepancy. All checks without a language model (synthetic
+sets, gold-fed diagnostics) are reproducible from a single repository.
+
+\paragraph{The evaluation ladder.} Results are obtained on a three-rung ladder. The first
+rung is synthetic sets without a language model, directly exercising the semantics of each
+formalism, with no extraction and no provider variance: this is the clean engine signal. The
+second rung is a surface-simple real collection (for example ProntoQA-OOD for L2), adding
+real text on top of clean notation. The third rung is a deliberately extraction-heavy slice
+of a real collection (FOLIO). Across the ladder, the gold-fed mode --- feeding the engine
+hand-written formulas instead of extracted ones --- separates two distinct ceilings:
+\emph{coverage} (how many problems the implemented logic can express at all; going beyond it
+is an honest \texttt{out\_of\_fragment}, costing completeness but not soundness) and
+\emph{extraction} (how many covered problems the model translates correctly). The separation
+shows where improvement must come from --- the engine or the interface.
 
 % ======================================================================
 \section{Results}
 \label{sec:results}
 
-% TODO: prose per subsection. Numbers below are the measured values.
+We report two results: class accuracy on covered slices and the soundness invariant.
+Deterministic checks without a language model come first, followed by live runs on external
+collections. On no reported slice is there a single confidently wrong conclusion, and every
+determinate answer is tagged \texttt{proven}.
 
-\subsection{Synthetic, LLM-free gates}
+\subsection{Synthetic checks without a language model}
 
-These gates are deterministic and cover every construct of each formalism (including
-negative controls); they carry no LLM in the loop.
+These checks are deterministic and cover every construction of every formalism (including
+negative controls); the language model is not in the loop.
 
 \begin{center}
 \begin{tabular}{lcc}
 \toprule
-\textbf{Gate} & \textbf{Result} & \textbf{Grounded false proofs} \\
+\textbf{Check} & \textbf{Result} & \textbf{Confidently wrong} \\
 \midrule
-Fragment routing (\texttt{evals.routing\_synthetic}) & 19/19 & 0 \\
+Procedure selection (\texttt{evals.routing\_synthetic}) & 19/19 & 0 \\
 L1 negation (\texttt{evals.l1\_synthetic}) & 40/40 & 0 \\
 L2 clausal + equality (\texttt{evals.l2\_synthetic}) & 65/65 & 0 \\
 L3 finite-domain CSP (\texttt{evals.l3\_synthetic}) & 31/31 & 0 \\
 L4 arithmetic (\texttt{evals.l4\_synthetic}) & 37/37 & 0 \\
-Defeasible defaults (\texttt{evals.defeasible\_synthetic}) & 8/8 & 0 \\
+Defaults (\texttt{evals.defeasible\_synthetic}) & 8/8 & 0 \\
 \bottomrule
 \end{tabular}
 \end{center}
 
 \subsection{External collections}
 
-Table~\ref{tab:results} summarizes the live/committed results. ``Grounded'' is the
-soundness invariant (0 for every row).
+Table~\ref{tab:results} summarizes the live and fixed results. The confidently-wrong column
+is the soundness invariant (0 in every row).
 
 \begin{table}[h]
 \centering
@@ -188,124 +543,256 @@ soundness invariant (0 for every row).
 \toprule
 \textbf{Stage} & \textbf{Collection / slice} & \textbf{Result} & \textbf{95\% CI} \\
 \midrule
-L0 & ProofWriter, Tier D (OWA) & 297/300 (99.0\%) & [97.1, 99.7] \\
-L1 & ProntoQA, tier a & 48/48 (100\%) & [92.6, 100] \\
-L1 & ProntoQA, tier b & 160/160 (100\%) & [97.7, 100] \\
-L2 & ProntoQA-OOD, tier a & 41/42 (97.6\%) & [87.7, 99.6] \\
-L1 & FOLIO negation slice (text-fed) & 11/13 (84.6\%) & [57.8, 95.7] \\
-L2 & FOLIO L2 tier a (text-fed, covered) & 29/44 (65.9\%) & [51.1, 78.1] \\
-L3 & AR-LSAT, eval & 23/30 (76.7\%) & [59.1, 88.2] \\
-L4 & GSM8K, eval & 38/40 (95.0\%) & [83.5, 98.6] \\
+L0 & ProofWriter, tier D (open world) & 297/299 (99.3\%) & [97.6; 99.8] \\
+L1 & ProntoQA, tier a & 48/48 (100\%) & [92.6; 100] \\
+L1 & ProntoQA, tier b & 160/160 (100\%) & [97.7; 100] \\
+L2 & ProntoQA-OOD, tier a & 41/42 (97.6\%) & [87.7; 99.6] \\
+L2 & FOLIO, negation slice (text-fed) & 11/13 (84.6\%) & [57.8; 95.7] \\
+L2 & FOLIO L2, tier a (text-fed, covered) & 29/44 (65.9\%) & [51.1; 78.1] \\
+L3 & AR-LSAT, eval & 23/30 (76.7\%) & [59.1; 88.2] \\
+L4 & GSM8K, eval & 38/40 (95.0\%) & [83.5; 98.6] \\
 \bottomrule
 \end{tabular}
-\caption{Committed-subset results. Denominators are small samples, not full test
-splits; see Section~\ref{sec:limitations}.}
+\caption{Results on fixed subsamples. The denominators are small samples, not full test
+sets; see Section~\ref{sec:limitations}.}
 \label{tab:results}
 \end{table}
 
-\paragraph{ProofWriter (L0).} Tier D: 297/300, 0 grounded false proofs, every
-determinate answer \texttt{proven}. Full collection (6\,368 theories) not run (budget).
+\paragraph{ProofWriter (L0).} This is the base gate for the definite Horn layer. On the
+small strict tier-A slice it is 45/45; on the extended tier D it is 297/299 (99.3\%) over
+evaluated records, with no confidently wrong conclusion and every determinate answer
+\texttt{proven}. One of the 300 selected records is excluded from the denominator: its
+question could not be extracted (provider variance), and a targeted rerun answered it
+\texttt{proven}. The two remaining misses are honest \texttt{unknown} answers under an
+extraction error, not wrong conclusions. The full collection (6{,}368 theories, roughly 11
+hours) was not run for budget reasons.
 
-\paragraph{ProntoQA (L1) and ProntoQA-OOD (L2).} ProntoQA tier a 48/48 and tier b
-160/160, all \texttt{proven}. ProntoQA-OOD tier a 41/42 (97.6\%), 0 grounded false
-proofs.
+\paragraph{ProntoQA (L1) and ProntoQA-OOD (L2).} These are gates on real text over clean
+notation. ProntoQA checks explicit negation: tier a is 48/48 and tier b is 160/160, all
+answers \texttt{proven}; the one-sided 95\% Clopper--Pearson lower bound on per-problem
+accuracy for tier b is 98.1\%. ProntoQA-OOD checks compositional reasoning (disjunction,
+case split, quantifiers): tier a is 41/42 (97.6\%), with no confidently wrong conclusion.
+After these runs, ProntoQA is considered closed.
 
-\paragraph{FOLIO (L1/L2, the composite case).} FOLIO's gold FOL spans several
-formalisms at once, so it is run as in-fragment slices:
+\paragraph{FOLIO (L1/L2, composite case).} The FOLIO first-order annotation spans several
+formalisms at once, so it is evaluated by intra-fragment slices rather than by a single
+score:
 \begin{itemize}
-	\item L1 negation slice (13 rows): text-fed 11/13, gold-fed 12/13.
-	\item L2 tier a (45 rows): coverage 44/45 (one malformed annotation); on covered
-	      rows text-fed 29/44 versus gold-fed 42/44.
+\item The negation slice (13 rows) turned out to be \emph{fragment-bound}: on the Horn path,
+gold-fed and text-fed modes coincide (7/13), and the remainder is reductio and
+contraposition; the slice is therefore scored by the clausal L2 procedure: gold-fed 12/13,
+text-fed 11/13, with no confidently wrong conclusion. The four \texttt{Uncertain} answers
+remain honest \texttt{unknown}; a global closed world is not applied, since it would wrongly
+refute them.
+\item The L2 tier-a slice (45 rows): coverage is 44/45 (one broken annotation), i.e.\ the
+implemented logic expresses almost the whole slice; on the covered rows, gold-fed gives
+42/44 against 29/44 under text-fed.
 \end{itemize}
-The gap between gold-fed (method) and text-fed (extraction) localizes the remaining
-cost to extraction; the coverage ceiling is essentially closed on this slice. The
-complement of the two committed gate fragments (13 + 93 rows of the 204-row validation
-split) carries constructs outside every committed stage, reported
-\texttt{out\_of\_fragment}: xor, $\leftrightarrow$, multi-variable quantification,
-equality, function terms, axiom schemas.
+The gap between gold-fed (method) and text-fed (extraction) localizes the remaining cost in
+extraction, not in the engine: the coverage ceiling on the fixed 45-row slice is in effect
+reached. Across the whole 204-row validation split, the two fixed gates cover 13 + 93 = 106
+rows (a lower bound on the expressible share); of the 93 rows of the L2 fragment, only 45
+are fixed and run, while 48 are left unrun for budget reasons. The remaining rows --- at
+most 98 --- contain constructions outside any implemented stage (exclusive or, equivalence,
+multi-variable quantifiers, equality, function terms, axiom schemas) and are reported as
+\texttt{out\_of\_fragment}.
 
-\paragraph{AR-LSAT (L3).} Gold-fed 27/27 over real games; live eval 23/30 (76.7\%),
-0 \texttt{grounded\_mismatch}.
+\paragraph{AR-LSAT (L3).} Finite-domain constraints are checked by a separate engine. On
+hand-encoded real games the gold-fed mode gives 27/27; the live run on the eval split is
+23/30 (76.7\%) with no \texttt{grounded\_mismatch}. The seven misses are honest abstentions,
+not confidently wrong answers.
 
-\paragraph{GSM8K (L4).} Exact arithmetic makes arithmetic errors impossible by
-construction. Synthetic 37/37; hand-encoded gold 8/8; live eval 38/40 (the two
-non-correct rows are annotated reference errors: one dataset error, one ambiguity).
+\paragraph{GSM8K (L4).} Exact rational arithmetic makes arithmetic errors impossible by
+construction; a wrong number here is always a \emph{modeling} error, never a counting one.
+Synthetic checks are 37/37, the hand-encoded gold is 8/8, and the live run gives dev 12/12
+and eval 38/40. The two wrong rows in the eval split are annotated gold errors: one dataset
+error, one ambiguity.
 
 % ======================================================================
 \section{Limitations}
 \label{sec:limitations}
 
-% TODO: this is the section that must stay brutally honest. Keep all of it.
+\paragraph{Sample size and statistics.} Every number on a real collection rests on a small
+sample (N = 13, 30, 40, 42, 44, 300), so the confidence intervals are wide
+(Table~\ref{tab:results}); on the small slices they overlap with plausible baselines and do
+not support a state-of-the-art claim. Detecting a difference of about five percentage points
+at $p\approx0.95$ with power $0.8$ would require on the order of 400 examples per group.
 
-\paragraph{Sample size and statistics.} Every real-collection number rests on a
-small sample (N = 13, 30, 40, 42, 44, 300), so the confidence intervals are wide
-(Table~\ref{tab:results}); on the small slices they overlap plausible baselines, and
-they do not support a state-of-the-art claim. Detecting a difference of about five
-percentage points at $p\approx0.95$ with power $0.8$ would require on the order of
-$400$ examples per arm.
+\paragraph{Single runs and non-determinism.} The live path calls a language model whose
+provider is non-deterministic even at zero temperature. Runs are performed once (for budget
+reasons) and repeated only on a discrepancy, so we do not report a variance estimate and do
+not perform significance tests.
 
-\paragraph{Run-once and nondeterminism.} The live path invokes an LLM whose provider is
-nondeterministic even at temperature zero. Runs are executed once (budget policy) and
-repeated only on a mismatch, so we report no variance estimate and make no
-significance test.
+\paragraph{Subsamples, not full test sets.} We evaluate fixed subsamples: ProntoQA-OOD tier
+a (42 of 5{,}800), AR-LSAT eval (30 of $\sim$230), GSM8K eval (40 of $\sim$1{,}319),
+ProofWriter tier D (300 of 6{,}368 theories). Full collections were not run because there is
+no free access to the language model and the runs are paid for by the author out of pocket;
+this is a deliberate boundary of the study, not a hidden failure.
 
-\paragraph{Subsets, not test splits.} We evaluate committed samples: ProntoQA-OOD tier
-a (42 of 5\,800), AR-LSAT eval (30 of $\sim$230), GSM8K eval (40 of $\sim$1\,319),
-ProofWriter Tier D (300 of 6\,368 theories). Full collections were not run because there
-is no free LLM access and the runs are paid out of pocket; this is a deliberate scope
-boundary, not an unreported failure.
+\paragraph{Soundness is relative to the formalization.} The engine is sound \emph{relative
+to} the theory it is handed; the translation from natural language into that theory is done
+by the language model. An extraction error can therefore produce an \emph{abstention} or, in
+principle, a \texttt{proven} answer about a wrong formalization. We measure the absence of
+confidently wrong conclusions (zero on every reported slice) and reduce extraction risks
+through verbatim quotation checks, guards against citing conditional statements, guards
+against refuting on the basis of hypotheses, and domain-declaration control. This is not an
+end-to-end soundness proof relative to the real world.
 
-\paragraph{Soundness is relative to the formalization.} The engine is sound given the
-theory it is handed; the compiler of natural language into that theory is the LLM. An
-extraction error can therefore produce an \emph{abstention}, or, in principle, a
-\texttt{proven} answer about the wrong formalization. We measure \emph{grounded false
-proofs} (zero on every reported slice) and mitigate extraction with quote grounding,
-a conditional-quote guard, a grounded-refutation guard, and domain-declaration guards.
-This is not a proof of end-to-end truth against the world.
+\paragraph{No single aggregate for a composite collection.} For FOLIO, full coverage of the
+collection is unattainable by construction: equality, function terms, exclusive or,
+equivalence, multi-variable quantifiers, and axiom schemas lie outside any implemented
+stage, and full first-order derivability is only semi-decidable. We therefore report
+stratified slices and an explicit \texttt{out\_of\_fragment} counter rather than a
+whole-collection score.
 
-\paragraph{Composite benchmarks have no single headline.} For FOLIO, whole-collection
-coverage is unreachable by design: equality, function terms, xor, biconditional,
-multi-variable quantification and axiom schemas lie outside every committed stage, and
-full first-order entailment is only semi-decidable. We therefore report stratified
-slices and an explicit \texttt{out\_of\_fragment} count, never a whole-collection score.
+\paragraph{No direct comparison with published results.} Published numbers are obtained on
+different collections, splits, protocols, and external models, so they are not directly
+comparable; we do not perform a common-input comparison. The contribution is an argument
+about soundness and checkability, with accuracy as supporting evidence.
 
-\paragraph{No head-to-head baselines.} Published baseline numbers use different
-collections, splits, protocols and front-end models, so they are not directly
-comparable; we do not run a shared-front-end comparison. The contribution is a
-soundness and verifiability argument, with accuracy as supporting evidence.
+\paragraph{Model and provider variability.} The numbers are tied to the extraction provider
+at run time; a different or updated model will change the text-fed columns. The gold-fed
+columns and the synthetic checks do not depend on the model.
 
-\paragraph{Model and provider drift.} Numbers are tied to the extraction provider used
-at run time; a different or updated model would change the text-fed columns. The
-gold-fed and synthetic columns are model-independent.
-
-\paragraph{Defeasible defaults.} Only a synthetic gate is reported; a real
-defeasible/NLI collection remains future work.
+\paragraph{Defaults.} Only the synthetic gate is reported; a real
+defeasible/natural-language-inference (NLI) collection remains future work.
 
 % ======================================================================
 \section{Related work}
+\label{sec:related}
 
-% TODO: expand with a proper comparison. Placeholders:
-% - Chain-of-thought / self-consistency (LLM reasoning is not certified).
-% - Logic-LM, LINC and other LLM+symbolic pipelines (translator + solver).
-% - ProofWriter, ProntoQA/ProntoQA-OOD, FOLIO, AR-LSAT, GSM8K as collections.
-% - Non-monotonic / defeasible reasoning; provenance and auditable inference.
+\paragraph{Language-model reasoning without a certificate.} Chain-of-thought~\cite{cot} and
+self-consistency~\cite{selfconsistency} show that step-by-step text generation improves
+language-model answers. Such chains, however, are not certified: a step that looks plausible
+may be wrong, and the answer carries neither a proof history nor a distinction between
+``proven'' and ``plausible''. Ankyra addresses exactly this gap: the model produces the
+reasoning, but a symbolic engine checks and certifies derivability.
+
+\paragraph{Language model and symbolic engine.} Translator-plus-solver pipelines
+(Logic-LM~\cite{logiclm}, LINC~\cite{linc}) also hand reasoning over to a symbolic solver,
+but trust the translation entirely: if the formalization is wrong, so is the conclusion.
+Here the boundary is stricter: every statement enters the theory only with a verbatim
+quotation or an explicit assumption tag, answer strength is derived from the premises
+(\texttt{proven} versus \texttt{proven\_under}), and a mismatch between the required and
+available logic yields an honest \texttt{out\_of\_fragment} rather than a hidden downgrade
+to a weaker procedure.
+
+\paragraph{Collections as staged gates.} We use standard collections ---
+ProofWriter~\cite{proofwriter}, ProntoQA~\cite{prontoqa} and
+ProntoQA-OOD~\cite{prontoqaood}, FOLIO~\cite{folio}, AR-LSAT~\cite{arlsat},
+GSM8K~\cite{gsm8k} --- not as a single aggregate score but as staged gates for individual
+stages, each with its own semantics. For composite collections (FOLIO) we isolate
+intra-fragment slices and separately report \texttt{out\_of\_fragment}; a single score
+across a collection with mixed constructions is unattainable by construction.
+
+\paragraph{Non-monotonic reasoning and defaults.} Default logic~\cite{reiter} and
+circumscription~\cite{mccarthy} formalize the defeasibility of conclusions; Ankyra
+implements a defaults layer with specificity via \texttt{is\_a} and honestly reports an
+undecided conflict rather than guessing a winner. The philosophical framing (doxa/logos) and
+the operator family of interaction are described in a companion paper~\cite{doxa}; here we
+focus on the system that implements this interface.
+
+\paragraph{Proof history and checkability.} The reliance on an automatically assembled proof
+history aligns Ankyra with work on checkable proof. The explanation here is a presentation
+of the derivation, not a second opinion about it: the model may not add facts to it, and
+every step names the rule that fired, the bindings used, and the supporting quotation or
+hypothesis.
 
 % ======================================================================
 \section{Conclusion}
 
-% TODO: short restatement of the thesis, the soundness-and-verifiability claim, and
-% the honest scope (proof of concept, not state of the art).
+We have presented a neuro-symbolic system in which a language model proposes and a
+deterministic engine decides, spanning a family of decidable formalisms under a
+declared-fragment protocol. The contribution is not an individual solver but an architecture
+and a discipline: a proposal protocol in which no statement enters the theory without a
+quotation or an assumption tag; answer strength that never exceeds the strength of its
+premises; a declared fragment and honest \texttt{out\_of\_fragment} instead of a silent
+downgrade to a weaker logic; and a staged-evaluation methodology for composite collections
+that separates the method's coverage from the extraction ceiling.
 
-We presented a neuro-symbolic engine in which the LLM proposes and a deterministic
-engine decides, covering a family of decidable formalisms behind a declared-fragment
-contract. On committed slices of standard collections the engine achieves high
-accuracy while producing zero grounded false proofs, and it abstains honestly where its
-logic cannot express a problem. The evaluation is a proof of concept; the limitations
-above define the boundary of what these results support.
+On fixed slices of standard collections the system achieves high accuracy without a single
+confidently wrong conclusion, and honestly abstains where its logic cannot express the
+problem. The evaluation is a demonstration prototype, not state of the art; the limitations
+above define the boundary of what these results support. Natural directions for further work
+are a real defeasible/NLI collection, finite function terms and multi-variable quantifiers
+(currently outside the fragment), and runs on full collections as budget becomes available.
+
+\appendix
+
+\section{Fragments and switches}
+\label{app:fragments}
+
+The system derives the required fragment from the \emph{constructed} theory and query; the
+switches declare which procedures a run is allowed to use. Neither is set by the model.
+
+\begin{center}
+\begin{tabular}{lp{9.6cm}}
+\toprule
+\textbf{Fragment feature} & \textbf{When it arises} \\
+\midrule
+\texttt{horn} & no non-Horn heads, no existential quantifiers, single goal \\
+\texttt{negation} & non-empty disjointness constraints or a negative literal \\
+\texttt{disjunction} & a disjunctive head or a disjunctive ground fact \\
+\texttt{existential} & non-empty existential theory statements or an existential goal \\
+\texttt{compound\_goal} & \texttt{goal\_mode} $\neq$ \texttt{single} (conjunctive or disjunctive goal) \\
+\texttt{builtin} & a comparison predicate (\texttt{=, neq, <, lte, >, gte}) \\
+\texttt{equality} & the reserved predicate \texttt{eq} anywhere \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+\textbf{Switch} & \textbf{Default} & \textbf{Action} \\
+\midrule
+\texttt{ANKYRA\_MAX\_WAVES} & 8 & maximum reasoning iterations \\
+\texttt{ANKYRA\_ALLOW\_HYPOTHESES} & true & whether assumptions are allowed \\
+\texttt{ANKYRA\_NEGATION\_MODE} & open & default world assumption for L1 \\
+\texttt{ANKYRA\_LOGIC} & off & enable the clausal L2 procedure \\
+\texttt{ANKYRA\_DEFEASIBLE} & off & enable the defaults layer \\
+\texttt{ANKYRA\_BUILTINS} & false & enable the comparison layer \\
+\texttt{ANKYRA\_CSP} & off & enable the finite-domain L3 engine \\
+\texttt{ANKYRA\_ARITH} & off & enable the numeric L4 engine \\
+\texttt{ANKYRA\_EXTRACT\_SAMPLES} & 1 & number of extraction attempts \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section{Reproduction}
+\label{app:repro}
+
+Checks without a language model (synthetic sets and gold-fed diagnostics) are reproducible
+from the repository without access to the language model and without API payment:
+
+\begin{verbatim}
+uv run python -m evals.routing_synthetic
+uv run python -m evals.l1_synthetic
+uv run python -m evals.l2_synthetic
+uv run python -m evals.l3_synthetic
+uv run python -m evals.l4_synthetic
+uv run python -m evals.defeasible_synthetic
+uv run python -m evals.ar_lsat --gold evals/data/ar_lsat_gold.jsonl
+uv run python -m evals.gsm8k --gold evals/data/gsm8k_gold.jsonl
+uv run python -m evals.analyze_folio
+\end{verbatim}
+
+Runs that call the language model (to the paid extraction provider) are performed once and
+repeated only on a discrepancy:
+
+\begin{verbatim}
+uv run python -m evals.proofwriter --tier d
+uv run python -m evals.prontoqa --tier b
+uv run python -m evals.prontoqa_ood --tier a
+uv run python -m evals.ar_lsat --sample eval --live
+uv run python -m evals.gsm8k --sample eval --live
+\end{verbatim}
 
 \begin{thebibliography}{99}
 
 	\bibitem{ankyra} Ankyra: A domain-agnostic neuro-symbolic reasoning engine. GitHub repository. URL: \url{https://github.com/merfill/ankyra}
+
+	\bibitem{doxa} Lapshin V. Doxa and Logos: Formalizing the Functions of a Non-Formalizable Source in Neuro-Symbolic Systems. (companion paper, in preparation).
 
 	\bibitem{proofwriter} Tafjord O., Mishra B. D., Clark P. ProofWriter: Generating Implications, Proofs, and Abductive Statements over Natural Language. AI2, arXiv:2012.13048.
 
@@ -317,13 +804,19 @@ above define the boundary of what these results support.
 
 	\bibitem{arlsat} Zhong W. et al. AR-LSAT: Investigating Analytical Reasoning of Text. 2021. arXiv:2104.06598.
 
-	\bibitem{agieval} Zhong W. et al. AGIEval: A Human-Centric Benchmark for Evaluating Foundation Models. 2024. arXiv:2304.06364.
-
 	\bibitem{gsm8k} Cobbe K. et al. Training Verifiers to Solve Math Word Problems. 2021. arXiv:2110.14168.
 
 	\bibitem{logiclm} Pan L. et al. Logic-LM: Empowering Large Language Models with Symbolic Solvers for Faithful Logical Reasoning. Findings of EMNLP. 2023.
 
 	\bibitem{linc} Olausson T. X. et al. LINC: A Neurosymbolic Approach for Logical Reasoning by Combining Language Models with First-Order Logic Provers. EMNLP. 2023.
+
+	\bibitem{cot} Wei J. et al. Chain-of-Thought Prompting Elicits Reasoning in Large Language Models. NeurIPS 2022. arXiv:2201.11903.
+
+	\bibitem{selfconsistency} Wang X. et al. Self-Consistency Improves Chain of Thought Reasoning in Language Models. ICLR 2023. arXiv:2203.11171.
+
+	\bibitem{reiter} Reiter R. A Logic for Default Reasoning // Artificial Intelligence. 1980. Vol.~13, No.~1--2. P.~81--132.
+
+	\bibitem{mccarthy} McCarthy J. Circumscription---A Form of Non-Monotonic Reasoning // Artificial Intelligence. 1980. Vol.~13, No.~1--2. P.~27--39.
 
 \end{thebibliography}
 
