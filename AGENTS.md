@@ -55,6 +55,10 @@ language, default `en`).
   formalisms (L0 Horn → L1 negation → L2 FOL → L3 CSP → L4 numeric; plus
   defeasible) and the benchmark gating each stage.
 - `docs/implementation_plan.md` — roadmap and backlog.
+- `docs/concepts.md` — conceptual overview: the engines and the reasoning cycle
+  (Russian mirror `docs/concepts_ru.md`).
+- `docs/doxa_and_logos.md` — theory article: doxa/logos and the operator family
+  (Russian mirror `docs/doxa_and_logos_ru.md`).
 - `docs/quality_findings.md` — eval-harness findings.
 - `docs/proofwriter.md` — ProofWriter collection notes (eval harness).
 - `docs/prontoqa.md` — ProntoQA collection notes (planned L1 gate).

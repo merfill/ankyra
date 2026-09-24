@@ -11,3 +11,6 @@ evals/out/
 
 # Cached benchmark downloads
 evals/data/.cache/
+
+# LaTeX build artifacts
+docs/*.log

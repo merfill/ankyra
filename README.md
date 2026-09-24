@@ -199,6 +199,14 @@ by sampling.
 
 - `ARCHITECTURE.md` — layers, flows, data model, module map.
 - `AGENTS.md` — contributor/agent workflow and the no-NL-parsers design boundary.
+- `docs/concepts.md` — conceptual overview: the engines and the reasoning cycle
+  (Russian mirror `docs/concepts_ru.md`).
+
+**Theory**
+
+- `docs/doxa_and_logos.md` — *Doxa and Logos*: the non-formalizable source and the
+  formal functions through which it interacts with the engine (Russian mirror
+  `docs/doxa_and_logos_ru.md`).
 
 **Spec and roadmap**
 
