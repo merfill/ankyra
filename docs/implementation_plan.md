@@ -570,6 +570,26 @@ Source: `docs/quality_findings.md`. Ordered by priority.
     budgeted live run; the guide gave **no gain** on the L1 slice (7/12 ≈ 7/13). Do not
     sample (`docs/l3_plan.md` D-L3-10).
 
+30. **L4 numeric engine (GSM8K) — DONE; live gate green.**
+    `engine/numeric/` is the exact-arithmetic engine behind `ANKYRA_ARITH` (D-L4-1):
+    the numeric IR + a `fractions.Fraction` solver (defined-quantity DAG + exact
+    Gaussian elimination + exact `max`/`min`, D-L4-4) whose outcomes are `determined` /
+    `underdetermined` / `inconsistent` / `out_of_fragment` / `insufficient` (D-L4-2);
+    the Phase-0 schema + deterministic builder + extraction prompt + a general bounded
+    repair pass; `Answer.kind "number"`, the `numeric` explanation kind and the routing
+    refusal `out_of_fragment:numeric_off`. The committed samples (12 dev / 40 eval,
+    carved deterministically from the test split, D-L4-3), the `gsm8k` skill/adapter,
+    and the dataset-notes artifact are in place. Gates: synthetic `evals.l4_synthetic`
+    **37/37**, hand-encoded gold `evals.gsm8k --gold` **8/8** (0 `grounded_mismatch`),
+    and the **live gate dev 12/12, eval 38/40, 0 `grounded_mismatch`**. The L4 soundness
+    invariant is **0 arithmetic errors** (a property of the exact procedure); a
+    `grounded_mismatch` is a *modelling* signal, and two committed rows are annotated
+    reference errors (`evals/data/gsm8k_notes.jsonl`, reproduced by
+    `evals/build_gsm8k_notes.py`): `0823` a dataset error and `0649` an ambiguity. The
+    gold cannot be derived from the reference `<<expr=result>>` annotations without NL
+    parsing (`docs/task.md` §3.8), so it is hand-written. Plan and decisions:
+    `docs/l4_plan.md`; collection notes: `docs/gsm8k.md`.
+
 ## 9. Reasoning roadmap (main axis)
 
 The main development axis is the staged widening of **decidable formalisms**: the
@@ -623,7 +643,11 @@ Stages:
   Interface/prompt fixes, a bounded question-repair pass, a duplicate-option guard,
   and an error-driven language-spec block (`ANKYRA_LANGUAGE_SPEC`) landed; sampling is
   not used (D-L3-10, and item 4 below).
-- **L4 — arithmetic, a separate numeric engine or tool-use.** Benchmark GSM8K.
+- **L4 — exact arithmetic, a separate numeric engine** (behind `ANKYRA_ARITH`).
+  Benchmark GSM8K. **Implemented** (item 30): in-repo exact IR + solver,
+  `Answer.kind "number"`; synthetic gate 33/33, hand-encoded gold 8/8 (0
+  `grounded_mismatch`); live runs separately budgeted. Plan: `docs/l4_plan.md`; notes:
+  `docs/gsm8k.md`.
 - **D — defeasible** (behind `ANKYRA_DEFEASIBLE`); **implemented + synthetic gate**
   `evals.defeasible_synthetic` (8/8, LLM-free); a defeasible-NLI set remains a
   cheap, differentiating real-data gate.

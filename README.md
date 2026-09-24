@@ -131,6 +131,9 @@ untethered "reasoning". Committed gates:
 | L3 | finite-domain CSP (boolean composition, count_compare, factor projection) | synthetic (LLM-free) | 31/31 |
 | L3 | finite-domain CSP | AR-LSAT gold-fed, 7 real games (LLM-free) | 27/27 |
 | L3 | finite-domain CSP | AR-LSAT eval tier (live) | **23/30**, **0 `grounded_mismatch`** |
+| L4 | exact arithmetic + `max`/`min` | synthetic (LLM-free) | 37/37 |
+| L4 | exact arithmetic | GSM8K gold-fed, 8 real problems (LLM-free) | 8/8 |
+| L4 | exact arithmetic | GSM8K dev/eval (live) | dev **12/12**, eval **38/40**, **0 `grounded_mismatch`** |
 | D | defeasible | synthetic (LLM-free) | 8/8 |
 
 The ProntoQA runs have **0 grounded false proofs** and every determinate answer is
@@ -154,6 +157,10 @@ uv run python -m evals.l3_synthetic          # L3 CSP synthetic gate (offline)
 uv run python -m evals.l3_spike              # L3 feasibility spike (offline)
 uv run python -m evals.ar_lsat --gold evals/data/ar_lsat_gold.jsonl  # L3 gold-fed (offline)
 uv run python -m evals.ar_lsat --sample eval --live                  # L3 AR-LSAT live gate
+uv run python -m evals.l4_synthetic          # L4 numeric synthetic gate (offline)
+uv run python -m evals.l4_spike              # L4 feasibility spike (offline)
+uv run python -m evals.gsm8k --gold evals/data/gsm8k_gold.jsonl      # L4 gold-fed (offline)
+uv run python -m evals.gsm8k --sample eval --live                    # L4 GSM8K live gate
 uv run python -m evals.defeasible_synthetic  # defeasible synthetic gate (offline)
 uv run python -m evals.routing_synthetic     # declared-fragment routing gate (offline)
 uv run python -m evals.build_prontoqa_ood_sample --tier a  # ProntoQA-OOD L2 sample
@@ -174,6 +181,19 @@ grounded false proofs**, with the residual now extraction (the G2 wall) and no c
 world applied (a global CWA would wrongly refute the four `Uncertain` rows). The gold-FOL
 diagnostic (`evals.analyze_folio`) separates method from extraction, i.e. the FOLIO gap
 is coverage/extraction, not the engine core.
+
+**L4** (exact rational arithmetic, with exact `max`/`min`) is implemented behind
+`ANKYRA_ARITH` as a separate numeric engine: a defined-quantity DAG plus finite linear
+systems over `fractions.Fraction`, decided exactly (`determined` / `underdetermined` /
+`inconsistent` / `out_of_fragment`). It is gated LLM-free by the synthetic collection
+**37/37** and hand-encoded gold **8/8** (0 `grounded_mismatch`), and the **live gate is
+green: dev 12/12, eval 38/40, 0 `grounded_mismatch`** — the only two non-correct rows are
+annotated reference errors (one dataset error, one ambiguity,
+`evals/data/gsm8k_notes.jsonl`). The L4 soundness invariant is **0 arithmetic errors**
+(a property of the exact procedure); a wrong number is a modelling error, never an
+arithmetic one. The extraction ceiling was raised by a general bounded repair pass
+(`ANKYRA_ARITH_REPAIRS`) and per-collection reading rules in `evals/skills/gsm8k/`, never
+by sampling.
 
 ## Documentation
 
@@ -197,6 +217,7 @@ is coverage/extraction, not the engine core.
 - `docs/l3_extension_plan.md` — L3 post-gate hardening (composite factors, value-target
   `complete_list`, `count` membership, AR-LSAT gold invariant).
 - `docs/equality_plan.md` — Tier-2 3a finite equality.
+- `docs/l4_plan.md` — L4: exact arithmetic (implemented).
 - `docs/defeasible_reasoning.md` — exceptions/defaults (the D layer).
 
 **Collections, gates and findings**
@@ -210,7 +231,7 @@ is coverage/extraction, not the engine core.
   (`docs/t1_plan.md`, `docs/t3_plan.md`, `docs/t4_t2_plan.md`, `docs/t5_plan.md`,
   `docs/t6_plan.md`).
 - `docs/ar_lsat.md` — AR-LSAT (the L3 gate).
-- `docs/gsm8k.md` — GSM8K (L4, planned).
+- `docs/gsm8k.md` — GSM8K (the L4 gate).
 - `docs/quality_findings.md` — eval findings and open quality gaps.
 
 ## Status
@@ -250,6 +271,14 @@ a per-collection **skill** (`evals/skills/<collection>/`, loaded by the harness 
 is the **budgeted step** — the `count`-rule attempt was dev-validated as a regression and
 reverted, so any further content needs a new dev-validated case
 (`docs/implementation_plan.md` §8 item 28, `docs/l3_extension_plan.md` H5).
+**L4 is implemented and gated** as a separate numeric engine behind `ANKYRA_ARITH`:
+exact rational arithmetic (defined-quantity DAG, linear systems, exact `max`/`min`),
+Phase-0 extraction with a bounded repair pass, `Answer.kind "number"` and the `numeric`
+explanation. LLM-free gates: synthetic **37/37** and hand-encoded gold **8/8** (both 0
+`grounded_mismatch`); the **live gate is green: dev 12/12, eval 38/40, 0
+`grounded_mismatch`** (the only two non-correct rows are annotated reference errors — one
+dataset error, one ambiguity). The L4 soundness invariant is 0 arithmetic errors; a wrong
+number is a modelling error.
 
 Known open items: FOLIO L2 extraction (residual **G2** — missing premises; the deferred
 `A′` repair); the FOLIO **negation slice is fragment-bound** and now scored at L2 (its

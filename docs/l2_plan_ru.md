@@ -449,7 +449,7 @@ set-of-support цикл идёт по упрощённому множеству.
   AND-фактами.
 - `tests/test_evals_l2_synthetic.py` / `tests/test_evals_prontoqa_ood.py`:
   синтетический гейт и скоринг адаптера.
-- `tests/test_logic_parity.py`: на Horn-теориях (`l1_synthetic` плюс сэмпл
+- `tests/test_engine_logic_l2.py`: на Horn-теориях (`l1_synthetic` плюс сэмпл
   ProntoQA, включая транзитивность `is_a` и дизъюнктность) L2-движок возвращает
   **тот же вердикт**, что и Horn-движок (guardrail «паритет Horn/L2»).
 - Полная регрессия: `uv run pytest` (offline; live-тесты пропускаются).

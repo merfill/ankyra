@@ -49,10 +49,10 @@ does not strengthen the core thesis.
 
 ## 4. Recommended form
 
-**Tool-use, not an in-repo core.** The LLM drives an arithmetic/solver tool and
-Ankyra verifies the formalization steps, not the arithmetic. Building a numeric
-core in the repository is justified only if the product scope explicitly expands
-to numeric reasoning.
+**Tool-use, not an in-repo core** was the original recommendation. The product instead
+chose the **in-repo separate engine** (D-L4-1): exact rational arithmetic (no new
+dependency) is auditable and makes arithmetic errors impossible by construction. The
+tool-use form remains the documented fallback. See `docs/l4_plan.md`.
 
 ## 5. Test plan (if pursued)
 
@@ -70,5 +70,14 @@ to numeric reasoning.
 
 ## 6. Status
 
-Out of scope / low priority, separate numeric engine (or tool-use). Documented so
-the decision is explicit. See `docs/reasoning_roadmap.md` L4.
+Implemented as the **separate L4 engine** (`engine/numeric/`): exact rational IR +
+`determined`/`underdetermined`/`inconsistent`/`out_of_fragment` solver (with exact
+`max`/`min`, D-L4-4), Phase-0 extraction (schema + builder + prompt + bounded repair),
+the `gsm8k` skill and the eval adapter. Gates (LLM-free): synthetic `evals.l4_synthetic`
+**37/37**, hand-encoded gold `evals.gsm8k --gold` **8/8** (0 `grounded_mismatch`). The
+dev/eval samples are committed (12/40, carved deterministically from the test split).
+**Live gate run: dev 12/12, eval 38/40, 0 `grounded_mismatch`** — the only two non-correct
+rows are annotated reference errors (`evals/data/gsm8k_notes.jsonl`): `0823` a dataset
+error, `0649` an ambiguity. Routing (`ANKYRA_ARITH`), `Answer.kind "number"` and the
+`numeric` explanation are wired. See `docs/l4_plan.md` and
+`docs/reasoning_roadmap.md` L4.

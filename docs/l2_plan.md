@@ -433,7 +433,7 @@ a contradiction shows both branches. `answer` is unchanged (`refuted` now carrie
   alternative survives; `ProblemStructure.variants` no longer becomes AND-facts.
 - `tests/test_evals_l2_synthetic.py` / `tests/test_evals_prontoqa_ood.py`: the
   synthetic gate and adapter scoring.
-- `tests/test_logic_parity.py`: on Horn theories (`l1_synthetic` plus the ProntoQA
+- `tests/test_engine_logic_l2.py`: on Horn theories (`l1_synthetic` plus the ProntoQA
   sample, including `is_a` transitivity and disjointness) the L2 engine returns the
   **same verdict** as the Horn engine (guardrail "Horn/L2 parity").
 - Full regression: `uv run pytest` (offline; live tests skipped).

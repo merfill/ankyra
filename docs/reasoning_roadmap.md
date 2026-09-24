@@ -22,6 +22,7 @@ implementation plan), `docs/l2_plan.md` (the L2 implementation plan),
 `docs/equality_plan.md` (Tier-2 item 3a: finite equality),
 `docs/g1_g4_plan.md` (Phase 1 extraction G1–G4 on FOLIO L2, completed),
 `docs/ar_lsat.md`, `docs/l3_plan.md` (the L3 implementation plan),
+`docs/l4_plan.md` (the L4 implementation plan),
 `docs/gsm8k.md`, `docs/defeasible_reasoning.md`, `docs/task.md`,
 `docs/implementation_plan.md`.
 
@@ -60,7 +61,7 @@ Every stage is defined by the same six items:
 | **L1** | Stratified negation / NAF, declared CWA | open/closed world per query; `¬atom` by failure | stratified closure | ProntoQA (negation/disjointness) | `ANKYRA_NEGATION_MODE` | implemented; gates green (synthetic 40/40, ProntoQA 208/208) |
 | **L2** | Positive FOL: disjunction, `∃/∀`, proof by cases | entailment / refutation in a bounded clausal search | bounded resolution | ProntoQA-OOD (compositional), FOLIO | `ANKYRA_LOGIC` | implemented; ProntoQA-OOD live 41/42 (0 grounded false proofs); FOLIO live extraction-bound |
 | **L3** | Finite-domain constraints (CSP/SAT) | `must` = true in all models, `could` = true in some | in-repo finite-domain search | AR-LSAT | `ANKYRA_CSP` | engine + synthetic + gold + live gate green (23/30, 0 grounded) (separate engine) |
-| **L4** | Arithmetic terms and equations | numeric answer, not entailment | evaluation / equation solving | GSM8K | — | low priority (separate engine / tool-use) |
+| **L4** | Arithmetic terms and equations | numeric answer, not entailment | exact evaluation / linear elimination | GSM8K | `ANKYRA_ARITH` | implemented (separate engine); synthetic 37/37, gold 8/8; live dev 12/12, eval 38/40, 0 grounded |
 | **D** | Defaults with specificity via `is_a` | answer plus resolved/undecided conflict | `engine/defeasible.py` | defeasible-NLI / αNLI | `ANKYRA_DEFEASIBLE` | implemented + synthetic gate |
 
 ### L0 — Definite Horn (the current spine)
@@ -222,14 +223,22 @@ Every stage is defined by the same six items:
 
 - **Formalism:** terms with arithmetic, equations, numeric answers with a
   tolerance.
-- **Procedure:** term evaluation / equation solving (e.g. sympy) — not the
-  symbolic core.
+- **Procedure:** in-repo **exact** evaluation (defined-quantity DAG) + linear
+  elimination over `fractions.Fraction` — not the symbolic core (D-L4-1; no new
+  dependency). Arithmetic errors are impossible by construction; incompleteness is the
+  honest `underdetermined` / `inconsistent` / `out_of_fragment`.
 - **Enables:** GSM8K-style word problems (`docs/gsm8k.md`).
 - **Note:** arithmetic checking is trivial; the difficulty is modelling, which is
-  not a soundness question for the symbolic engine. The preferred form is
-  tool-use (the LLM drives a numeric tool), not a new in-repo core.
-- **Status:** low priority; explicitly outside the current scope in
-  `docs/task.md` §1.
+  not a soundness question for the symbolic engine. Tool-use remains the documented
+  fallback; the product chose the in-repo separate engine.
+- **Status:** **implemented** as a separate engine behind `ANKYRA_ARITH`
+  (`engine/numeric/`: exact IR + solver with exact `max`/`min`; Phase-0
+  schema/builder/prompt + bounded repair; `Answer.kind "number"`; the `numeric`
+  explanation). Gates: synthetic `evals.l4_synthetic` **37/37**, hand-encoded gold
+  `evals.gsm8k --gold` **8/8** (0 `grounded_mismatch`), and the **live gate
+  dev 12/12, eval 38/40, 0 `grounded_mismatch`** (the two non-correct rows are
+  annotated reference errors — one dataset error, one ambiguity). Full plan and
+  decisions `D-L4-1`…`D-L4-4`: `docs/l4_plan.md`.
 
 ### D — Defeasible (cross-cutting, already implemented)
 

@@ -23,6 +23,7 @@ from ankyra.core.models import FactKey, Query, Theory, Verdict
 
 if TYPE_CHECKING:
     from ankyra.engine.csp.models import CspQuestion
+    from ankyra.engine.numeric.models import NumericQuery
 
 
 # Expressiveness the built structure needs, before any procedure runs. The fragment
@@ -42,6 +43,7 @@ FragmentFeature = Literal[
     "existential_disjunction",
     "equality",
     "csp",
+    "numeric",
 ]
 
 # The features whose presence makes the clausal (L2) procedure the required one.
@@ -200,6 +202,8 @@ def capabilities() -> frozenset[str]:
         caps.add("defeasible")
     if bool(get_setting("CSP", False)):
         caps.add("csp")
+    if bool(get_setting("ARITH", False)):
+        caps.add("numeric")
     return frozenset(caps)
 
 
@@ -230,6 +234,36 @@ def analyze_csp_routing(question: "CspQuestion") -> RoutingDecision:
         defeasible=False,
         refusal=None,
         reasons=("csp",),
+    )
+
+
+def analyze_numeric_routing(query: "NumericQuery") -> RoutingDecision:
+    """Route a numeric query to the separate L4 engine (``docs/l4_plan.md`` §9).
+
+    The numeric structures are not ``Theory``/``Query``, so this is a dedicated entry:
+    the fragment is ``numeric``, the procedure is ``numeric``, and the capability is
+    ``ANKYRA_ARITH`` (off by default). A run without it is
+    ``out_of_fragment:numeric_off`` — never decided by the Horn/clausal engine.
+    """
+    caps = capabilities()
+    if "numeric" not in caps:
+        return RoutingDecision(
+            fragment=frozenset({"numeric"}),
+            procedure="horn",
+            capabilities=caps,
+            world_assumption="open",
+            defeasible=False,
+            refusal="out_of_fragment:numeric_off",
+            reasons=("numeric", "out_of_fragment:numeric_off"),
+        )
+    return RoutingDecision(
+        fragment=frozenset({"numeric"}),
+        procedure="numeric",
+        capabilities=caps,
+        world_assumption="open",
+        defeasible=False,
+        refusal=None,
+        reasons=("numeric",),
     )
 
 

@@ -25,7 +25,10 @@ and explanation built mechanically from proof provenance.
 Out of scope: retrieval over an external corpus or fragment store — Ankyra is not
 a retrieval system and has no fragments; the input is a single self-contained
 problem. Also out of scope for v0: numeric/statistical scoring, and arithmetic
-beyond the deferred builtin layer (see Open Decisions, D1).
+beyond the deferred builtin layer (see Open Decisions, D1). A separate **L4 numeric
+engine** (exact rational arithmetic, behind `ANKYRA_ARITH`) extends the platform to
+arithmetic word problems without touching the symbolic spine; it is a distinct
+procedure with its own IR (`docs/l4_plan.md`), consistent with the L3 CSP engine.
 
 ## 2. Formal Problem Statement
 

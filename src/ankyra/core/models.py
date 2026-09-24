@@ -29,7 +29,9 @@ GoalMode = Literal["single", "all", "any", "forall", "cnf"]
 ConstraintKind = Literal["disjoint"]
 HypothesisKind = Literal["rule", "fact"]
 AnswerType = Literal["yes_no", "open", "instruction"]
-AnswerKind = Literal["yes", "no", "unknown", "contradiction", "binding", "choice", "instruction"]
+AnswerKind = Literal[
+    "yes", "no", "unknown", "contradiction", "binding", "choice", "number", "instruction"
+]
 Status = Literal[
     "supported",
     "insufficient",
@@ -360,7 +362,8 @@ class Answer(BaseModel):
     value: str | None = Field(default=None)
     kind: AnswerKind = Field(
         default="unknown",
-        description="Machine-readable answer shape: yes/no/unknown/contradiction/binding/instruction.",
+        description="Machine-readable answer shape: "
+        "yes/no/unknown/contradiction/binding/choice/number/instruction.",
     )
     strength: AnswerStrength = Field(default="not_proven")
     hypotheses_used: list[str] = Field(default_factory=list)
@@ -393,7 +396,7 @@ class Revision(BaseModel):
 
 ExplanationKind = Literal[
     "axiom", "assumption", "rule", "is_a", "hypothesis", "constraint", "naf",
-    "case", "resolution", "skolem", "model",
+    "case", "resolution", "skolem", "model", "numeric",
 ]
 
 

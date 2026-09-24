@@ -246,7 +246,7 @@ conflicts. Separate harness and flag (`ANKYRA_DEFEASIBLE`), same gate shape.
   `¬`; contradiction from both polarities; CWA target refutation; NAF strata;
   a non-stratifiable program → `out_of_fragment`; **negative guard**: closed world
   never activates on its own.
-- `tests/test_build_prontoqa.py` / `tests/test_evals_prontoqa.py`: deterministic
+- `tests/test_evals_prontoqa.py`: deterministic
   sample build and adapter scoring.
 - `tests/test_evals_l1_synthetic.py` / `tests/test_eval_defeasible_synthetic.py`:
   the synthetic gates (structural, no LLM).

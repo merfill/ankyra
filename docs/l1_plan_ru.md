@@ -250,7 +250,7 @@ v1 в формате Logic-LLM, 1500 строк) и официальный ге�
   ограничения; противоречие из обеих полярностей; CWA-опровержение цели; NAF-страты;
   нестратифицируемая программа → `out_of_fragment`; **негативный контроль**: закрытый
   мир никогда не включается сам.
-- `tests/test_build_prontoqa.py` / `tests/test_evals_prontoqa.py`: детерминированная
+- `tests/test_evals_prontoqa.py`: детерминированная
   сборка сэмпла и скоринг адаптера.
 - `tests/test_evals_l1_synthetic.py` / `tests/test_eval_defeasible_synthetic.py`:
   синтетические гейты (структурные, без LLM).
