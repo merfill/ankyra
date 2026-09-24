@@ -6,6 +6,7 @@ import re
 from dataclasses import dataclass, field
 from enum import Enum
 
+from ankyra.build.enrich import over_declared_domain_gaps
 from ankyra.build.normalize import FORBIDDEN_PRED_TOKENS, is_var
 from ankyra.core.models import Theory
 
@@ -183,6 +184,7 @@ def check_structural(theory: Theory) -> list[str]:
                 f"structural:axiom_blocks_exception:{consequence.predicate}"
                 f"({consequence.subject},{consequence.object})"
             )
+    gaps.extend(over_declared_domain_gaps(theory))
     return gaps
 
 

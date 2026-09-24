@@ -200,13 +200,12 @@ def _forall_structure(antecedent, forall=None):
     )
 
 
-def test_rule_forall_drops_the_sort_premise_and_is_recorded():
+def test_rule_forall_without_a_sort_premise_fires_and_is_recorded():
     from ankyra.engine.horn import saturate
 
     theory = unroll_problem_structure(
         _forall_structure(
             [
-                {"predicate": "is_a", "subject": "?x", "object": "person", "quote": "people"},
                 {"predicate": "furry", "subject": "?x", "predication": "copula", "quote": "furry people"},
             ]
         )
@@ -218,6 +217,28 @@ def test_rule_forall_drops_the_sort_premise_and_is_recorded():
     ]
     store = saturate(theory)
     assert store.get(("is_a", "gary", "smart", False, "neutral")) is not None
+
+
+def test_rule_forall_keeps_an_explicit_sort_premise():
+    from ankyra.engine.horn import saturate
+
+    theory = unroll_problem_structure(
+        _forall_structure(
+            [
+                {"predicate": "is_a", "subject": "?x", "object": "person", "quote": "people"},
+                {"predicate": "furry", "subject": "?x", "predication": "copula", "quote": "furry people"},
+            ]
+        )
+    )
+    rule = theory.rules[0]
+    assert [(c.predicate, c.subject, c.object) for c in rule.conditions] == [
+        ("is_a", "?x", "person"),
+        ("is_a", "?x", "furry"),
+    ]
+    # Gary is only furry, not typed a person: the explicit restriction blocks the
+    # rule instead of letting it fire for a non-member.
+    store = saturate(theory)
+    assert store.get(("is_a", "gary", "smart", False, "neutral")) is None
 
 
 def test_rule_forall_keeps_a_proper_subset_condition():

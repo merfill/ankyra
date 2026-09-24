@@ -129,17 +129,6 @@ def _ordered_objects(structure: ProblemStructure) -> list[Object]:
     return [Object(id=oid) for oid in ordered]
 
 
-def _domain_var(atom: StructAtom, sorts: dict[str, str]) -> str | None:
-    """The variable of a quantifier declaration ``is_a(?x, sort)`` whose sort matches."""
-    if atom.predicate != "is_a" or atom.negated or atom.modality != "neutral":
-        return None
-    var = atom.subject.id
-    sort = atom.object.id
-    if not var or not sort or var not in sorts:
-        return None
-    return var if sorts[var].casefold() == sort.casefold() else None
-
-
 def _atom_vars(atom: StructAtom) -> set[str]:
     return {term for term in (atom.subject.id, atom.object.id) if term and is_var(term)}
 
@@ -149,33 +138,24 @@ def _normalize_domain(
 ) -> list[StructAtom]:
     """Reconcile the rule body with its ``forall`` quantifier domain.
 
-    The domain premise ``is_a(?x, sort)`` is not knowledge: when another positive
-    premise already binds ``?x`` it is dropped. When it is the only binder (e.g.
-    "All people need sleep"), it is kept — or synthesized from ``forall`` when the
-    extractor omitted it — because a free variable would make the rule unsafe.
+    An explicit ``is_a(?x, sort)`` premise the extractor wrote is kept: it may be the
+    variable's only binder, and a rule that restricts its variable (e.g. "if a koala
+    is fluffy ...") must not lose that restriction, or it would fire for non-members.
+    The builder only *synthesizes* a missing binder for a ``forall`` variable that no
+    antecedent atom binds, because a free variable would make the rule unsafe.
     """
     if not sorts:
         return antecedent
     bound: set[str] = set()
-    domain_atoms: dict[str, StructAtom] = {}
-    others: list[StructAtom] = []
     for atom in antecedent:
-        var = _domain_var(atom, sorts)
-        if var is not None:
-            domain_atoms.setdefault(var, atom)
-        else:
-            others.append(atom)
-            bound |= _atom_vars(atom)
-    kept = list(others)
+        bound |= _atom_vars(atom)
+    kept = list(antecedent)
     for var, sort in sorts.items():
         if var in bound:
             continue
-        atom = domain_atoms.get(var)
-        if atom is None:
-            atom = StructAtom.model_validate(
-                {"predicate": "is_a", "subject": var, "object": sort}
-            )
-        kept.append(atom)
+        kept.append(
+            StructAtom.model_validate({"predicate": "is_a", "subject": var, "object": sort})
+        )
     return kept
 
 

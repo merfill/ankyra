@@ -284,7 +284,7 @@ To keep the separate engine self-contained, the numeric types live under
   controls** — division by zero is refused; a free target is never answered; an
   inconsistent system is never answered; a missing quote / undeclared quantity is a
   build error, not a wrong value.
-- **Gate result (LLM-free, done):** `evals.l4_synthetic` **33/33** — every expression
+- **Gate result (LLM-free, done):** `evals.l4_synthetic` **37/37** — every expression
   op, both classes, all five outcomes and the controls (`tests/test_evals_l4_synthetic.py`).
 
 ### 13.2 GSM8K — gold-fed, live (budgeted)

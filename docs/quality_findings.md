@@ -240,13 +240,18 @@ it is carried per rule on `Rule.forall` (and the legacy global `Theory.domain`) 
 shown in the trace. B10 makes it per-rule rather than global, so one over-declared
 sort no longer cuts conditions in unrelated rules.
 
-Two follow-up synthetic observations (**NEEDS INVESTIGATION**; not reproduced on
-ProofWriter): (a) *under-derivation* — `enrich.strip_domain_conditions` drops a
-global-domain premise even when it is the variable's only binder, leaving a
-condition-less rule that can never fire (the per-rule `unroll._normalize_domain`
-deliberately keeps the sole binder); (b) *over-derivation, unsound* — an over-declared
+Two follow-up synthetic observations: (a) *under-derivation* — `enrich.strip_domain_conditions`
+dropped a global-domain premise even when it was the variable's only binder, leaving a
+condition-less rule that could never fire (the per-rule `unroll._normalize_domain`
+deliberately kept the sole binder). **FIXED**: the premise is now dropped only when
+another condition binds the variable. (b) *over-derivation, unsound* — an over-declared
 sort whose premise coexists with another binder makes the rule fire for non-sort
-individuals. See `implementation_plan.md` milestone 8 for the verified examples.
+individuals; **FIXED** at both drop sites: the per-rule `forall` path never removes an
+explicit authored `is_a` premise (only synthesizes a missing binder), and the global
+`domain` path keeps an over-declared sort's premise while reporting an
+`over_declared_domain:` gap (an over-declared sort is one a named individual's positive
+out-of-domain class contradicts; 0 false positives over the live corpus; the one live
+structural case is `folio-validation-0097`). See `implementation_plan.md` milestone 8.
 
 External reference (Tafjord et al., "ProofWriter", arXiv:2012.13048; fine-tuned
 T5-11B, templated IID D5-test, ~70k training examples — NOT apples-to-apples):

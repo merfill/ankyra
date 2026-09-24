@@ -243,23 +243,38 @@ This bites Example B (`power > 50`, `wheelCount >= 4`).
    premise restricting a variable to a declared `domain` sort is dropped as the
    quantifier's domain. Closed the ProofWriter `Att*` generalization gaps without
    prompt special-cases.
-   **Domain drop — NEEDS INVESTIGATION.** Two distinct effects were observed on
-   synthetic structures (not reproduced on ProofWriter), so this is a finding to
-   reproduce and size before any fix:
-   - *(a) under-derivation:* `enrich.strip_domain_conditions` drops `is_a(?x,D)` for a
-     global `domain` sort unconditionally, even when it is the variable's only binder;
-     the rule then has no binder and can never fire. The per-rule
-     `unroll._normalize_domain` deliberately keeps the sole binder, so the two paths
-     disagree. Verified: `domain=["bird"]`, rule `is_a(?x,bird) => fly(?x)` becomes
-     condition-less and derives nothing. Likely a bug, independent of over-declaration.
-   - *(b) over-derivation (unsound):* when the sort is over-declared and the domain
-     premise coexists with another binder, dropping it removes a real restriction and
-     the rule fires for non-D individuals. Verified: `domain=["bird"]`, rule
-     `is_a(?x,bird) AND has_wings(?x) => fly(?x)`, facts `is_a(rex,dog)`,
-     `has_wings(rex)` derives `fly(rex)`.
-   Open: whether to keep the premise when the sort is over-declared and never drop the
-   sole binder, plus an auditable `over_declared_domain:` gap; reproduce on live
-   extraction first (project rule: no speculative machinery).
+   **Domain drop — FIXED (a + b).** Reproduced offline through the real
+   builder and scanned the committed live corpus (412 traces: 300 ProofWriter, 68
+   FOLIO, 44 ProntoQA-OOD): `domain` is declared 7 times and a domain-sort
+   `is_a(?x,D)` rule premise appears 0 times, so the strip path is a no-op live.
+   - *(a) under-derivation — FIXED.* `enrich.strip_domain_conditions` dropped
+     `is_a(?x,D)` for a global `domain` sort unconditionally, even when it was the
+     variable's only binder; the rule then became condition-less and never fired
+     (`engine/horn.py:409`), while the per-rule `unroll._normalize_domain`
+     deliberately keeps the sole binder — the two paths disagreed. Now the premise
+     is dropped only when another condition binds the variable, so the sole binder
+     is kept. Reproduced and fixed end-to-end: `domain=["person"]`, rule
+     `is_a(?x,person) => needs_sleep(?x)`, fact `is_a(alice,person)` now derives
+     `needs_sleep(alice)` (was `unsupported`).
+   - *(b) over-derivation (unsound) — FIXED (two mechanisms).* When the sort is
+     over-declared and the domain premise coexists with another binder, dropping it
+     removed a real restriction and the rule fired for non-D individuals. Verified
+     synthetically: `domain=["bird"]`, rule `is_a(?x,bird) AND has_wings(?x) =>
+     fly(?x)`, facts `is_a(rex,dog)`, `has_wings(rex)` derived `fly(rex)`. The
+     builder now has **two** drop sites and both are closed:
+     (1) the per-rule `forall` path (`unroll._normalize_domain`) **never removes an
+     explicit `is_a(?x,D)` premise the extractor wrote**; it only synthesizes a
+     missing binder for an unbound variable. This closes one live structural case
+     (`folio-validation-0097`, forall `koala`, body `is_a(?x,koala) ∧ fluffy(?x)`),
+     which previously lost the `koala` restriction (it answered `unknown`, not a
+     false proof). (2) the global-`domain` path (`enrich.strip_domain_conditions`)
+     keeps a premise whose sort is **over-declared**: `enrich.over_declared_domains`
+     marks a declared sort when a named individual carries a positive `is_a(x,C)`,
+     `C ∉ domain`, and reports an auditable `over_declared_domain:{D}` gap
+     (`build/symbolic.py`). The global guard changes behaviour only when a strippable
+     premise exists: **0 false-positive gaps** over the 412 live structures. Gated by
+     `tests/test_build_enrich.py` and `tests/test_build_unroll.py`;
+     `evals.l1/l2/routing/defeasible_synthetic` green, pytest 645 passed.
 9. **Staged ProofWriter expansion (tiers B–D) — DONE; D gate green.**
    The committed sample grows along the collection's axes in gated steps, each
    **run once** and re-run only on a mismatch (cost-aware;
@@ -645,15 +660,15 @@ Stages:
   not used (D-L3-10, and item 4 below).
 - **L4 — exact arithmetic, a separate numeric engine** (behind `ANKYRA_ARITH`).
   Benchmark GSM8K. **Implemented** (item 30): in-repo exact IR + solver,
-  `Answer.kind "number"`; synthetic gate 33/33, hand-encoded gold 8/8 (0
-  `grounded_mismatch`); live runs separately budgeted. Plan: `docs/l4_plan.md`; notes:
-  `docs/gsm8k.md`.
+  `Answer.kind "number"`; synthetic gate 37/37, hand-encoded gold 8/8 (0
+  `grounded_mismatch`); live gate dev 12/12, eval 38/40, 0 `grounded_mismatch`.
+  Plan: `docs/l4_plan.md`; notes: `docs/gsm8k.md`.
 - **D — defeasible** (behind `ANKYRA_DEFEASIBLE`); **implemented + synthetic gate**
   `evals.defeasible_synthetic` (8/8, LLM-free); a defeasible-NLI set remains a
   cheap, differentiating real-data gate.
 
-Decisions: L3/L4 are separate engines and low priority; arithmetic is preferably
-tool-use, not an in-repo core. The architecture seam is `docs/logic_layer.md`
+Decisions: L3/L4 are separate engines; arithmetic ships as the in-repo exact
+numeric engine (D-L4-1), not tool-use. The architecture seam is `docs/logic_layer.md`
 (only semantics becomes pluggable). **Prerequisite:** close soundness findings
 21–22 first. **Budget:** each stage enters with a small committed sample (no free
 LLM access); full collections are separately budgeted.

@@ -2,7 +2,12 @@
 
 from __future__ import annotations
 
-from ankyra.build.enrich import enrich_theory, heal_structural, strip_domain_conditions
+from ankyra.build.enrich import (
+    enrich_theory,
+    heal_structural,
+    over_declared_domain_gaps,
+    strip_domain_conditions,
+)
 from ankyra.core.models import Morphism, Rule, Theory
 
 
@@ -100,6 +105,15 @@ def test_strip_domain_conditions_keeps_a_proper_class_premise():
     assert stripped[0].conditions[0].object == "dog"
 
 
+def test_strip_domain_conditions_keeps_the_sole_domain_binder():
+    rule = Rule(
+        conditions=[Morphism(predicate="is_a", subject="?x", object="person")],
+        consequence=Morphism(predicate="needs_sleep", subject="?x"),
+    )
+    stripped = strip_domain_conditions([rule], ["person"])
+    assert [cond.predicate for cond in stripped[0].conditions] == ["is_a"]
+
+
 def test_enrich_drops_domain_conditions_from_a_theory():
     theory = Theory(
         domain=["person"],
@@ -141,3 +155,86 @@ def test_build_theory_drops_domain_conditions_end_to_end():
     theory = build_theory(structure)
     assert [cond.predicate for cond in theory.rules[0].conditions] == ["nice"]
     assert theory.domain == ["person"]
+
+
+def test_over_declared_domain_keeps_the_restriction_and_reports_a_gap():
+    theory = Theory(
+        domain=["bird"],
+        morphisms=[Morphism(predicate="is_a", subject="rex", object="dog")],
+        rules=[
+            Rule(
+                conditions=[
+                    Morphism(predicate="is_a", subject="?x", object="bird"),
+                    Morphism(predicate="has_wings", subject="?x"),
+                ],
+                consequence=Morphism(predicate="fly", subject="?x"),
+            )
+        ],
+    )
+    enriched = enrich_theory(theory)
+    assert [cond.predicate for cond in enriched.rules[0].conditions] == ["is_a", "has_wings"]
+    assert over_declared_domain_gaps(enriched) == ["over_declared_domain:bird"]
+
+
+def test_build_theory_does_not_fly_an_over_declared_domain_outsider():
+    from ankyra.build.pipeline import build_theory
+    from ankyra.core.schemas import ProblemStructure
+    from ankyra.build.symbolic import symbolic_check
+    from ankyra.engine.horn import saturate
+
+    structure = ProblemStructure.model_validate(
+        {
+            "source_text": "All birds with wings fly. Rex is a dog and has wings.",
+            "domain": ["bird"],
+            "facts": [
+                {"predicate": "is_a", "subject": "rex", "object": "dog", "quote": "Rex is a dog"},
+                {"predicate": "has_wings", "subject": "rex", "quote": "has wings"},
+            ],
+            "rules": [
+                {
+                    "antecedent": [
+                        {"predicate": "is_a", "subject": "?x", "object": "bird"},
+                        {"predicate": "has_wings", "subject": "?x"},
+                    ],
+                    "consequent": {"predicate": "fly", "subject": "?x"},
+                    "quote": "All birds with wings fly",
+                }
+            ],
+        }
+    )
+    theory = build_theory(structure)
+    store = saturate(theory)
+    assert not any(
+        fact.predicate == "fly" and fact.subject == "rex" for fact in store.facts
+    )
+    assert "over_declared_domain:bird" in symbolic_check(theory).gaps
+
+
+def test_build_theory_keeps_a_lone_domain_binder_and_fires():
+    from ankyra.build.pipeline import build_theory
+    from ankyra.core.schemas import ProblemStructure
+    from ankyra.engine.horn import saturate
+
+    structure = ProblemStructure.model_validate(
+        {
+            "source_text": "All people need sleep. Alice is a person.",
+            "domain": ["person"],
+            "facts": [
+                {"predicate": "is_a", "subject": "alice", "object": "person", "quote": "Alice is a person"}
+            ],
+            "rules": [
+                {
+                    "forall": {"x": "person"},
+                    "antecedent": [{"predicate": "is_a", "subject": "?x", "object": "person"}],
+                    "consequent": {"predicate": "needs_sleep", "subject": "?x"},
+                    "quote": "All people need sleep",
+                }
+            ],
+        }
+    )
+    theory = build_theory(structure)
+    assert [cond.predicate for cond in theory.rules[0].conditions] == ["is_a"]
+    store = saturate(theory)
+    assert any(
+        fact.predicate == "needs_sleep" and fact.subject == "alice" for fact in store.facts
+    )

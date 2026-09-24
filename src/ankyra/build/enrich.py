@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from ankyra.build.normalize import predicate_polarity
+from ankyra.build.normalize import is_var, predicate_polarity
 from ankyra.core.models import Constraint, Morphism, Object, Rule, Theory
 
 
@@ -120,22 +120,107 @@ def _is_domain_membership(morphism: Morphism, domain: set[str]) -> bool:
     )
 
 
-def strip_domain_conditions(rules: list[Rule], domain: list[str]) -> list[Rule]:
+def _morphism_vars(morphism: Morphism) -> set[str]:
+    return {term for term in (morphism.subject, morphism.object) if is_var(term)}
+
+
+def over_declared_domains(theory: Theory) -> set[str]:
+    """Declared universe sorts that a named individual's class contradicts.
+
+    A ``domain`` claim is "every named individual belongs to this sort". When a
+    named individual carries a positive ``is_a(x, C)`` with ``C`` outside the
+    declared domain, the claim is over-declared: a domain premise in a rule may be
+    a real restriction, not the quantifier's domain. Such sorts are returned
+    casefolded so the builder never drops a real restriction (which would make a
+    valid quoted rule fire for non-domain individuals).
+    """
+    names = {d.casefold() for d in theory.domain if d}
+    if not names:
+        return set()
+    for morphism in theory.morphisms:
+        if (
+            morphism.predicate == "is_a"
+            and not morphism.negated
+            and morphism.modality == "neutral"
+            and morphism.subject
+            and not is_var(morphism.subject)
+            and morphism.object
+            and not is_var(morphism.object)
+            and morphism.object.casefold() not in names
+        ):
+            return set(names)
+    return set()
+
+
+def _domain_premise_to_strip(condition: Morphism, names: set[str], bound: set[str]) -> bool:
+    """True when a domain premise is vacuous and safely droppable.
+
+    It must be a universe-sort membership, the variable must be bound by another
+    condition (else it is the only binder), and the sort must not be over-declared.
+    """
+    return _is_domain_membership(condition, names) and bool(_morphism_vars(condition) & bound)
+
+
+def strip_domain_conditions(
+    rules: list[Rule], domain: list[str], *, over_declared: set[str] | None = None
+) -> list[Rule]:
     """Drop a rule premise that restricts the variable to a universe sort.
 
     A condition ``is_a(?x, D)`` with ``D`` a declared domain sort is the quantifier's
     domain, not a premise, so it carries no knowledge and must not block the rule.
+    It is dropped only when another condition already binds the variable; a lone
+    ``is_a(?x, D)`` is the only binder and is kept (dropping it would make the rule
+    conditionless, which never fires). This mirrors ``unroll._normalize_domain``.
+
+    ``over_declared`` names domain sorts contradicted by a named individual's class
+    (``over_declared_domains``); their premises are kept, because dropping them
+    would remove a real restriction.
     """
     names = {d.casefold() for d in domain if d}
     if not names:
         return rules
+    protected = {s.casefold() for s in (over_declared or set())}
     out: list[Rule] = []
     for rule in rules:
-        kept = [cond for cond in rule.conditions if not _is_domain_membership(cond, names)]
+        bound: set[str] = set()
+        for cond in rule.conditions:
+            if not _is_domain_membership(cond, names):
+                bound |= _morphism_vars(cond)
+        kept = [
+            cond
+            for cond in rule.conditions
+            if not (
+                _domain_premise_to_strip(cond, names, bound)
+                and (cond.object or "").casefold() not in protected
+            )
+        ]
         if len(kept) != len(rule.conditions):
             rule = rule.model_copy(update={"conditions": kept})
         out.append(rule)
     return out
+
+
+def over_declared_domain_gaps(theory: Theory) -> list[str]:
+    """Audit gaps for domain premises kept because their universe is over-declared."""
+    protected = over_declared_domains(theory)
+    if not protected:
+        return []
+    names = {d.casefold() for d in theory.domain if d}
+    gaps: list[str] = []
+    for rule in theory.rules:
+        bound: set[str] = set()
+        for cond in rule.conditions:
+            if not _is_domain_membership(cond, names):
+                bound |= _morphism_vars(cond)
+        for cond in rule.conditions:
+            if (
+                _domain_premise_to_strip(cond, names, bound)
+                and (cond.object or "").casefold() in protected
+            ):
+                gap = f"over_declared_domain:{cond.object}"
+                if gap not in gaps:
+                    gaps.append(gap)
+    return gaps
 
 
 def _rewrite_constraint(constraint: Constraint) -> Constraint:
@@ -176,7 +261,8 @@ def enrich_theory(theory: Theory) -> Theory:
     rewritten_rules = [_rewrite_rule(r) for r in theory.rules]
     rules = _dedupe_rules([r for r in rewritten_rules if _valid_rule(r)])
     rules = heal_structural(rules)
-    rules = strip_domain_conditions(rules, theory.domain)
+    over_declared = over_declared_domains(theory.model_copy(update={"morphisms": morphisms}))
+    rules = strip_domain_conditions(rules, theory.domain, over_declared=over_declared)
     constraints = _dedupe_constraints(
         [_rewrite_constraint(c) for c in theory.constraints if _valid_constraint(c)]
     )
