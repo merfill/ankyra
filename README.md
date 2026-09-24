@@ -49,6 +49,19 @@ cp .env.example .env   # then set ANKYRA_API_KEY (and URL/model if different)
 
 Configuration is Dynaconf with the `ANKYRA_` prefix (see `.env.example`).
 
+### LLM providers
+
+The LLM is reached through a provider-agnostic factory (`ankyra.llm.providers`)
+behind the common LangChain `BaseChatModel` interface, so nothing above it depends
+on a concrete provider. `ANKYRA_LLM_PROVIDER` (default `openai`) selects the
+binding; `openai` covers **any OpenAI-compatible endpoint** (OpenAI, RouterAI,
+DeepSeek, OpenRouter, vLLM, Ollama's OpenAI API, …) configured by `ANKYRA_API_URL`,
+`ANKYRA_API_KEY` and `ANKYRA_MODEL`.
+
+To add a different SDK, register a builder in `PROVIDERS`
+(`src/ankyra/llm/providers.py`) — the engine and the extractors are untouched. An
+unknown provider is a clear configuration error, never a silent fallback.
+
 ## Quick start
 
 ```python

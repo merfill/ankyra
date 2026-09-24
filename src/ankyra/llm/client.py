@@ -5,9 +5,10 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from langchain_openai import ChatOpenAI
+from langchain_core.language_models import BaseChatModel
 
 from ankyra.config.settings import settings
+from ankyra.llm.providers import build_chat_model
 
 
 def _extra_body() -> dict[str, Any] | None:
@@ -96,12 +97,17 @@ def with_temperature(llm: Any, temperature: float) -> Any:
     return llm
 
 
-def create_chat_llm(*, role: str = "default") -> ChatOpenAI:
-    """role: default | extract | critic | answer — picks MODEL or {ROLE}_MODEL."""
+def create_chat_llm(*, role: str = "default") -> BaseChatModel:
+    """Build the chat model for ``role`` (default | extract | critic | answer).
+
+    The provider is selected by ``ANKYRA_LLM_PROVIDER`` (default ``openai``, i.e. any
+    OpenAI-compatible endpoint); the concrete class is chosen by
+    ``ankyra.llm.providers`` so nothing above this factory depends on it.
+    """
     model_key = "MODEL" if role == "default" else f"{role.upper()}_MODEL"
     model = settings.get(model_key) or settings.get("MODEL")
     temperature = _temperature(role=role)
-    kwargs: dict[str, Any] = {
+    config: dict[str, Any] = {
         "base_url": settings.get("API_URL"),
         "api_key": settings.get("API_KEY"),
         "model": model,
@@ -112,8 +118,8 @@ def create_chat_llm(*, role: str = "default") -> ChatOpenAI:
     if extra:
         extra = dict(extra)
         extra.setdefault("temperature", temperature)
-        kwargs["extra_body"] = extra
+        config["extra_body"] = extra
     reasoning_effort = settings.get("REASONING_EFFORT")
     if reasoning_effort:
-        kwargs["reasoning_effort"] = str(reasoning_effort)
-    return ChatOpenAI(**kwargs)
+        config["reasoning_effort"] = str(reasoning_effort)
+    return build_chat_model(settings.get("LLM_PROVIDER", "openai"), config)
