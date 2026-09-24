@@ -1,0 +1,330 @@
+% !TeX program = xelatex
+% DRAFT working paper: system + evaluation. Sections and numbers are recorded here;
+% prose is intentionally skeletal and marked with % TODO. Build with xelatex, then
+% convert to Markdown with pandoc if needed.
+
+\documentclass[11pt,a4paper]{article}
+
+% ---- Encoding and language ----
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[english]{babel}
+
+% ---- Math ----
+\usepackage{amsmath}
+\usepackage{amssymb}
+
+% ---- Tables ----
+\usepackage{booktabs}
+\usepackage{array}
+
+% ---- Geometry ----
+\usepackage{geometry}
+\geometry{margin=2.5cm}
+
+% ---- Spacing ----
+\usepackage{parskip}
+\usepackage{setspace}
+\onehalfspacing
+
+% ---- Links ----
+\usepackage[hidelinks]{hyperref}
+
+% ---- Title ----
+\title{Ankyra: Sound Neuro-Symbolic Reasoning\\
+across Staged Decidable Formalisms\\[0.5em]\large (working draft)}
+\author{Vladimir Lapshin\thanks{\texttt{merfill@yandex.ru}}}
+\date{}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+We present Ankyra, a domain-general neuro-symbolic reasoning engine in which a large
+language model \emph{proposes} a formalization and a deterministic symbolic engine
+\emph{decides} it. The engine covers a family of decidable formalisms (definite Horn
+logic, stratified negation, positive first-order logic with disjunction and
+quantifiers, finite-domain constraints, exact arithmetic, and defeasible defaults),
+each with a sound decision procedure and a declared fragment. Every answer carries a
+mechanically verifiable provenance trace, and no statement enters the theory without a
+verbatim quote or an explicit hypothesis tag. We report a proof-of-concept evaluation
+on standard collections: the engine attains high accuracy on the slices it covers while
+producing \emph{zero grounded false proofs}, and it abstains honestly
+(\texttt{out\_of\_fragment}) where its committed logic cannot express a problem. We
+make no state-of-the-art claim: the evaluation uses committed subsets rather than full
+test splits, and we state the resulting statistical and protocol limitations explicitly.
+\end{abstract}
+
+% ======================================================================
+\section{Introduction}
+
+% TODO: expand the motivation (LLM hallucinated reasoning; verifiability; the
+% propose/decide boundary). Keep the explicit scope statement below.
+
+The central design commitment is: \emph{the LLM proposes, the engine decides}. The
+language model never owns truth. Every statement it contributes is deterministically
+classified as \texttt{derivable}, \texttt{cited} (supported by a verbatim quote),
+\texttt{hypothesis} (knowledge absent from the text, tagged), or \texttt{rejected}. An
+answer is never stronger than its grounds: a conclusion from quotations is
+\texttt{proven}, one resting on assumptions is \texttt{proven\_under(H)}.
+
+\paragraph{Contributions.} % TODO: turn into a list.
+\begin{itemize}
+	\item A propose/decide architecture with mechanically verifiable provenance.
+	\item A family of decidable formalisms behind a \emph{declared-fragment contract},
+	      with honest \texttt{out\_of\_fragment} abstention instead of silent downgrade.
+	\item A gating methodology for \emph{composite} benchmarks that separates the
+	      coverage (formalism) ceiling from the extraction (model) ceiling via a
+	      gold-fed counterfactual.
+	\item An empirical proof of concept on standard collections with a measured
+	      soundness invariant (zero grounded false proofs).
+\end{itemize}
+
+\paragraph{Scope (explicit).} This is a proof-of-concept report, not a
+state-of-the-art claim. We evaluate \emph{committed subsets} of standard collections,
+describe the budget that prevents full test-split runs, and give confidence intervals.
+Whole-collection coverage is unreachable by design for mixed-construct benchmarks such
+as FOLIO (Section~\ref{sec:results}).
+
+% ======================================================================
+\section{System overview}
+
+% TODO: expand. Keep this section short and factual for now.
+
+Ankyra is an orchestrator of formalizations and decision procedures, not a monolithic
+solver. A problem passes through: (0)~decomposition of the text into a theory and a
+question; (1)~deterministic closure of the theory; (2)~a bounded proposal cycle (the
+LLM proposes one typed step per wave); and (3)~mechanical explanation assembled from
+provenance. Rules, facts and hypotheses form a base that only grows; the answer may be
+revised, and each revision is recorded.
+
+Deterministic code never interprets natural language. Normalizing identifiers and closed
+enum fields the LLM has already extracted is allowed; heuristics over raw text keyed on
+words or cue phrases are not. The only raw-text operations are structural witness checks
+(verbatim-quote substring/span, coverage, length).
+
+% ======================================================================
+\section{Formalisms and decision procedures}
+
+Each stage of the reasoning roadmap is a named formalism with a sound decision
+procedure, entered only after an LLM-free synthetic gate and an external collection
+gate.
+
+\begin{center}
+\begin{tabular}{p{0.8cm}p{5.4cm}p{5.6cm}}
+\toprule
+\textbf{Stage} & \textbf{Formalism} & \textbf{Procedure} \\
+\midrule
+L0 & definite Horn, \texttt{is\_a}, complementary-pair negation (open world) & semi-naive forward chaining \\
+L1 & stratified negation / NAF, declared closed world & stratified closure, disjointness constraints \\
+L2 & positive FOL: disjunction, $\exists/\forall$, proof by cases & bounded resolution (finite-domain grounding) \\
+L3 & finite-domain constraints (CSP/SAT) & in-repo finite-domain search \\
+L4 & arithmetic terms and equations & exact rational evaluation / linear elimination \\
+D  & defaults with specificity via \texttt{is\_a} & defeasible layer (NFA + specificity) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+A query declares the required fragment; a mismatch is reported as
+\texttt{out\_of\_fragment}, never guessed. L3 and L4 are separate engines behind the
+same orchestration.
+
+% ======================================================================
+\section{Evaluation methodology}
+\label{sec:method}
+
+\paragraph{Metrics.} For each collection we report \emph{kind accuracy} (a
+three-way or multiple-choice label), with Wilson 95\% confidence intervals. The gate
+also enforces a \emph{soundness invariant}: every determinate answer is
+\texttt{proven}, and there are \emph{zero grounded false proofs} (a confidently wrong
+determinate answer).
+
+\paragraph{Two ceilings.} For a composite benchmark we separate:
+\emph{coverage} (the share of gold formulas the committed logic can express and
+decide; the remainder is an honest \texttt{out\_of\_fragment}) from
+\emph{extraction} (the share of covered rows the LLM translates correctly). The
+\emph{gold-fed} counterfactual feeds the engine the annotated formalization instead of
+the LLM extraction, isolating method accuracy from language accuracy.
+
+\paragraph{Budget and reproducibility.} There is no free LLM access; live runs are
+paid. Each collection therefore enters as a small committed sample, run once, and is
+re-run only on a mismatch. All LLM-free gates (synthetic suites, the gold-fed
+diagnostic) are reproducible from the repository alone.
+
+% ======================================================================
+\section{Results}
+\label{sec:results}
+
+% TODO: prose per subsection. Numbers below are the measured values.
+
+\subsection{Synthetic, LLM-free gates}
+
+These gates are deterministic and cover every construct of each formalism (including
+negative controls); they carry no LLM in the loop.
+
+\begin{center}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Gate} & \textbf{Result} & \textbf{Grounded false proofs} \\
+\midrule
+Fragment routing (\texttt{evals.routing\_synthetic}) & 19/19 & 0 \\
+L1 negation (\texttt{evals.l1\_synthetic}) & 40/40 & 0 \\
+L2 clausal + equality (\texttt{evals.l2\_synthetic}) & 65/65 & 0 \\
+L3 finite-domain CSP (\texttt{evals.l3\_synthetic}) & 31/31 & 0 \\
+L4 arithmetic (\texttt{evals.l4\_synthetic}) & 37/37 & 0 \\
+Defeasible defaults (\texttt{evals.defeasible\_synthetic}) & 8/8 & 0 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{External collections}
+
+Table~\ref{tab:results} summarizes the live/committed results. ``Grounded'' is the
+soundness invariant (0 for every row).
+
+\begin{table}[h]
+\centering
+\begin{tabular}{llrp{2.6cm}}
+\toprule
+\textbf{Stage} & \textbf{Collection / slice} & \textbf{Result} & \textbf{95\% CI} \\
+\midrule
+L0 & ProofWriter, Tier D (OWA) & 297/300 (99.0\%) & [97.1, 99.7] \\
+L1 & ProntoQA, tier a & 48/48 (100\%) & [92.6, 100] \\
+L1 & ProntoQA, tier b & 160/160 (100\%) & [97.7, 100] \\
+L2 & ProntoQA-OOD, tier a & 41/42 (97.6\%) & [87.7, 99.6] \\
+L1 & FOLIO negation slice (text-fed) & 11/13 (84.6\%) & [57.8, 95.7] \\
+L2 & FOLIO L2 tier a (text-fed, covered) & 29/44 (65.9\%) & [51.1, 78.1] \\
+L3 & AR-LSAT, eval & 23/30 (76.7\%) & [59.1, 88.2] \\
+L4 & GSM8K, eval & 38/40 (95.0\%) & [83.5, 98.6] \\
+\bottomrule
+\end{tabular}
+\caption{Committed-subset results. Denominators are small samples, not full test
+splits; see Section~\ref{sec:limitations}.}
+\label{tab:results}
+\end{table}
+
+\paragraph{ProofWriter (L0).} Tier D: 297/300, 0 grounded false proofs, every
+determinate answer \texttt{proven}. Full collection (6\,368 theories) not run (budget).
+
+\paragraph{ProntoQA (L1) and ProntoQA-OOD (L2).} ProntoQA tier a 48/48 and tier b
+160/160, all \texttt{proven}. ProntoQA-OOD tier a 41/42 (97.6\%), 0 grounded false
+proofs.
+
+\paragraph{FOLIO (L1/L2, the composite case).} FOLIO's gold FOL spans several
+formalisms at once, so it is run as in-fragment slices:
+\begin{itemize}
+	\item L1 negation slice (13 rows): text-fed 11/13, gold-fed 12/13.
+	\item L2 tier a (45 rows): coverage 44/45 (one malformed annotation); on covered
+	      rows text-fed 29/44 versus gold-fed 42/44.
+\end{itemize}
+The gap between gold-fed (method) and text-fed (extraction) localizes the remaining
+cost to extraction; the coverage ceiling is essentially closed on this slice. The
+complement of the two committed gate fragments (13 + 93 rows of the 204-row validation
+split) carries constructs outside every committed stage, reported
+\texttt{out\_of\_fragment}: xor, $\leftrightarrow$, multi-variable quantification,
+equality, function terms, axiom schemas.
+
+\paragraph{AR-LSAT (L3).} Gold-fed 27/27 over real games; live eval 23/30 (76.7\%),
+0 \texttt{grounded\_mismatch}.
+
+\paragraph{GSM8K (L4).} Exact arithmetic makes arithmetic errors impossible by
+construction. Synthetic 37/37; hand-encoded gold 8/8; live eval 38/40 (the two
+non-correct rows are annotated reference errors: one dataset error, one ambiguity).
+
+% ======================================================================
+\section{Limitations}
+\label{sec:limitations}
+
+% TODO: this is the section that must stay brutally honest. Keep all of it.
+
+\paragraph{Sample size and statistics.} Every real-collection number rests on a
+small sample (N = 13, 30, 40, 42, 44, 300), so the confidence intervals are wide
+(Table~\ref{tab:results}); on the small slices they overlap plausible baselines, and
+they do not support a state-of-the-art claim. Detecting a difference of about five
+percentage points at $p\approx0.95$ with power $0.8$ would require on the order of
+$400$ examples per arm.
+
+\paragraph{Run-once and nondeterminism.} The live path invokes an LLM whose provider is
+nondeterministic even at temperature zero. Runs are executed once (budget policy) and
+repeated only on a mismatch, so we report no variance estimate and make no
+significance test.
+
+\paragraph{Subsets, not test splits.} We evaluate committed samples: ProntoQA-OOD tier
+a (42 of 5\,800), AR-LSAT eval (30 of $\sim$230), GSM8K eval (40 of $\sim$1\,319),
+ProofWriter Tier D (300 of 6\,368 theories). Full collections were not run because there
+is no free LLM access and the runs are paid out of pocket; this is a deliberate scope
+boundary, not an unreported failure.
+
+\paragraph{Soundness is relative to the formalization.} The engine is sound given the
+theory it is handed; the compiler of natural language into that theory is the LLM. An
+extraction error can therefore produce an \emph{abstention}, or, in principle, a
+\texttt{proven} answer about the wrong formalization. We measure \emph{grounded false
+proofs} (zero on every reported slice) and mitigate extraction with quote grounding,
+a conditional-quote guard, a grounded-refutation guard, and domain-declaration guards.
+This is not a proof of end-to-end truth against the world.
+
+\paragraph{Composite benchmarks have no single headline.} For FOLIO, whole-collection
+coverage is unreachable by design: equality, function terms, xor, biconditional,
+multi-variable quantification and axiom schemas lie outside every committed stage, and
+full first-order entailment is only semi-decidable. We therefore report stratified
+slices and an explicit \texttt{out\_of\_fragment} count, never a whole-collection score.
+
+\paragraph{No head-to-head baselines.} Published baseline numbers use different
+collections, splits, protocols and front-end models, so they are not directly
+comparable; we do not run a shared-front-end comparison. The contribution is a
+soundness and verifiability argument, with accuracy as supporting evidence.
+
+\paragraph{Model and provider drift.} Numbers are tied to the extraction provider used
+at run time; a different or updated model would change the text-fed columns. The
+gold-fed and synthetic columns are model-independent.
+
+\paragraph{Defeasible defaults.} Only a synthetic gate is reported; a real
+defeasible/NLI collection remains future work.
+
+% ======================================================================
+\section{Related work}
+
+% TODO: expand with a proper comparison. Placeholders:
+% - Chain-of-thought / self-consistency (LLM reasoning is not certified).
+% - Logic-LM, LINC and other LLM+symbolic pipelines (translator + solver).
+% - ProofWriter, ProntoQA/ProntoQA-OOD, FOLIO, AR-LSAT, GSM8K as collections.
+% - Non-monotonic / defeasible reasoning; provenance and auditable inference.
+
+% ======================================================================
+\section{Conclusion}
+
+% TODO: short restatement of the thesis, the soundness-and-verifiability claim, and
+% the honest scope (proof of concept, not state of the art).
+
+We presented a neuro-symbolic engine in which the LLM proposes and a deterministic
+engine decides, covering a family of decidable formalisms behind a declared-fragment
+contract. On committed slices of standard collections the engine achieves high
+accuracy while producing zero grounded false proofs, and it abstains honestly where its
+logic cannot express a problem. The evaluation is a proof of concept; the limitations
+above define the boundary of what these results support.
+
+\begin{thebibliography}{99}
+
+	\bibitem{ankyra} Ankyra: A domain-agnostic neuro-symbolic reasoning engine. GitHub repository. URL: \url{https://github.com/merfill/ankyra}
+
+	\bibitem{proofwriter} Tafjord O., Mishra B. D., Clark P. ProofWriter: Generating Implications, Proofs, and Abductive Statements over Natural Language. AI2, arXiv:2012.13048.
+
+	\bibitem{prontoqa} Saparov A., He H. Language Models Are Greedy Reasoners: A Systematic Formal Analysis of Chain-of-Thought. ICLR 2023. arXiv:2210.01240.
+
+	\bibitem{prontoqaood} Saparov A., He H. Testing the General Deductive Reasoning Capacity of Large Language Models Using OOD Examples. NeurIPS 2023. arXiv:2305.15269.
+
+	\bibitem{folio} Han S. et al. FOLIO: Natural Language Reasoning with First-Order Logic. arXiv:2209.00840, v3 2024.
+
+	\bibitem{arlsat} Zhong W. et al. AR-LSAT: Investigating Analytical Reasoning of Text. 2021. arXiv:2104.06598.
+
+	\bibitem{agieval} Zhong W. et al. AGIEval: A Human-Centric Benchmark for Evaluating Foundation Models. 2024. arXiv:2304.06364.
+
+	\bibitem{gsm8k} Cobbe K. et al. Training Verifiers to Solve Math Word Problems. 2021. arXiv:2110.14168.
+
+	\bibitem{logiclm} Pan L. et al. Logic-LM: Empowering Large Language Models with Symbolic Solvers for Faithful Logical Reasoning. Findings of EMNLP. 2023.
+
+	\bibitem{linc} Olausson T. X. et al. LINC: A Neurosymbolic Approach for Logical Reasoning by Combining Language Models with First-Order Logic Provers. EMNLP. 2023.
+
+\end{thebibliography}
+
+\end{document}
