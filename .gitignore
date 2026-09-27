@@ -14,3 +14,6 @@ evals/data/.cache/
 
 # LaTeX build artifacts
 docs/*.log
+
+# Comparison harness cache (external LLM responses)
+comparison/.cache/

@@ -1,0 +1,1033 @@
+{
+  "label": "own_proofwriter",
+  "task": "proofwriter-neurosymbolic-8shot",
+  "nshot": 8,
+  "n_samples": 10,
+  "temperature": 0.8,
+  "metrics": {
+    "accuracy (pass@1 majority)": 0.85,
+    "cost_usd": 41.1968
+  },
+  "predictions": [
+    {
+      "id": "0",
+      "reference": "Uncertain",
+      "prediction": "Uncertain",
+      "samples": [
+        "Error",
+        "Uncertain",
+        "Uncertain",
+        "Uncertain",
+        "Error",
+        "Uncertain",
+        "Uncertain",
+        "Uncertain",
+        "Uncertain",
+        "Uncertain"
+      ]
+    },
+    {
+      "id": "6",
+      "reference": "True",
+      "prediction": "True",
+      "samples": [
+        "Error",
+        "True",
+        "True",
+        "Error",
+        "Error",
+        "Error",
+        "Error",
+        "Uncertain",
+        "True",
+        "True"
+      ]
+    },
+    {
+      "id": "12",
+      "reference": "True",
+      "prediction": "True",
+      "samples": [
+        "Uncertain",
+        "Error",
+        "Error",
+        "True",
+        "Error",
+        "True",
+        "Error",
+        "Error",
+        "Error",
+        "Error"
+      ]
+    },
+    {
+      "id": "18",
+      "reference": "True",
+      "prediction": "True",
+      "samples": [
+        "Error",
+        "Error",
+        "True",
+        "True",
+        "Error",
+        "Error",
+        "Uncertain",
+        "Error",
+        "True",
+        "True"
+      ]
+    },
+    {
+      "id": "24",
+      "reference": "True",
+      "prediction": "Uncertain",
+      "samples": [
+        "Uncertain",
+        "Error",
+        "Uncertain",
+        "Error",
+        "Uncertain",
+        "Error",
+        "Uncertain",
+        "Uncertain",
+        "Uncertain",
+        "Error"
+      ]
+    },
+    {
+      "id": "30",
+      "reference": "Uncertain",
+      "prediction": "Uncertain",
+      "samples": [
+        "Uncertain",
+        "Error",
+        "Uncertain",
+        "Error",
+        "Error",
+        "Uncertain",
+        "Error",
+        "Uncertain",
+        "Error",
+        "Error"
+      ]
+    },
+    {
+      "id": "36",
+      "reference": "Uncertain",
+      "prediction": "Uncertain",
+      "samples": [
+        "Error",
+        "Error",
+        "Uncertain",
+        "Uncertain",
+        "Uncertain",
+        "Uncertain",
+        "Error",
+        "Error",
+        "Uncertain",
+        "Error"
+      ]
+    },
+    {
+      "id": "42",
+      "reference": "Uncertain",
+      "prediction": "Uncertain",
+      "samples": [
+        "Uncertain",
+        "Uncertain",
+        "Uncertain",
+        "Uncertain",
+        "Uncertain",
+        "Error",
+        "Uncertain",
+        "Uncertain",
+        "Uncertain",
+        "Uncertain"
+      ]
+    },
+    {
+      "id": "48",
+      "reference": "False",
+      "prediction": "Uncertain",
+      "samples": [
+        "Error",
+        "Error",
+        "Error",
+        "Uncertain",
+        "Error",
+        "Error",
+        "False",
+        "Uncertain",
+        "Uncertain",
+        "False"
+      ]
+    },
+    {
+      "id": "54",
+      "reference": "Uncertain",
+      "prediction": "Uncertain",
+      "samples": [
+        "Error",
+        "Error",
+        "Error",
+        "Error",
+        "Error",
+        "Error",
+        "Error",
+        "Uncertain",
+        "Uncertain",
+        "Uncertain"
+      ]
+    },
+    {
+      "id": "60",
+      "reference": "True",
+      "prediction": "True",
+      "samples": [
+        "Error",
+        "True",
+        "Error",
+        "Error",
+        "True",
+        "Error",
+        "Error",
+        "True",
+        "Error",
+        "Uncertain"
+      ]
+    },
+    {
+      "id": "66",
+      "reference": "True",
+      "prediction": "Uncertain",
+      "samples": [
+        "True",
+        "Uncertain",
+        "True",
+        "Error",
+        "Uncertain",
+        "True",
+        "Uncertain",
+        "Uncertain",
+        "Uncertain",
+        "Error"
+      ]
+    },
+    {
+      "id": "72",
+      "reference": "True",
+      "prediction": "True",
+      "samples": [
+        "True",
+        "True",
+        "True",
+        "True",
+        "True",
+        "True",
+        "Error",
+        "True",
+        "True",
+        "Error"
+      ]
+    },
+    {
+      "id": "78",
+      "reference": "False",
+      "prediction": "False",
+      "samples": [
+        "Error",
+        "Error",
+        "Error",
+        "True",
+        "Error",
+        "False",
+        "False",
+        "False",
+        "Error",
+        "True"
+      ]
+    },
+    {
+      "id": "84",
+      "reference": "Uncertain",
+      "prediction": "Uncertain",
+      "samples": [
+        "Error",
+        "Error",
+        "True",
+        "Uncertain",
+        "Uncertain",
+        "Uncertain",
+        "Error",
+        "Error",
+        "Uncertain",
+        "Uncertain"
+      ]
+    },
+    {
+      "id": "90",
+      "reference": "True",
+      "prediction": "True",
+      "samples": [
+        "True",
+        "True",
+        "True",
+        "True",
+        "True",
+        "True",
+        "True",
+        "Error",
+        "True",
+        "Error"
+      ]
+    },
+    {
+      "id": "96",
+      "reference": "Uncertain",
+      "prediction": "Uncertain",
+      "samples": [
+        "Error",
+        "Error",
+        "Error",
+        "Uncertain",
+        "Error",
+        "Uncertain",
+        "Error",
+        "Uncertain",
+        "Uncertain",
+        "Uncertain"
+      ]
+    },
+    {
+      "id": "102",
+      "reference": "False",
+      "prediction": "False",
+      "samples": [
+        "False",
+        "False",
+        "False",
+        "False",
+        "False",
+        "Error",
+        "False",
+        "Error",
+        "False",
+        "Uncertain"
+      ]
+    },
+    {
+      "id": "108",
+      "reference": "Uncertain",
+      "prediction": "Uncertain",
+      "samples": [
+        "Error",
+        "Uncertain",
+        "Error",
+        "Error",
+        "Error",
+        "Uncertain",
+        "Error",
+        "Error",
+        "Error",
+        "Error"
+      ]
+    },
+    {
+      "id": "114",
+      "reference": "True",
+      "prediction": "True",
+      "samples": [
+        "Error",
+        "Error",
+        "True",
+        "Error",
+        "Error",
+        "True",
+        "True",
+        "True",
+        "True",
+        "True"
+      ]
+    },
+    {
+      "id": "120",
+      "reference": "True",
+      "prediction": "True",
+      "samples": [
+        "Error",
+        "True",
+        "Error",
+        "Error",
+        "True",
+        "True",
+        "True",
+        "True",
+        "True",
+        "Error"
+      ]
+    },
+    {
+      "id": "126",
+      "reference": "False",
+      "prediction": "False",
+      "samples": [
+        "False",
+        "False",
+        "Error",
+        "False",
+        "Uncertain",
+        "False",
+        "Error",
+        "False",
+        "False",
+        "Error"
+      ]
+    },
+    {
+      "id": "132",
+      "reference": "False",
+      "prediction": "False",
+      "samples": [
+        "Error",
+        "False",
+        "Uncertain",
+        "Error",
+        "Error",
+        "Error",
+        "Error",
+        "True",
+        "Error",
+        "False"
+      ]
+    },
+    {
+      "id": "138",
+      "reference": "False",
+      "prediction": "False",
+      "samples": [
+        "False",
+        "False",
+        "False",
+        "False",
+        "Error",
+        "False",
+        "False",
+        "False",
+        "False",
+        "False"
+      ]
+    },
+    {
+      "id": "144",
+      "reference": "Uncertain",
+      "prediction": "Uncertain",
+      "samples": [
+        "Error",
+        "Error",
+        "Uncertain",
+        "Uncertain",
+        "Uncertain",
+        "Uncertain",
+        "Uncertain",
+        "Error",
+        "Uncertain",
+        "Error"
+      ]
+    },
+    {
+      "id": "150",
+      "reference": "Uncertain",
+      "prediction": "Uncertain",
+      "samples": [
+        "Uncertain",
+        "Error",
+        "True",
+        "Error",
+        "Uncertain",
+        "Uncertain",
+        "Uncertain",
+        "Error",
+        "Uncertain",
+        "Uncertain"
+      ]
+    },
+    {
+      "id": "156",
+      "reference": "False",
+      "prediction": "False",
+      "samples": [
+        "Error",
+        "False",
+        "False",
+        "Error",
+        "Error",
+        "Error",
+        "False",
+        "Error",
+        "False",
+        "False"
+      ]
+    },
+    {
+      "id": "162",
+      "reference": "False",
+      "prediction": "False",
+      "samples": [
+        "False",
+        "Uncertain",
+        "Error",
+        "False",
+        "Uncertain",
+        "Error",
+        "Error",
+        "Error",
+        "Error",
+        "Error"
+      ]
+    },
+    {
+      "id": "168",
+      "reference": "True",
+      "prediction": "Uncertain",
+      "samples": [
+        "Error",
+        "Error",
+        "Error",
+        "Error",
+        "Error",
+        "Uncertain",
+        "Error",
+        "Error",
+        "Uncertain",
+        "Error"
+      ]
+    },
+    {
+      "id": "174",
+      "reference": "Uncertain",
+      "prediction": "Uncertain",
+      "samples": [
+        "Error",
+        "Error",
+        "Uncertain",
+        "Uncertain",
+        "Uncertain",
+        "Uncertain",
+        "Uncertain",
+        "Error",
+        "Error",
+        "Error"
+      ]
+    },
+    {
+      "id": "180",
+      "reference": "False",
+      "prediction": "False",
+      "samples": [
+        "Error",
+        "False",
+        "Uncertain",
+        "False",
+        "Error",
+        "False",
+        "False",
+        "Error",
+        "Error",
+        "Error"
+      ]
+    },
+    {
+      "id": "186",
+      "reference": "Uncertain",
+      "prediction": "Uncertain",
+      "samples": [
+        "Uncertain",
+        "Uncertain",
+        "Uncertain",
+        "Error",
+        "Uncertain",
+        "Uncertain",
+        "Error",
+        "Uncertain",
+        "Uncertain",
+        "Error"
+      ]
+    },
+    {
+      "id": "192",
+      "reference": "True",
+      "prediction": "True",
+      "samples": [
+        "Error",
+        "True",
+        "True",
+        "True",
+        "Error",
+        "True",
+        "True",
+        "True",
+        "True",
+        "True"
+      ]
+    },
+    {
+      "id": "198",
+      "reference": "Uncertain",
+      "prediction": "Uncertain",
+      "samples": [
+        "Error",
+        "Uncertain",
+        "Error",
+        "Error",
+        "Error",
+        "Error",
+        "Uncertain",
+        "Error",
+        "Error",
+        "Uncertain"
+      ]
+    },
+    {
+      "id": "204",
+      "reference": "True",
+      "prediction": "True",
+      "samples": [
+        "True",
+        "True",
+        "True",
+        "True",
+        "True",
+        "True",
+        "True",
+        "True",
+        "True",
+        "True"
+      ]
+    },
+    {
+      "id": "210",
+      "reference": "True",
+      "prediction": "True",
+      "samples": [
+        "True",
+        "True",
+        "Error",
+        "True",
+        "True",
+        "Error",
+        "Error",
+        "True",
+        "True",
+        "Error"
+      ]
+    },
+    {
+      "id": "216",
+      "reference": "True",
+      "prediction": "Uncertain",
+      "samples": [
+        "Error",
+        "Error",
+        "Uncertain",
+        "Error",
+        "Error",
+        "True",
+        "Uncertain",
+        "Error",
+        "Error",
+        "Error"
+      ]
+    },
+    {
+      "id": "222",
+      "reference": "False",
+      "prediction": "False",
+      "samples": [
+        "Uncertain",
+        "Error",
+        "True",
+        "Error",
+        "Error",
+        "False",
+        "False",
+        "Error",
+        "Error",
+        "Error"
+      ]
+    },
+    {
+      "id": "228",
+      "reference": "True",
+      "prediction": "True",
+      "samples": [
+        "True",
+        "True",
+        "True",
+        "True",
+        "Error",
+        "True",
+        "True",
+        "True",
+        "Error",
+        "Error"
+      ]
+    },
+    {
+      "id": "234",
+      "reference": "True",
+      "prediction": "Uncertain",
+      "samples": [
+        "Uncertain",
+        "Error",
+        "Error",
+        "Uncertain",
+        "True",
+        "Uncertain",
+        "Uncertain",
+        "Uncertain",
+        "Uncertain",
+        "Error"
+      ]
+    },
+    {
+      "id": "240",
+      "reference": "False",
+      "prediction": "False",
+      "samples": [
+        "False",
+        "False",
+        "False",
+        "False",
+        "False",
+        "False",
+        "False",
+        "False",
+        "Uncertain",
+        "Error"
+      ]
+    },
+    {
+      "id": "246",
+      "reference": "True",
+      "prediction": "Uncertain",
+      "samples": [
+        "Error",
+        "Error",
+        "Uncertain",
+        "Error",
+        "Error",
+        "Error",
+        "Error",
+        "Error",
+        "True",
+        "Error"
+      ]
+    },
+    {
+      "id": "252",
+      "reference": "False",
+      "prediction": "False",
+      "samples": [
+        "False",
+        "False",
+        "False",
+        "False",
+        "False",
+        "False",
+        "False",
+        "False",
+        "False",
+        "False"
+      ]
+    },
+    {
+      "id": "258",
+      "reference": "Uncertain",
+      "prediction": "Uncertain",
+      "samples": [
+        "Error",
+        "Error",
+        "Error",
+        "Uncertain",
+        "Uncertain",
+        "Uncertain",
+        "Error",
+        "Error",
+        "Uncertain",
+        "Error"
+      ]
+    },
+    {
+      "id": "264",
+      "reference": "False",
+      "prediction": "False",
+      "samples": [
+        "False",
+        "Error",
+        "False",
+        "False",
+        "False",
+        "Uncertain",
+        "False",
+        "False",
+        "False",
+        "False"
+      ]
+    },
+    {
+      "id": "270",
+      "reference": "False",
+      "prediction": "False",
+      "samples": [
+        "Error",
+        "False",
+        "Error",
+        "False",
+        "False",
+        "False",
+        "Error",
+        "False",
+        "Error",
+        "False"
+      ]
+    },
+    {
+      "id": "276",
+      "reference": "Uncertain",
+      "prediction": "Uncertain",
+      "samples": [
+        "Error",
+        "Uncertain",
+        "Uncertain",
+        "Uncertain",
+        "Uncertain",
+        "Uncertain",
+        "Uncertain",
+        "Uncertain",
+        "Uncertain",
+        "Error"
+      ]
+    },
+    {
+      "id": "282",
+      "reference": "Uncertain",
+      "prediction": "Uncertain",
+      "samples": [
+        "Uncertain",
+        "Uncertain",
+        "Uncertain",
+        "Uncertain",
+        "Error",
+        "Uncertain",
+        "Error",
+        "Uncertain",
+        "Uncertain",
+        "Error"
+      ]
+    },
+    {
+      "id": "288",
+      "reference": "False",
+      "prediction": "Uncertain",
+      "samples": [
+        "False",
+        "Error",
+        "Uncertain",
+        "Uncertain",
+        "Error",
+        "Error",
+        "Uncertain",
+        "Error",
+        "Error",
+        "Uncertain"
+      ]
+    },
+    {
+      "id": "294",
+      "reference": "True",
+      "prediction": "True",
+      "samples": [
+        "True",
+        "True",
+        "True",
+        "True",
+        "True",
+        "True",
+        "True",
+        "True",
+        "Error",
+        "Error"
+      ]
+    },
+    {
+      "id": "300",
+      "reference": "Uncertain",
+      "prediction": "Uncertain",
+      "samples": [
+        "Error",
+        "Uncertain",
+        "Error",
+        "Error",
+        "Uncertain",
+        "Error",
+        "Uncertain",
+        "Uncertain",
+        "Error",
+        "Error"
+      ]
+    },
+    {
+      "id": "306",
+      "reference": "True",
+      "prediction": "True",
+      "samples": [
+        "True",
+        "Error",
+        "Uncertain",
+        "Uncertain",
+        "Error",
+        "Error",
+        "True",
+        "True",
+        "Error",
+        "Error"
+      ]
+    },
+    {
+      "id": "312",
+      "reference": "False",
+      "prediction": "False",
+      "samples": [
+        "Error",
+        "Error",
+        "Error",
+        "Error",
+        "False",
+        "Error",
+        "Error",
+        "False",
+        "Uncertain",
+        "False"
+      ]
+    },
+    {
+      "id": "318",
+      "reference": "Uncertain",
+      "prediction": "Uncertain",
+      "samples": [
+        "Uncertain",
+        "Uncertain",
+        "Error",
+        "True",
+        "Uncertain",
+        "Error",
+        "Uncertain",
+        "Uncertain",
+        "Uncertain",
+        "Uncertain"
+      ]
+    },
+    {
+      "id": "324",
+      "reference": "False",
+      "prediction": "Uncertain",
+      "samples": [
+        "False",
+        "Uncertain",
+        "Uncertain",
+        "False",
+        "Uncertain",
+        "Error",
+        "Error",
+        "Uncertain",
+        "False",
+        "Error"
+      ]
+    },
+    {
+      "id": "330",
+      "reference": "Uncertain",
+      "prediction": "Uncertain",
+      "samples": [
+        "Error",
+        "Error",
+        "Uncertain",
+        "Uncertain",
+        "Uncertain",
+        "Error",
+        "Error",
+        "Uncertain",
+        "Uncertain",
+        "Uncertain"
+      ]
+    },
+    {
+      "id": "336",
+      "reference": "False",
+      "prediction": "False",
+      "samples": [
+        "False",
+        "Error",
+        "Error",
+        "False",
+        "Error",
+        "Error",
+        "Error",
+        "Error",
+        "False",
+        "Error"
+      ]
+    },
+    {
+      "id": "342",
+      "reference": "True",
+      "prediction": "True",
+      "samples": [
+        "True",
+        "Error",
+        "Error",
+        "True",
+        "True",
+        "True",
+        "True",
+        "Error",
+        "True",
+        "True"
+      ]
+    },
+    {
+      "id": "348",
+      "reference": "True",
+      "prediction": "True",
+      "samples": [
+        "Uncertain",
+        "True",
+        "True",
+        "Error",
+        "True",
+        "True",
+        "True",
+        "Error",
+        "Error",
+        "Uncertain"
+      ]
+    },
+    {
+      "id": "354",
+      "reference": "Uncertain",
+      "prediction": "Uncertain",
+      "samples": [
+        "Uncertain",
+        "Error",
+        "Uncertain",
+        "Uncertain",
+        "Uncertain",
+        "Uncertain",
+        "Error",
+        "Uncertain",
+        "Uncertain",
+        "Uncertain"
+      ]
+    }
+  ]
+}

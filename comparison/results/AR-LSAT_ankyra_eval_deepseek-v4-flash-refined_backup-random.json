@@ -1,0 +1,242 @@
+[
+  {
+    "id": "201110_2-G_1_1",
+    "context": "An administrator must assign parking spaces to six new employees: Robertson, Souza, Togowa, Vaughn, Xu, and Young. Each of the six employees must be assigned one of the following parking spaces: #1, #2, #3, #4, #5, or #6. No two employees can be assigned the same parking space. The following rules govern the assignment of parking spaces: Young must be assigned a higher-numbered parking space than Togowa. Xu must be assigned a higher-numbered parking space than Souza. Robertson must be assigned a higher-numbered parking space than Young. Robertson must be assigned parking space #1, #2, #3, or #4.",
+    "question": "Which one of the following could be the assignment of parking spaces to the new employees?",
+    "answer": "E",
+    "flag": "success",
+    "predicted_answer": "E"
+  },
+  {
+    "id": "201110_2-G_1_2",
+    "context": "An administrator must assign parking spaces to six new employees: Robertson, Souza, Togowa, Vaughn, Xu, and Young. Each of the six employees must be assigned one of the following parking spaces: #1, #2, #3, #4, #5, or #6. No two employees can be assigned the same parking space. The following rules govern the assignment of parking spaces: Young must be assigned a higher-numbered parking space than Togowa. Xu must be assigned a higher-numbered parking space than Souza. Robertson must be assigned a higher-numbered parking space than Young. Robertson must be assigned parking space #1, #2, #3, or #4.",
+    "question": "If Togowa is assigned a higher-numbered parking space than Souza, then which one of the following could be true?",
+    "answer": "B",
+    "flag": "success",
+    "predicted_answer": "B"
+  },
+  {
+    "id": "201110_2-G_1_5",
+    "context": "An administrator must assign parking spaces to six new employees: Robertson, Souza, Togowa, Vaughn, Xu, and Young. Each of the six employees must be assigned one of the following parking spaces: #1, #2, #3, #4, #5, or #6. No two employees can be assigned the same parking space. The following rules govern the assignment of parking spaces: Young must be assigned a higher-numbered parking space than Togowa. Xu must be assigned a higher-numbered parking space than Souza. Robertson must be assigned a higher-numbered parking space than Young. Robertson must be assigned parking space #1, #2, #3, or #4.",
+    "question": "If Young is assigned a higher-numbered parking space than Souza, then which one of the following could be true?",
+    "answer": "A",
+    "flag": "success",
+    "predicted_answer": "A"
+  },
+  {
+    "id": "201110_2-G_1_6",
+    "context": "An administrator must assign parking spaces to six new employees: Robertson, Souza, Togowa, Vaughn, Xu, and Young. Each of the six employees must be assigned one of the following parking spaces: #1, #2, #3, #4, #5, or #6. No two employees can be assigned the same parking space. The following rules govern the assignment of parking spaces: Young must be assigned a higher-numbered parking space than Togowa. Xu must be assigned a higher-numbered parking space than Souza. Robertson must be assigned a higher-numbered parking space than Young. Robertson must be assigned parking space #1, #2, #3, or #4.",
+    "question": "If Robertson is assigned parking space #3, then which one of the following must be true?",
+    "answer": "E",
+    "flag": "success",
+    "predicted_answer": "E"
+  },
+  {
+    "id": "201110_2-G_2_10",
+    "context": "A government needs to assign new ambassadors to Venezuela, Yemen, and Zambia. The candidates for these ambassadorships are Jaramillo, Kayne, Landon, Novetzke, and Ong. One ambassador will be assigned to each country, and no ambassador will be assigned to more than one country. The assignment of the ambassadors must meet the following constraints: Either Kayne or Novetzke, but not both, is assigned to one of the ambassadorships. If Jaramillo is assigned to one of the ambassadorships, then so is Kayne. If Ong is assigned as ambassador to Venezuela, Kayne is not assigned as ambassador to Yemen. If Landon is assigned to an ambassadorship, it is to Zambia.",
+    "question": "If Kayne is assigned as ambassador to Yemen, which one of the following must be true?",
+    "answer": "A",
+    "flag": "parsing error",
+    "predicted_answer": "D"
+  },
+  {
+    "id": "201110_2-G_2_11",
+    "context": "A government needs to assign new ambassadors to Venezuela, Yemen, and Zambia. The candidates for these ambassadorships are Jaramillo, Kayne, Landon, Novetzke, and Ong. One ambassador will be assigned to each country, and no ambassador will be assigned to more than one country. The assignment of the ambassadors must meet the following constraints: Either Kayne or Novetzke, but not both, is assigned to one of the ambassadorships. If Jaramillo is assigned to one of the ambassadorships, then so is Kayne. If Ong is assigned as ambassador to Venezuela, Kayne is not assigned as ambassador to Yemen. If Landon is assigned to an ambassadorship, it is to Zambia.",
+    "question": "Which one of the following CANNOT be true?",
+    "answer": "C",
+    "flag": "success",
+    "predicted_answer": "C"
+  },
+  {
+    "id": "201110_2-G_2_7",
+    "context": "A government needs to assign new ambassadors to Venezuela, Yemen, and Zambia. The candidates for these ambassadorships are Jaramillo, Kayne, Landon, Novetzke, and Ong. One ambassador will be assigned to each country, and no ambassador will be assigned to more than one country. The assignment of the ambassadors must meet the following constraints: Either Kayne or Novetzke, but not both, is assigned to one of the ambassadorships. If Jaramillo is assigned to one of the ambassadorships, then so is Kayne. If Ong is assigned as ambassador to Venezuela, Kayne is not assigned as ambassador to Yemen. If Landon is assigned to an ambassadorship, it is to Zambia.",
+    "question": "Which one of the following could be the assignment of the ambassadors?",
+    "answer": "B",
+    "flag": "success",
+    "predicted_answer": "B"
+  },
+  {
+    "id": "201110_2-G_2_8",
+    "context": "A government needs to assign new ambassadors to Venezuela, Yemen, and Zambia. The candidates for these ambassadorships are Jaramillo, Kayne, Landon, Novetzke, and Ong. One ambassador will be assigned to each country, and no ambassador will be assigned to more than one country. The assignment of the ambassadors must meet the following constraints: Either Kayne or Novetzke, but not both, is assigned to one of the ambassadorships. If Jaramillo is assigned to one of the ambassadorships, then so is Kayne. If Ong is assigned as ambassador to Venezuela, Kayne is not assigned as ambassador to Yemen. If Landon is assigned to an ambassadorship, it is to Zambia.",
+    "question": "The pair of candidates who are not assigned to ambassadorships could be",
+    "answer": "A",
+    "flag": "success",
+    "predicted_answer": "A"
+  },
+  {
+    "id": "201110_2-G_2_9",
+    "context": "A government needs to assign new ambassadors to Venezuela, Yemen, and Zambia. The candidates for these ambassadorships are Jaramillo, Kayne, Landon, Novetzke, and Ong. One ambassador will be assigned to each country, and no ambassador will be assigned to more than one country. The assignment of the ambassadors must meet the following constraints: Either Kayne or Novetzke, but not both, is assigned to one of the ambassadorships. If Jaramillo is assigned to one of the ambassadorships, then so is Kayne. If Ong is assigned as ambassador to Venezuela, Kayne is not assigned as ambassador to Yemen. If Landon is assigned to an ambassadorship, it is to Zambia.",
+    "question": "If Ong is assigned as ambassador to Venezuela, then the other two ambassadors assigned could be",
+    "answer": "E",
+    "flag": "success",
+    "predicted_answer": "B"
+  },
+  {
+    "id": "201110_2-G_3_13",
+    "context": "On the first day of a two-day study for a cycling magazine, four riders—Reynaldo, Seamus, Theresa, and Yuki—will each test one of four bicycles—F, G, H, and J. Each rider will then test a different one of the bicycles on the second day. Each rider tests only one bicycle per day, and all four bicycles are tested each day. The assignment of riders to bicycles is subject to the following conditions: Reynaldo cannot test F. Yuki cannot test J. Theresa must be one of the testers for H. The bicycle that Yuki tests on the first day must be tested by Seamus on the second day.",
+    "question": "Which one of the following is a possible assignment of riders to bicycles, with the riders for each bicycle listed in the order in which they test the bicycle?",
+    "answer": "C",
+    "flag": "success",
+    "predicted_answer": "C"
+  },
+  {
+    "id": "201110_2-G_3_14",
+    "context": "On the first day of a two-day study for a cycling magazine, four riders—Reynaldo, Seamus, Theresa, and Yuki—will each test one of four bicycles—F, G, H, and J. Each rider will then test a different one of the bicycles on the second day. Each rider tests only one bicycle per day, and all four bicycles are tested each day. The assignment of riders to bicycles is subject to the following conditions: Reynaldo cannot test F. Yuki cannot test J. Theresa must be one of the testers for H. The bicycle that Yuki tests on the first day must be tested by Seamus on the second day.",
+    "question": "If Theresa tests G on the second day, then which one of the following must be true?",
+    "answer": "E",
+    "flag": "success",
+    "predicted_answer": "E"
+  },
+  {
+    "id": "201110_2-G_3_15",
+    "context": "On the first day of a two-day study for a cycling magazine, four riders—Reynaldo, Seamus, Theresa, and Yuki—will each test one of four bicycles—F, G, H, and J. Each rider will then test a different one of the bicycles on the second day. Each rider tests only one bicycle per day, and all four bicycles are tested each day. The assignment of riders to bicycles is subject to the following conditions: Reynaldo cannot test F. Yuki cannot test J. Theresa must be one of the testers for H. The bicycle that Yuki tests on the first day must be tested by Seamus on the second day.",
+    "question": "Any of the following could be true EXCEPT:",
+    "answer": "D",
+    "flag": "success",
+    "predicted_answer": "D"
+  },
+  {
+    "id": "201110_2-G_3_16",
+    "context": "On the first day of a two-day study for a cycling magazine, four riders—Reynaldo, Seamus, Theresa, and Yuki—will each test one of four bicycles—F, G, H, and J. Each rider will then test a different one of the bicycles on the second day. Each rider tests only one bicycle per day, and all four bicycles are tested each day. The assignment of riders to bicycles is subject to the following conditions: Reynaldo cannot test F. Yuki cannot test J. Theresa must be one of the testers for H. The bicycle that Yuki tests on the first day must be tested by Seamus on the second day.",
+    "question": "Which one of the following CANNOT be true?",
+    "answer": "C",
+    "flag": "parsing error",
+    "predicted_answer": "C"
+  },
+  {
+    "id": "201110_2-G_3_17",
+    "context": "On the first day of a two-day study for a cycling magazine, four riders—Reynaldo, Seamus, Theresa, and Yuki—will each test one of four bicycles—F, G, H, and J. Each rider will then test a different one of the bicycles on the second day. Each rider tests only one bicycle per day, and all four bicycles are tested each day. The assignment of riders to bicycles is subject to the following conditions: Reynaldo cannot test F. Yuki cannot test J. Theresa must be one of the testers for H. The bicycle that Yuki tests on the first day must be tested by Seamus on the second day.",
+    "question": "If Theresa tests J on the first day, then which one of the following could be true?",
+    "answer": "B",
+    "flag": "success",
+    "predicted_answer": "B"
+  },
+  {
+    "id": "201110_2-G_3_18",
+    "context": "On the first day of a two-day study for a cycling magazine, four riders—Reynaldo, Seamus, Theresa, and Yuki—will each test one of four bicycles—F, G, H, and J. Each rider will then test a different one of the bicycles on the second day. Each rider tests only one bicycle per day, and all four bicycles are tested each day. The assignment of riders to bicycles is subject to the following conditions: Reynaldo cannot test F. Yuki cannot test J. Theresa must be one of the testers for H. The bicycle that Yuki tests on the first day must be tested by Seamus on the second day.",
+    "question": "Which one of the following CANNOT be true?",
+    "answer": "D",
+    "flag": "success",
+    "predicted_answer": "D"
+  },
+  {
+    "id": "201110_2-G_4_19",
+    "context": "Exactly eight books—F, G, H, I, K, L, M, O—are placed on a bookcase with exactly three shelves—the top shelf, the middle shelf, and the bottom shelf. At least two books are placed on each shelf. The following conditions must apply: More of the books are placed on the bottom shelf than the top shelf. I is placed on the middle shelf. K is placed on a higher shelf than F. O is placed on a higher shelf than L. F is placed on the same shelf as M.",
+    "question": "Which one of the following could be a complete and accurate list of the books placed on the bottom shelf?",
+    "answer": "B",
+    "flag": "execution error",
+    "predicted_answer": "C"
+  },
+  {
+    "id": "201110_2-G_4_21",
+    "context": "Exactly eight books—F, G, H, I, K, L, M, O—are placed on a bookcase with exactly three shelves—the top shelf, the middle shelf, and the bottom shelf. At least two books are placed on each shelf. The following conditions must apply: More of the books are placed on the bottom shelf than the top shelf. I is placed on the middle shelf. K is placed on a higher shelf than F. O is placed on a higher shelf than L. F is placed on the same shelf as M.",
+    "question": "Which one of the following must be true?",
+    "answer": "A",
+    "flag": "execution error",
+    "predicted_answer": "E"
+  },
+  {
+    "id": "201110_2-G_4_22",
+    "context": "Exactly eight books—F, G, H, I, K, L, M, O—are placed on a bookcase with exactly three shelves—the top shelf, the middle shelf, and the bottom shelf. At least two books are placed on each shelf. The following conditions must apply: More of the books are placed on the bottom shelf than the top shelf. I is placed on the middle shelf. K is placed on a higher shelf than F. O is placed on a higher shelf than L. F is placed on the same shelf as M.",
+    "question": "If G is placed on the top shelf, then which one of the following could be a complete and accurate list of the books placed on the middle shelf?",
+    "answer": "D",
+    "flag": "parsing error",
+    "predicted_answer": "C"
+  },
+  {
+    "id": "201110_2-G_4_23",
+    "context": "Exactly eight books—F, G, H, I, K, L, M, O—are placed on a bookcase with exactly three shelves—the top shelf, the middle shelf, and the bottom shelf. At least two books are placed on each shelf. The following conditions must apply: More of the books are placed on the bottom shelf than the top shelf. I is placed on the middle shelf. K is placed on a higher shelf than F. O is placed on a higher shelf than L. F is placed on the same shelf as M.",
+    "question": "If L is placed on a shelf higher than the shelf H is placed on, then which one of the following must be true?",
+    "answer": "C",
+    "flag": "execution error",
+    "predicted_answer": "C"
+  },
+  {
+    "id": "201310_3-G_1_1",
+    "context": "A concert promoter is filling the six slots at a benefit concert. The slots, from earliest to latest, are numbered slot one through slot six. The slots will be filled by six bands—Uneasy, Vegemite, Wellspring, Xpert, Yardsign, and Zircon. Each band will perform in just one slot. The order must meet the following constraints: Vegemite performs in an earlier slot than Zircon. Wellspring and Zircon each perform in an earlier slot than Xpert. Uneasy performs in one of the last three slots. Yardsign performs in one of the first three slots.",
+    "question": "Which one of the following CANNOT be the band that performs in slot five?",
+    "answer": "B",
+    "flag": "success",
+    "predicted_answer": "B"
+  },
+  {
+    "id": "201310_3-G_1_4",
+    "context": "A concert promoter is filling the six slots at a benefit concert. The slots, from earliest to latest, are numbered slot one through slot six. The slots will be filled by six bands—Uneasy, Vegemite, Wellspring, Xpert, Yardsign, and Zircon. Each band will perform in just one slot. The order must meet the following constraints: Vegemite performs in an earlier slot than Zircon. Wellspring and Zircon each perform in an earlier slot than Xpert. Uneasy performs in one of the last three slots. Yardsign performs in one of the first three slots.",
+    "question": "If Zircon performs immediately before Wellspring, which one of the following must be true?",
+    "answer": "E",
+    "flag": "success",
+    "predicted_answer": "E"
+  },
+  {
+    "id": "201310_3-G_1_5",
+    "context": "A concert promoter is filling the six slots at a benefit concert. The slots, from earliest to latest, are numbered slot one through slot six. The slots will be filled by six bands—Uneasy, Vegemite, Wellspring, Xpert, Yardsign, and Zircon. Each band will perform in just one slot. The order must meet the following constraints: Vegemite performs in an earlier slot than Zircon. Wellspring and Zircon each perform in an earlier slot than Xpert. Uneasy performs in one of the last three slots. Yardsign performs in one of the first three slots.",
+    "question": "Which one of the following is a complete and accurate list of bands any one of which could be the band that performs in slot one?",
+    "answer": "D",
+    "flag": "success",
+    "predicted_answer": "D"
+  },
+  {
+    "id": "201310_3-G_1_6",
+    "context": "A concert promoter is filling the six slots at a benefit concert. The slots, from earliest to latest, are numbered slot one through slot six. The slots will be filled by six bands—Uneasy, Vegemite, Wellspring, Xpert, Yardsign, and Zircon. Each band will perform in just one slot. The order must meet the following constraints: Vegemite performs in an earlier slot than Zircon. Wellspring and Zircon each perform in an earlier slot than Xpert. Uneasy performs in one of the last three slots. Yardsign performs in one of the first three slots.",
+    "question": "If Wellspring performs immediately before Xpert, which one of the following could be true?",
+    "answer": "D",
+    "flag": "success",
+    "predicted_answer": "D"
+  },
+  {
+    "id": "201310_3-G_2_9",
+    "context": "A corporate manager is selecting employees for a research team. The team will include at least four employees, all from among the following eight: Myers, Ortega, Paine, Schmidt, Thomson, Wong, Yoder, and Zayre. The selection is constrained by the following conditions: If Myers is on the team, neither Ortega nor Paine can be. If Schmidt is on the team, both Paine and Thomson must also be. If Wong is on the team, both Myers and Yoder must also be.",
+    "question": "Which one of the following is a pair of employees who CANNOT be on the team together?",
+    "answer": "D",
+    "flag": "success",
+    "predicted_answer": "D"
+  },
+  {
+    "id": "201310_3-G_3_13",
+    "context": "Exactly five movies are showing at the repertory theater this evening: a horror film, a mystery, a romance, a sci-fi film, and a western. Each movie is shown exactly once, on one of the theater's three screens: screens 1, 2, and 3. Screens 1 and 2 show two movies each, one beginning at 7 P.M. and the other at 9 P.M.; screen 3 shows exactly one movie, at 8 P.M. The following conditions apply to this evening's schedule: The western begins at some time before the horror film does. The sci-fi film is not shown on screen 3. The romance is not shown on screen 2. The horror film and the mystery are shown on different screens.",
+    "question": "Which one of the following is an acceptable schedule of the movies for this evening?",
+    "answer": "A",
+    "flag": "execution error",
+    "predicted_answer": "D"
+  },
+  {
+    "id": "201310_3-G_3_16",
+    "context": "Exactly five movies are showing at the repertory theater this evening: a horror film, a mystery, a romance, a sci-fi film, and a western. Each movie is shown exactly once, on one of the theater's three screens: screens 1, 2, and 3. Screens 1 and 2 show two movies each, one beginning at 7 P.M. and the other at 9 P.M.; screen 3 shows exactly one movie, at 8 P.M. The following conditions apply to this evening's schedule: The western begins at some time before the horror film does. The sci-fi film is not shown on screen 3. The romance is not shown on screen 2. The horror film and the mystery are shown on different screens.",
+    "question": "If the romance is scheduled to begin before the western does, then which one of the following must be true of this evening's schedule?",
+    "answer": "E",
+    "flag": "parsing error",
+    "predicted_answer": "A"
+  },
+  {
+    "id": "201310_3-G_3_18",
+    "context": "Exactly five movies are showing at the repertory theater this evening: a horror film, a mystery, a romance, a sci-fi film, and a western. Each movie is shown exactly once, on one of the theater's three screens: screens 1, 2, and 3. Screens 1 and 2 show two movies each, one beginning at 7 P.M. and the other at 9 P.M.; screen 3 shows exactly one movie, at 8 P.M. The following conditions apply to this evening's schedule: The western begins at some time before the horror film does. The sci-fi film is not shown on screen 3. The romance is not shown on screen 2. The horror film and the mystery are shown on different screens.",
+    "question": "If the sci-fi film and the romance are to be shown on the same screen, then which one of the following must be true of this evening's schedule?",
+    "answer": "A",
+    "flag": "success",
+    "predicted_answer": "A"
+  },
+  {
+    "id": "201412_2-G_1_1",
+    "context": "A concert is given by a six-member band—guitarist, keyboard player, percussionist, saxophonist, trumpeter, violinist. During the concert, each member performs exactly one solo. The following restrictions apply: The guitarist does not perform the fourth solo. The percussionist performs a solo at some time before the keyboard player does. The keyboard player performs a solo at some time after the violinist does and at some time before the guitarist does. The saxophonist performs a solo at some time after either the percussionist does or the trumpeter does, but not both.",
+    "question": "Which one of the following is an acceptable ordering of solos from first to last?",
+    "answer": "C",
+    "flag": "execution error",
+    "predicted_answer": "D"
+  },
+  {
+    "id": "201412_2-G_3_12",
+    "context": "Three rugs will be woven out of colored thread. Six colors of thread are available—forest, olive, peach, turquoise, white, and yellow—exactly five of which will be used to weave the rugs. Each color that is used will be used in only one of the rugs. The rugs are either solid—woven in a single color—or multicolored. The rugs must be woven according to the following rules: In any rug in which white is used, two other colors are also used. In any rug in which olive is used, peach is also used. Forest and turquoise are not used together in a rug. Peach and turquoise are not used together in a rug. Peach and yellow are not used together in a rug.",
+    "question": "Which one of the following must be true?",
+    "answer": "C",
+    "flag": "success",
+    "predicted_answer": "C"
+  },
+  {
+    "id": "201412_2-G_4_20",
+    "context": "The manager of a photography business must assign at least two photographers to each of two graduation ceremonies—one at Silva University and the other at Thorne University. Exactly six photographers are available—Frost, Gonzalez, Heideck, Knutson, Lai, and Mays—but not all have to be assigned. No photographer can be assigned to both ceremonies. The following constraints apply: Frost must be assigned together with Heideck to one of the graduation ceremonies. If Lai and Mays are both assigned, it must be to different ceremonies. If Gonzalez is assigned to the Silva University ceremony, then Lai must be assigned to the Thorne University ceremony. If Knutson is not assigned to the Thorne University ceremony, then both Heideck and Mays must be assigned to it.",
+    "question": "Which one of the following is a complete and accurate list of all of the photographers who must be assigned?",
+    "answer": "B",
+    "flag": "success",
+    "predicted_answer": "A"
+  }
+]

@@ -1,0 +1,386 @@
+[
+  {
+    "id": "example104",
+    "context": "Every painted lady is a butterfly. Every butterfly is a lepidopteran. Lepidopterans are insects. Insects are arthropods. Arthropods are not bony. Sally is a painted lady.",
+    "question": "Is the following statement true or false? Sally is bony.",
+    "answer": "B",
+    "flag": "success",
+    "predicted_answer": "B"
+  },
+  {
+    "id": "example106",
+    "context": "Painted ladies are butterflies. Butterflies are lepidopterans. Lepidopterans are insects. Insects are arthropods. Arthropods are not bony. Alex is a painted lady.",
+    "question": "Is the following statement true or false? Alex is bony.",
+    "answer": "B",
+    "flag": "execution error",
+    "predicted_answer": "A"
+  },
+  {
+    "id": "example107",
+    "context": "Every tabby is a cat. Cats are felines. Felines are carnivores. Each carnivore is a mammal. Every mammal is not cold-blooded. Alex is a tabby.",
+    "question": "Is the following statement true or false? Alex is cold-blooded.",
+    "answer": "B",
+    "flag": "execution error",
+    "predicted_answer": "A"
+  },
+  {
+    "id": "example108",
+    "context": "Mersenne primes are prime numbers. Prime numbers are natural numbers. Natural numbers are integers. Integers are real numbers. Each real number is not imaginary. 127 is a Mersenne prime.",
+    "question": "Is the following statement true or false? 127 is imaginary.",
+    "answer": "B",
+    "flag": "success",
+    "predicted_answer": "B"
+  },
+  {
+    "id": "example111",
+    "context": "Each Mersenne prime is a prime number. Prime numbers are natural numbers. Natural numbers are integers. Integers are real numbers. Every real number is not imaginary. 131071 is a Mersenne prime.",
+    "question": "Is the following statement true or false? 131071 is imaginary.",
+    "answer": "B",
+    "flag": "execution error",
+    "predicted_answer": "B"
+  },
+  {
+    "id": "example112",
+    "context": "Mersenne primes are prime numbers. Prime numbers are natural numbers. Each natural number is an integer. Integers are real numbers. Each real number is not imaginary. 127 is a Mersenne prime.",
+    "question": "Is the following statement true or false? 127 is imaginary.",
+    "answer": "B",
+    "flag": "execution error",
+    "predicted_answer": "B"
+  },
+  {
+    "id": "example12",
+    "context": "Each painted lady is a butterfly. Every butterfly is a lepidopteran. Lepidopterans are insects. Insects are arthropods. Each arthropod is not bony. Rex is a painted lady.",
+    "question": "Is the following statement true or false? Rex is bony.",
+    "answer": "B",
+    "flag": "success",
+    "predicted_answer": "B"
+  },
+  {
+    "id": "example122",
+    "context": "Every tabby is a cat. Cats are felines. Every feline is a carnivore. Each carnivore is a mammal. Each mammal is not cold-blooded. Stella is a tabby.",
+    "question": "Is the following statement true or false? Stella is cold-blooded.",
+    "answer": "B",
+    "flag": "execution error",
+    "predicted_answer": "B"
+  },
+  {
+    "id": "example123",
+    "context": "Mersenne primes are prime numbers. Every prime number is a natural number. Natural numbers are integers. Integers are real numbers. Real numbers are not imaginary. 131071 is a Mersenne prime.",
+    "question": "Is the following statement true or false? 131071 is imaginary.",
+    "answer": "B",
+    "flag": "success",
+    "predicted_answer": "B"
+  },
+  {
+    "id": "example13",
+    "context": "Each painted lady is a butterfly. Each butterfly is a lepidopteran. Every lepidopteran is an insect. Every insect is an arthropod. Arthropods are not bony. Fae is a painted lady.",
+    "question": "Is the following statement true or false? Fae is bony.",
+    "answer": "B",
+    "flag": "success",
+    "predicted_answer": "B"
+  },
+  {
+    "id": "example130",
+    "context": "Mersenne primes are prime numbers. Each prime number is a natural number. Natural numbers are integers. Each integer is a real number. Each real number is not imaginary. 31 is a Mersenne prime.",
+    "question": "Is the following statement true or false? 31 is imaginary.",
+    "answer": "B",
+    "flag": "execution error",
+    "predicted_answer": "A"
+  },
+  {
+    "id": "example132",
+    "context": "Each painted lady is a butterfly. Each butterfly is a lepidopteran. Each lepidopteran is an insect. Each insect is an arthropod. Every arthropod is not bony. Rex is a painted lady.",
+    "question": "Is the following statement true or false? Rex is bony.",
+    "answer": "B",
+    "flag": "success",
+    "predicted_answer": "B"
+  },
+  {
+    "id": "example100",
+    "context": "Each Mersenne prime is a prime number. Prime numbers are natural numbers. Natural numbers are integers. Each integer is a real number. Real numbers are not imaginary. 31 is a Mersenne prime.",
+    "question": "Is the following statement true or false? 31 is not imaginary.",
+    "answer": "A",
+    "flag": "success",
+    "predicted_answer": "A"
+  },
+  {
+    "id": "example101",
+    "context": "Mersenne primes are prime numbers. Prime numbers are natural numbers. Every natural number is an integer. Integers are real numbers. Real numbers are not imaginary. 127 is a Mersenne prime.",
+    "question": "Is the following statement true or false? 127 is not imaginary.",
+    "answer": "A",
+    "flag": "success",
+    "predicted_answer": "A"
+  },
+  {
+    "id": "example103",
+    "context": "Each Mersenne prime is a prime number. Prime numbers are natural numbers. Every natural number is an integer. Every integer is a real number. Real numbers are not imaginary. 127 is a Mersenne prime.",
+    "question": "Is the following statement true or false? 127 is not imaginary.",
+    "answer": "A",
+    "flag": "success",
+    "predicted_answer": "A"
+  },
+  {
+    "id": "example105",
+    "context": "Each Mersenne prime is a prime number. Prime numbers are natural numbers. Each natural number is an integer. Integers are real numbers. Every real number is not imaginary. 3 is a Mersenne prime.",
+    "question": "Is the following statement true or false? 3 is not imaginary.",
+    "answer": "A",
+    "flag": "execution error",
+    "predicted_answer": "A"
+  },
+  {
+    "id": "example110",
+    "context": "Each Mersenne prime is a prime number. Every prime number is a natural number. Natural numbers are integers. Every integer is a real number. Real numbers are not imaginary. 7 is a Mersenne prime.",
+    "question": "Is the following statement true or false? 7 is not imaginary.",
+    "answer": "A",
+    "flag": "execution error",
+    "predicted_answer": "A"
+  },
+  {
+    "id": "example113",
+    "context": "Painted ladies are butterflies. Butterflies are lepidopterans. Lepidopterans are insects. Every insect is an arthropod. Arthropods are not bony. Wren is a painted lady.",
+    "question": "Is the following statement true or false? Wren is not bony.",
+    "answer": "A",
+    "flag": "success",
+    "predicted_answer": "A"
+  },
+  {
+    "id": "example114",
+    "context": "Mersenne primes are prime numbers. Every prime number is a natural number. Natural numbers are integers. Integers are real numbers. Each real number is not imaginary. 7 is a Mersenne prime.",
+    "question": "Is the following statement true or false? 7 is not imaginary.",
+    "answer": "A",
+    "flag": "execution error",
+    "predicted_answer": "B"
+  },
+  {
+    "id": "example116",
+    "context": "Mersenne primes are prime numbers. Each prime number is a natural number. Each natural number is an integer. Integers are real numbers. Every real number is not imaginary. 7 is a Mersenne prime.",
+    "question": "Is the following statement true or false? 7 is not imaginary.",
+    "answer": "A",
+    "flag": "success",
+    "predicted_answer": "A"
+  },
+  {
+    "id": "example117",
+    "context": "Mersenne primes are prime numbers. Every prime number is a natural number. Every natural number is an integer. Integers are real numbers. Real numbers are not imaginary. 3 is a Mersenne prime.",
+    "question": "Is the following statement true or false? 3 is not imaginary.",
+    "answer": "A",
+    "flag": "parsing error",
+    "predicted_answer": "B"
+  },
+  {
+    "id": "example118",
+    "context": "Each painted lady is a butterfly. Every butterfly is a lepidopteran. Lepidopterans are insects. Insects are arthropods. Arthropods are not bony. Stella is a painted lady.",
+    "question": "Is the following statement true or false? Stella is not bony.",
+    "answer": "A",
+    "flag": "success",
+    "predicted_answer": "A"
+  },
+  {
+    "id": "example120",
+    "context": "Painted ladies are butterflies. Butterflies are lepidopterans. Each lepidopteran is an insect. Insects are arthropods. Arthropods are not bony. Alex is a painted lady.",
+    "question": "Is the following statement true or false? Alex is not bony.",
+    "answer": "A",
+    "flag": "execution error",
+    "predicted_answer": "B"
+  },
+  {
+    "id": "example124",
+    "context": "Mersenne primes are prime numbers. Every prime number is a natural number. Natural numbers are integers. Integers are real numbers. Each real number is not imaginary. 127 is a Mersenne prime.",
+    "question": "Is the following statement true or false? 127 is not imaginary.",
+    "answer": "A",
+    "flag": "execution error",
+    "predicted_answer": "A"
+  },
+  {
+    "id": "example10",
+    "context": "Painted ladies are butterflies. Butterflies are lepidopterans. Each lepidopteran is an insect. Every insect is an arthropod. Every arthropod is segmented. Max is a painted lady.",
+    "question": "Is the following statement true or false? Max is segmented.",
+    "answer": "A",
+    "flag": "success",
+    "predicted_answer": "A"
+  },
+  {
+    "id": "example109",
+    "context": "Mersenne primes are prime numbers. Every prime number is a natural number. Every natural number is an integer. Each integer is a real number. Real numbers are real. 131071 is a Mersenne prime.",
+    "question": "Is the following statement true or false? 131071 is real.",
+    "answer": "A",
+    "flag": "parsing error",
+    "predicted_answer": "B"
+  },
+  {
+    "id": "example11",
+    "context": "Each Mersenne prime is a prime number. Prime numbers are natural numbers. Natural numbers are integers. Every integer is a real number. Each real number is real. 127 is a Mersenne prime.",
+    "question": "Is the following statement true or false? 127 is real.",
+    "answer": "A",
+    "flag": "success",
+    "predicted_answer": "A"
+  },
+  {
+    "id": "example115",
+    "context": "Painted ladies are butterflies. Each butterfly is a lepidopteran. Each lepidopteran is an insect. Insects are arthropods. Arthropods are small. Fae is a painted lady.",
+    "question": "Is the following statement true or false? Fae is small.",
+    "answer": "A",
+    "flag": "success",
+    "predicted_answer": "A"
+  },
+  {
+    "id": "example126",
+    "context": "Painted ladies are butterflies. Butterflies are lepidopterans. Lepidopterans are insects. Insects are arthropods. Every arthropod is segmented. Sally is a painted lady.",
+    "question": "Is the following statement true or false? Sally is segmented.",
+    "answer": "A",
+    "flag": "execution error",
+    "predicted_answer": "B"
+  },
+  {
+    "id": "example133",
+    "context": "Every Mersenne prime is a prime number. Every prime number is a natural number. Natural numbers are integers. Every integer is a real number. Each real number is real. 31 is a Mersenne prime.",
+    "question": "Is the following statement true or false? 31 is real.",
+    "answer": "A",
+    "flag": "execution error",
+    "predicted_answer": "A"
+  },
+  {
+    "id": "example147",
+    "context": "Painted ladies are butterflies. Butterflies are lepidopterans. Lepidopterans are insects. Insects are arthropods. Arthropods are small. Sam is a painted lady.",
+    "question": "Is the following statement true or false? Sam is small.",
+    "answer": "A",
+    "flag": "success",
+    "predicted_answer": "A"
+  },
+  {
+    "id": "example148",
+    "context": "Every painted lady is a butterfly. Butterflies are lepidopterans. Lepidopterans are insects. Each insect is an arthropod. Arthropods are segmented. Wren is a painted lady.",
+    "question": "Is the following statement true or false? Wren is segmented.",
+    "answer": "A",
+    "flag": "success",
+    "predicted_answer": "A"
+  },
+  {
+    "id": "example154",
+    "context": "Each painted lady is a butterfly. Each butterfly is a lepidopteran. Every lepidopteran is an insect. Insects are arthropods. Arthropods are small. Rex is a painted lady.",
+    "question": "Is the following statement true or false? Rex is small.",
+    "answer": "A",
+    "flag": "success",
+    "predicted_answer": "A"
+  },
+  {
+    "id": "example157",
+    "context": "Each painted lady is a butterfly. Each butterfly is a lepidopteran. Each lepidopteran is an insect. Insects are arthropods. Arthropods are small. Alex is a painted lady.",
+    "question": "Is the following statement true or false? Alex is small.",
+    "answer": "A",
+    "flag": "execution error",
+    "predicted_answer": "B"
+  },
+  {
+    "id": "example164",
+    "context": "Every Mersenne prime is a prime number. Every prime number is a natural number. Natural numbers are integers. Every integer is a real number. Real numbers are real. 7 is a Mersenne prime.",
+    "question": "Is the following statement true or false? 7 is real.",
+    "answer": "A",
+    "flag": "execution error",
+    "predicted_answer": "B"
+  },
+  {
+    "id": "example165",
+    "context": "Mersenne primes are prime numbers. Each prime number is a natural number. Natural numbers are integers. Integers are real numbers. Real numbers are real. 131071 is a Mersenne prime.",
+    "question": "Is the following statement true or false? 131071 is real.",
+    "answer": "A",
+    "flag": "success",
+    "predicted_answer": "A"
+  },
+  {
+    "id": "example1",
+    "context": "Every Mersenne prime is a prime number. Every prime number is a natural number. Each natural number is an integer. Integers are real numbers. Real numbers are real. 131071 is a Mersenne prime.",
+    "question": "Is the following statement true or false? 131071 is not real.",
+    "answer": "B",
+    "flag": "execution error",
+    "predicted_answer": "B"
+  },
+  {
+    "id": "example102",
+    "context": "Painted ladies are butterflies. Each butterfly is a lepidopteran. Each lepidopteran is an insect. Insects are arthropods. Each arthropod is small. Fae is a painted lady.",
+    "question": "Is the following statement true or false? Fae is not small.",
+    "answer": "B",
+    "flag": "execution error",
+    "predicted_answer": "B"
+  },
+  {
+    "id": "example119",
+    "context": "Every painted lady is a butterfly. Each butterfly is a lepidopteran. Lepidopterans are insects. Insects are arthropods. Every arthropod is small. Stella is a painted lady.",
+    "question": "Is the following statement true or false? Stella is not small.",
+    "answer": "B",
+    "flag": "success",
+    "predicted_answer": "B"
+  },
+  {
+    "id": "example121",
+    "context": "Tabbies are cats. Cats are felines. Every feline is a carnivore. Every carnivore is a mammal. Every mammal is furry. Stella is a tabby.",
+    "question": "Is the following statement true or false? Stella is not furry.",
+    "answer": "B",
+    "flag": "execution error",
+    "predicted_answer": "A"
+  },
+  {
+    "id": "example128",
+    "context": "Every Mersenne prime is a prime number. Every prime number is a natural number. Every natural number is an integer. Every integer is a real number. Every real number is real. 131071 is a Mersenne prime.",
+    "question": "Is the following statement true or false? 131071 is not real.",
+    "answer": "B",
+    "flag": "execution error",
+    "predicted_answer": "A"
+  },
+  {
+    "id": "example131",
+    "context": "Every Mersenne prime is a prime number. Every prime number is a natural number. Every natural number is an integer. Every integer is a real number. Real numbers are real. 127 is a Mersenne prime.",
+    "question": "Is the following statement true or false? 127 is not real.",
+    "answer": "B",
+    "flag": "execution error",
+    "predicted_answer": "B"
+  },
+  {
+    "id": "example135",
+    "context": "Painted ladies are butterflies. Butterflies are lepidopterans. Every lepidopteran is an insect. Every insect is an arthropod. Arthropods are small. Sam is a painted lady.",
+    "question": "Is the following statement true or false? Sam is not small.",
+    "answer": "B",
+    "flag": "execution error",
+    "predicted_answer": "A"
+  },
+  {
+    "id": "example138",
+    "context": "Mersenne primes are prime numbers. Each prime number is a natural number. Natural numbers are integers. Each integer is a real number. Each real number is real. 31 is a Mersenne prime.",
+    "question": "Is the following statement true or false? 31 is not real.",
+    "answer": "B",
+    "flag": "parsing error",
+    "predicted_answer": "B"
+  },
+  {
+    "id": "example139",
+    "context": "Mersenne primes are prime numbers. Every prime number is a natural number. Every natural number is an integer. Every integer is a real number. Each real number is real. 31 is a Mersenne prime.",
+    "question": "Is the following statement true or false? 31 is not real.",
+    "answer": "B",
+    "flag": "parsing error",
+    "predicted_answer": "B"
+  },
+  {
+    "id": "example150",
+    "context": "Each Mersenne prime is a prime number. Prime numbers are natural numbers. Natural numbers are integers. Every integer is a real number. Each real number is real. 131071 is a Mersenne prime.",
+    "question": "Is the following statement true or false? 131071 is not real.",
+    "answer": "B",
+    "flag": "parsing error",
+    "predicted_answer": "B"
+  },
+  {
+    "id": "example151",
+    "context": "Each Mersenne prime is a prime number. Every prime number is a natural number. Natural numbers are integers. Every integer is a real number. Every real number is real. 31 is a Mersenne prime.",
+    "question": "Is the following statement true or false? 31 is not real.",
+    "answer": "B",
+    "flag": "parsing error",
+    "predicted_answer": "B"
+  },
+  {
+    "id": "example152",
+    "context": "Mersenne primes are prime numbers. Every prime number is a natural number. Each natural number is an integer. Each integer is a real number. Each real number is real. 131071 is a Mersenne prime.",
+    "question": "Is the following statement true or false? 131071 is not real.",
+    "answer": "B",
+    "flag": "parsing error",
+    "predicted_answer": "B"
+  }
+]

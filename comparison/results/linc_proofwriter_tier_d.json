@@ -1,0 +1,1508 @@
+{
+  "collection": "proofwriter_tier_d",
+  "metrics": {
+    "accuracy (pass@1 majority)": 0.2833333333333333
+  },
+  "predictions": [
+    {
+      "id": "AttNeg-OWA-D0-1002",
+      "reference": "True",
+      "prediction": "True"
+    },
+    {
+      "id": "AttNeg-OWA-D0-1017",
+      "reference": "True",
+      "prediction": "True"
+    },
+    {
+      "id": "AttNoneg-OWA-D0-1002",
+      "reference": "True",
+      "prediction": "True"
+    },
+    {
+      "id": "RelNeg-OWA-D0-1",
+      "reference": "True",
+      "prediction": "True"
+    },
+    {
+      "id": "RelNoneg-OWA-D0-1008",
+      "reference": "True",
+      "prediction": "True"
+    },
+    {
+      "id": "AttNeg-OWA-D0-1019",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNoneg-OWA-D0-1009",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "RelNeg-OWA-D0-10",
+      "reference": "False",
+      "prediction": "False"
+    },
+    {
+      "id": "RelNeg-OWA-D0-1011",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "RelNoneg-OWA-D0-1011",
+      "reference": "False",
+      "prediction": "True"
+    },
+    {
+      "id": "AttNeg-OWA-D0-1024",
+      "reference": "Uncertain",
+      "prediction": "Uncertain"
+    },
+    {
+      "id": "AttNoneg-OWA-D0-101",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNoneg-OWA-D0-1021",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "RelNeg-OWA-D0-1021",
+      "reference": "Uncertain",
+      "prediction": "Uncertain"
+    },
+    {
+      "id": "RelNoneg-OWA-D0-1022",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNeg-OWA-D1-10",
+      "reference": "True",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNoneg-OWA-D1-1006",
+      "reference": "True",
+      "prediction": "Error"
+    },
+    {
+      "id": "RelNeg-OWA-D1-102",
+      "reference": "True",
+      "prediction": "Error"
+    },
+    {
+      "id": "RelNoneg-OWA-D1-1",
+      "reference": "True",
+      "prediction": "True"
+    },
+    {
+      "id": "RelNoneg-OWA-D1-1009",
+      "reference": "True",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNeg-OWA-D1-100",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNeg-OWA-D1-1001",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNoneg-OWA-D1-1020",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "RelNeg-OWA-D1-1020",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "RelNoneg-OWA-D1-1016",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNeg-OWA-D1-1024",
+      "reference": "Uncertain",
+      "prediction": "Uncertain"
+    },
+    {
+      "id": "AttNoneg-OWA-D1-1021",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "RelNeg-OWA-D1-1023",
+      "reference": "Uncertain",
+      "prediction": "Uncertain"
+    },
+    {
+      "id": "RelNeg-OWA-D1-1025",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "RelNoneg-OWA-D1-1018",
+      "reference": "Uncertain",
+      "prediction": "True"
+    },
+    {
+      "id": "AttNeg-OWA-D2-1009",
+      "reference": "True",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNoneg-OWA-D2-102",
+      "reference": "True",
+      "prediction": "True"
+    },
+    {
+      "id": "AttNoneg-OWA-D2-1021",
+      "reference": "True",
+      "prediction": "Error"
+    },
+    {
+      "id": "RelNeg-OWA-D2-1004",
+      "reference": "True",
+      "prediction": "Error"
+    },
+    {
+      "id": "RelNoneg-OWA-D2-1001",
+      "reference": "True",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNeg-OWA-D2-1011",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNoneg-OWA-D2-1024",
+      "reference": "False",
+      "prediction": "False"
+    },
+    {
+      "id": "RelNeg-OWA-D2-1012",
+      "reference": "False",
+      "prediction": "False"
+    },
+    {
+      "id": "RelNoneg-OWA-D2-1007",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "RelNoneg-OWA-D2-1014",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNeg-OWA-D2-1020",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNeg-OWA-D2-1038",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNoneg-OWA-D2-1032",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "RelNeg-OWA-D2-1037",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "RelNoneg-OWA-D2-1019",
+      "reference": "Uncertain",
+      "prediction": "Uncertain"
+    },
+    {
+      "id": "AttNeg-OWA-D3-1001",
+      "reference": "True",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNoneg-OWA-D3-100",
+      "reference": "True",
+      "prediction": "Error"
+    },
+    {
+      "id": "RelNeg-OWA-D3-1011",
+      "reference": "True",
+      "prediction": "Error"
+    },
+    {
+      "id": "RelNeg-OWA-D3-1062",
+      "reference": "True",
+      "prediction": "Error"
+    },
+    {
+      "id": "RelNoneg-OWA-D3-1009",
+      "reference": "True",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNeg-OWA-D3-1013",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNoneg-OWA-D3-1002",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNoneg-OWA-D3-1003",
+      "reference": "False",
+      "prediction": "False"
+    },
+    {
+      "id": "RelNeg-OWA-D3-107",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "RelNoneg-OWA-D3-1027",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNeg-OWA-D3-1016",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNoneg-OWA-D3-1004",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "RelNeg-OWA-D3-1081",
+      "reference": "Uncertain",
+      "prediction": "Uncertain"
+    },
+    {
+      "id": "RelNoneg-OWA-D3-1033",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "RelNoneg-OWA-D3-1037",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNeg-OWA-D5-1009",
+      "reference": "True",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNeg-OWA-D5-1015",
+      "reference": "True",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNoneg-OWA-D5-1",
+      "reference": "True",
+      "prediction": "Uncertain"
+    },
+    {
+      "id": "RelNeg-OWA-D5-1026",
+      "reference": "True",
+      "prediction": "Error"
+    },
+    {
+      "id": "RelNoneg-OWA-D5-1009",
+      "reference": "True",
+      "prediction": "True"
+    },
+    {
+      "id": "AttNeg-OWA-D5-1017",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNoneg-OWA-D5-1003",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "RelNeg-OWA-D5-1029",
+      "reference": "False",
+      "prediction": "Uncertain"
+    },
+    {
+      "id": "RelNeg-OWA-D5-111",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "RelNoneg-OWA-D5-1036",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNeg-OWA-D5-1027",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNoneg-OWA-D5-1022",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNoneg-OWA-D5-1032",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "RelNeg-OWA-D5-112",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "RelNoneg-OWA-D5-116",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNeg-OWA-D0-1247",
+      "reference": "True",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNeg-OWA-D0-1350",
+      "reference": "True",
+      "prediction": "True"
+    },
+    {
+      "id": "AttNeg-OWA-D0-1497",
+      "reference": "True",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNeg-OWA-D0-1618",
+      "reference": "True",
+      "prediction": "True"
+    },
+    {
+      "id": "AttNeg-OWA-D0-1894",
+      "reference": "True",
+      "prediction": "True"
+    },
+    {
+      "id": "AttNeg-OWA-D0-1932",
+      "reference": "True",
+      "prediction": "True"
+    },
+    {
+      "id": "AttNeg-OWA-D0-205",
+      "reference": "True",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNeg-OWA-D0-2065",
+      "reference": "True",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNeg-OWA-D0-207",
+      "reference": "True",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNeg-OWA-D0-22",
+      "reference": "True",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNeg-OWA-D0-2295",
+      "reference": "True",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNeg-OWA-D0-2299",
+      "reference": "True",
+      "prediction": "True"
+    },
+    {
+      "id": "AttNeg-OWA-D0-2340",
+      "reference": "True",
+      "prediction": "True"
+    },
+    {
+      "id": "AttNoneg-OWA-D0-1098",
+      "reference": "True",
+      "prediction": "True"
+    },
+    {
+      "id": "AttNoneg-OWA-D0-1100",
+      "reference": "True",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNoneg-OWA-D0-111",
+      "reference": "True",
+      "prediction": "True"
+    },
+    {
+      "id": "AttNoneg-OWA-D0-1191",
+      "reference": "True",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNoneg-OWA-D0-1215",
+      "reference": "True",
+      "prediction": "True"
+    },
+    {
+      "id": "AttNoneg-OWA-D0-1222",
+      "reference": "True",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNoneg-OWA-D0-129",
+      "reference": "True",
+      "prediction": "True"
+    },
+    {
+      "id": "AttNoneg-OWA-D0-135",
+      "reference": "True",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNoneg-OWA-D0-148",
+      "reference": "True",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNoneg-OWA-D0-1524",
+      "reference": "True",
+      "prediction": "Uncertain"
+    },
+    {
+      "id": "AttNoneg-OWA-D0-1638",
+      "reference": "True",
+      "prediction": "True"
+    },
+    {
+      "id": "AttNoneg-OWA-D0-1744",
+      "reference": "True",
+      "prediction": "True"
+    },
+    {
+      "id": "AttNonegNatLang-OWA-1",
+      "reference": "True",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNonegNatLang-OWA-10",
+      "reference": "True",
+      "prediction": "True"
+    },
+    {
+      "id": "AttNonegNatLang-OWA-100",
+      "reference": "True",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNonegNatLang-OWA-101",
+      "reference": "True",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNonegNatLang-OWA-102",
+      "reference": "True",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNonegNatLang-OWA-103",
+      "reference": "True",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNonegNatLang-OWA-104",
+      "reference": "True",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNonegNatLang-OWA-105",
+      "reference": "True",
+      "prediction": "True"
+    },
+    {
+      "id": "AttNonegNatLang-OWA-106",
+      "reference": "True",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNonegNatLang-OWA-107",
+      "reference": "True",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNonegNatLang-OWA-108",
+      "reference": "True",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNonegNatLang-OWA-109",
+      "reference": "True",
+      "prediction": "True"
+    },
+    {
+      "id": "AttNonegNatLang-OWA-11",
+      "reference": "True",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNonegNatLang-OWA-110",
+      "reference": "True",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNonegNatLang-OWA-111",
+      "reference": "True",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNonegNatLang-OWA-112",
+      "reference": "True",
+      "prediction": "True"
+    },
+    {
+      "id": "AttNonegNatLang-OWA-113",
+      "reference": "True",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNonegNatLang-OWA-114",
+      "reference": "True",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNonegNatLang-OWA-115",
+      "reference": "True",
+      "prediction": "True"
+    },
+    {
+      "id": "AttNonegNatLang-OWA-116",
+      "reference": "True",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNonegNatLang-OWA-117",
+      "reference": "True",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNonegNatLang-OWA-118",
+      "reference": "True",
+      "prediction": "True"
+    },
+    {
+      "id": "AttNonegNatLang-OWA-119",
+      "reference": "True",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNonegNatLang-OWA-12",
+      "reference": "True",
+      "prediction": "Uncertain"
+    },
+    {
+      "id": "AttNonegNatLang-OWA-120",
+      "reference": "True",
+      "prediction": "Error"
+    },
+    {
+      "id": "RelNeg-OWA-D0-1082",
+      "reference": "True",
+      "prediction": "True"
+    },
+    {
+      "id": "RelNeg-OWA-D0-1275",
+      "reference": "True",
+      "prediction": "Error"
+    },
+    {
+      "id": "RelNeg-OWA-D0-1490",
+      "reference": "True",
+      "prediction": "Uncertain"
+    },
+    {
+      "id": "RelNeg-OWA-D0-1522",
+      "reference": "True",
+      "prediction": "True"
+    },
+    {
+      "id": "RelNeg-OWA-D0-1524",
+      "reference": "True",
+      "prediction": "True"
+    },
+    {
+      "id": "RelNeg-OWA-D0-1536",
+      "reference": "True",
+      "prediction": "Error"
+    },
+    {
+      "id": "RelNeg-OWA-D0-1661",
+      "reference": "True",
+      "prediction": "Error"
+    },
+    {
+      "id": "RelNeg-OWA-D0-1763",
+      "reference": "True",
+      "prediction": "True"
+    },
+    {
+      "id": "RelNeg-OWA-D0-2084",
+      "reference": "True",
+      "prediction": "True"
+    },
+    {
+      "id": "RelNeg-OWA-D0-2096",
+      "reference": "True",
+      "prediction": "True"
+    },
+    {
+      "id": "RelNeg-OWA-D0-2344",
+      "reference": "True",
+      "prediction": "True"
+    },
+    {
+      "id": "RelNeg-OWA-D0-2385",
+      "reference": "True",
+      "prediction": "Error"
+    },
+    {
+      "id": "RelNeg-OWA-D0-2399",
+      "reference": "True",
+      "prediction": "Error"
+    },
+    {
+      "id": "RelNoneg-OWA-D0-1430",
+      "reference": "True",
+      "prediction": "Error"
+    },
+    {
+      "id": "RelNoneg-OWA-D0-1442",
+      "reference": "True",
+      "prediction": "Error"
+    },
+    {
+      "id": "RelNoneg-OWA-D0-1486",
+      "reference": "True",
+      "prediction": "Error"
+    },
+    {
+      "id": "RelNoneg-OWA-D0-1636",
+      "reference": "True",
+      "prediction": "Error"
+    },
+    {
+      "id": "RelNoneg-OWA-D0-1668",
+      "reference": "True",
+      "prediction": "Error"
+    },
+    {
+      "id": "RelNoneg-OWA-D0-1693",
+      "reference": "True",
+      "prediction": "True"
+    },
+    {
+      "id": "RelNoneg-OWA-D0-1704",
+      "reference": "True",
+      "prediction": "Error"
+    },
+    {
+      "id": "RelNoneg-OWA-D0-1869",
+      "reference": "True",
+      "prediction": "Error"
+    },
+    {
+      "id": "RelNoneg-OWA-D0-1995",
+      "reference": "True",
+      "prediction": "Error"
+    },
+    {
+      "id": "RelNoneg-OWA-D0-2043",
+      "reference": "True",
+      "prediction": "Error"
+    },
+    {
+      "id": "RelNoneg-OWA-D0-2068",
+      "reference": "True",
+      "prediction": "True"
+    },
+    {
+      "id": "RelNoneg-OWA-D0-2146",
+      "reference": "True",
+      "prediction": "True"
+    },
+    {
+      "id": "AttNeg-OWA-D0-2592",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNeg-OWA-D0-2684",
+      "reference": "False",
+      "prediction": "Uncertain"
+    },
+    {
+      "id": "AttNeg-OWA-D0-299",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNeg-OWA-D0-3095",
+      "reference": "False",
+      "prediction": "False"
+    },
+    {
+      "id": "AttNeg-OWA-D0-3182",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNeg-OWA-D0-3222",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNeg-OWA-D0-325",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNeg-OWA-D0-3314",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNeg-OWA-D0-3436",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNeg-OWA-D0-3444",
+      "reference": "False",
+      "prediction": "False"
+    },
+    {
+      "id": "AttNeg-OWA-D0-3623",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNeg-OWA-D0-3697",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNoneg-OWA-D0-1861",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNoneg-OWA-D0-1888",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNoneg-OWA-D0-2049",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNoneg-OWA-D0-2262",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNoneg-OWA-D0-2357",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNoneg-OWA-D0-2430",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNoneg-OWA-D0-2463",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNoneg-OWA-D0-2572",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNoneg-OWA-D0-2608",
+      "reference": "False",
+      "prediction": "False"
+    },
+    {
+      "id": "AttNoneg-OWA-D0-2647",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNoneg-OWA-D0-2682",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNoneg-OWA-D0-2848",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNoneg-OWA-D0-2870",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNonegNatLang-OWA-121",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNonegNatLang-OWA-122",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNonegNatLang-OWA-123",
+      "reference": "False",
+      "prediction": "Uncertain"
+    },
+    {
+      "id": "AttNonegNatLang-OWA-124",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNonegNatLang-OWA-125",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNonegNatLang-OWA-126",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNonegNatLang-OWA-127",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNonegNatLang-OWA-128",
+      "reference": "False",
+      "prediction": "False"
+    },
+    {
+      "id": "AttNonegNatLang-OWA-129",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNonegNatLang-OWA-13",
+      "reference": "False",
+      "prediction": "Uncertain"
+    },
+    {
+      "id": "AttNonegNatLang-OWA-130",
+      "reference": "False",
+      "prediction": "False"
+    },
+    {
+      "id": "AttNonegNatLang-OWA-131",
+      "reference": "False",
+      "prediction": "True"
+    },
+    {
+      "id": "AttNonegNatLang-OWA-132",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNonegNatLang-OWA-133",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNonegNatLang-OWA-134",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNonegNatLang-OWA-135",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNonegNatLang-OWA-136",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNonegNatLang-OWA-137",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNonegNatLang-OWA-138",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNonegNatLang-OWA-139",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNonegNatLang-OWA-14",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNonegNatLang-OWA-140",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNonegNatLang-OWA-141",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNonegNatLang-OWA-142",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNonegNatLang-OWA-143",
+      "reference": "False",
+      "prediction": "False"
+    },
+    {
+      "id": "RelNeg-OWA-D0-2441",
+      "reference": "False",
+      "prediction": "False"
+    },
+    {
+      "id": "RelNeg-OWA-D0-2523",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "RelNeg-OWA-D0-2530",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "RelNeg-OWA-D0-2631",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "RelNeg-OWA-D0-2695",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "RelNeg-OWA-D0-2730",
+      "reference": "False",
+      "prediction": "False"
+    },
+    {
+      "id": "RelNeg-OWA-D0-2755",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "RelNeg-OWA-D0-2824",
+      "reference": "False",
+      "prediction": "False"
+    },
+    {
+      "id": "RelNeg-OWA-D0-2954",
+      "reference": "False",
+      "prediction": "False"
+    },
+    {
+      "id": "RelNeg-OWA-D0-3005",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "RelNeg-OWA-D0-3264",
+      "reference": "False",
+      "prediction": "False"
+    },
+    {
+      "id": "RelNeg-OWA-D0-3380",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "RelNeg-OWA-D0-3415",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "RelNoneg-OWA-D0-2354",
+      "reference": "False",
+      "prediction": "False"
+    },
+    {
+      "id": "RelNoneg-OWA-D0-2671",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "RelNoneg-OWA-D0-2717",
+      "reference": "False",
+      "prediction": "False"
+    },
+    {
+      "id": "RelNoneg-OWA-D0-2786",
+      "reference": "False",
+      "prediction": "False"
+    },
+    {
+      "id": "RelNoneg-OWA-D0-2899",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "RelNoneg-OWA-D0-2936",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "RelNoneg-OWA-D0-3044",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "RelNoneg-OWA-D0-3114",
+      "reference": "False",
+      "prediction": "False"
+    },
+    {
+      "id": "RelNoneg-OWA-D0-3126",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "RelNoneg-OWA-D0-3163",
+      "reference": "False",
+      "prediction": "False"
+    },
+    {
+      "id": "RelNoneg-OWA-D0-3213",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "RelNoneg-OWA-D0-3223",
+      "reference": "False",
+      "prediction": "False"
+    },
+    {
+      "id": "AttNeg-OWA-D0-3889",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNeg-OWA-D0-3997",
+      "reference": "Uncertain",
+      "prediction": "Uncertain"
+    },
+    {
+      "id": "AttNeg-OWA-D0-4008",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNeg-OWA-D0-4176",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNeg-OWA-D0-4435",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNeg-OWA-D0-4454",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNeg-OWA-D0-4519",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNeg-OWA-D0-455",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNeg-OWA-D0-4578",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNeg-OWA-D0-461",
+      "reference": "Uncertain",
+      "prediction": "Uncertain"
+    },
+    {
+      "id": "AttNeg-OWA-D0-4724",
+      "reference": "Uncertain",
+      "prediction": "Uncertain"
+    },
+    {
+      "id": "AttNeg-OWA-D0-4744",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNoneg-OWA-D0-2873",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNoneg-OWA-D0-3008",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNoneg-OWA-D0-3142",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNoneg-OWA-D0-3176",
+      "reference": "Uncertain",
+      "prediction": "Uncertain"
+    },
+    {
+      "id": "AttNoneg-OWA-D0-3366",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNoneg-OWA-D0-3652",
+      "reference": "Uncertain",
+      "prediction": "Uncertain"
+    },
+    {
+      "id": "AttNoneg-OWA-D0-3672",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNoneg-OWA-D0-3731",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNoneg-OWA-D0-3876",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNoneg-OWA-D0-3908",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNoneg-OWA-D0-3923",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNoneg-OWA-D0-4122",
+      "reference": "Uncertain",
+      "prediction": "Uncertain"
+    },
+    {
+      "id": "AttNoneg-OWA-D0-4445",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNonegNatLang-OWA-144",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNonegNatLang-OWA-145",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNonegNatLang-OWA-146",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNonegNatLang-OWA-147",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNonegNatLang-OWA-148",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNonegNatLang-OWA-149",
+      "reference": "Uncertain",
+      "prediction": "Uncertain"
+    },
+    {
+      "id": "AttNonegNatLang-OWA-15",
+      "reference": "Uncertain",
+      "prediction": "Uncertain"
+    },
+    {
+      "id": "AttNonegNatLang-OWA-150",
+      "reference": "Uncertain",
+      "prediction": "Uncertain"
+    },
+    {
+      "id": "AttNonegNatLang-OWA-151",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNonegNatLang-OWA-152",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNonegNatLang-OWA-153",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNonegNatLang-OWA-154",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNonegNatLang-OWA-155",
+      "reference": "Uncertain",
+      "prediction": "Uncertain"
+    },
+    {
+      "id": "AttNonegNatLang-OWA-156",
+      "reference": "Uncertain",
+      "prediction": "Uncertain"
+    },
+    {
+      "id": "AttNonegNatLang-OWA-157",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNonegNatLang-OWA-158",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNonegNatLang-OWA-159",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNonegNatLang-OWA-16",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNonegNatLang-OWA-160",
+      "reference": "Uncertain",
+      "prediction": "Uncertain"
+    },
+    {
+      "id": "AttNonegNatLang-OWA-161",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNonegNatLang-OWA-162",
+      "reference": "Uncertain",
+      "prediction": "Uncertain"
+    },
+    {
+      "id": "AttNonegNatLang-OWA-163",
+      "reference": "Uncertain",
+      "prediction": "Uncertain"
+    },
+    {
+      "id": "AttNonegNatLang-OWA-164",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNonegNatLang-OWA-165",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "AttNonegNatLang-OWA-166",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "RelNeg-OWA-D0-3871",
+      "reference": "Uncertain",
+      "prediction": "Uncertain"
+    },
+    {
+      "id": "RelNeg-OWA-D0-402",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "RelNeg-OWA-D0-4215",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "RelNeg-OWA-D0-4314",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "RelNeg-OWA-D0-4491",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "RelNeg-OWA-D0-4531",
+      "reference": "Uncertain",
+      "prediction": "Uncertain"
+    },
+    {
+      "id": "RelNeg-OWA-D0-4672",
+      "reference": "Uncertain",
+      "prediction": "Uncertain"
+    },
+    {
+      "id": "RelNeg-OWA-D0-4676",
+      "reference": "Uncertain",
+      "prediction": "Uncertain"
+    },
+    {
+      "id": "RelNeg-OWA-D0-4801",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "RelNeg-OWA-D0-4840",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "RelNeg-OWA-D0-4914",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "RelNeg-OWA-D0-4935",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "RelNoneg-OWA-D0-3303",
+      "reference": "Uncertain",
+      "prediction": "Uncertain"
+    },
+    {
+      "id": "RelNoneg-OWA-D0-3305",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "RelNoneg-OWA-D0-3313",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "RelNoneg-OWA-D0-3369",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "RelNoneg-OWA-D0-3463",
+      "reference": "Uncertain",
+      "prediction": "Uncertain"
+    },
+    {
+      "id": "RelNoneg-OWA-D0-355",
+      "reference": "Uncertain",
+      "prediction": "Uncertain"
+    },
+    {
+      "id": "RelNoneg-OWA-D0-3672",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "RelNoneg-OWA-D0-3676",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "RelNoneg-OWA-D0-3679",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "RelNoneg-OWA-D0-3825",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "RelNoneg-OWA-D0-3833",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "RelNoneg-OWA-D0-3890",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "RelNoneg-OWA-D0-4003",
+      "reference": "Uncertain",
+      "prediction": "Uncertain"
+    }
+  ]
+}

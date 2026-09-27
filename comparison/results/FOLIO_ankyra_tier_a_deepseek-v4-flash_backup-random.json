@@ -1,0 +1,466 @@
+[
+  {
+    "id": "folio-validation-0010",
+    "context": "There are six types of wild turkeys: Eastern wild turkey, Osceola wild turkey, Gould’s wild turkey, Merriam’s wild turkey, Rio Grande wild turkey, and Ocellated wild turkey. Tom is not an Eastern wild turkey. Tom is not an Osceola wild turkey. Tom is also not a Gould's wild turkey, or a Merriam's wild turkey, or a Rio Grande wild turkey. Tom is a wild turkey.",
+    "question": "Based on the above information, is the following statement true, false, or uncertain? Tom is an Eastern wild turkey.",
+    "answer": "B",
+    "flag": "parsing error",
+    "predicted_answer": "B"
+  },
+  {
+    "id": "folio-validation-0020",
+    "context": "All rabbits are cute. Some turtles exist. An animal is either a rabbit or a squirrel. If something is skittish, then it is not still. All squirrels are skittish. Rock is still.",
+    "question": "Based on the above information, is the following statement true, false, or uncertain? If Rock is cute and still, then Rock is a turtle and skittish.",
+    "answer": "B",
+    "flag": "parsing error",
+    "predicted_answer": "B"
+  },
+  {
+    "id": "folio-validation-0044",
+    "context": "If a player is ranked highly by the Women's Tennis Association, then they are among the most active players in major tennis. Everyone who lost to Iga Świątek is ranked highly by the Women's Tennis Association. All female tennis players at Roland Garros 2022 lost to Iga Świątek. Either female tennis players at Roland Garros 2022 or male tennis players at Roland Garros 2022. All male tennis players at Roland Garros 2022 lost to Rafael Nadal. If Coco Gauff is a player who is ranked highly by the Women's Tennis Association or a player who lost to Rafael Nadal, then Coco Gauff is not a male tennis player at Roland Garros 2022.",
+    "question": "Based on the above information, is the following statement true, false, or uncertain? Coco Gauff is not a player who lost to Iga Świątek or one of the most active players in major tennis.",
+    "answer": "B",
+    "flag": "parsing error",
+    "predicted_answer": "C"
+  },
+  {
+    "id": "folio-validation-0047",
+    "context": "[BG] There are four seasons in a year: Spring, Summer, Fall, and Winter. All students who want to have a long vacation love summer the most. Emma's favorite season is summer. Mia's favorite season is not the same as Emma's. James wants to have a long vacation.",
+    "question": "Based on the above information, is the following statement true, false, or uncertain? James's favorite season is fall.",
+    "answer": "B",
+    "flag": "parsing error",
+    "predicted_answer": "C"
+  },
+  {
+    "id": "folio-validation-0058",
+    "context": "Billings is a city in Montana. Montana includes the cities of Butte, Helena, and Missoula. White Sulphur Springs and Butte are cities in the same state. The city of Pierre is not in Montana. Any city in Butte is not in Pierre.",
+    "question": "Based on the above information, is the following statement true, false, or uncertain? Butte and Pierre are in the same state.",
+    "answer": "B",
+    "flag": "parsing error",
+    "predicted_answer": "C"
+  },
+  {
+    "id": "folio-validation-0064",
+    "context": "All cows are bovines. Some pets are cows. If something is a bovine, then it is domesticated. No domesticated animals are alligators. Ted is an aligator.",
+    "question": "Based on the above information, is the following statement true, false, or uncertain? Ted is a pet and a cow.",
+    "answer": "B",
+    "flag": "success",
+    "predicted_answer": "B"
+  },
+  {
+    "id": "folio-validation-0072",
+    "context": "All growth companies’ stocks are volatile. If the stock price is volatile, then it is not suitable for a retirement fund. Some companies’ stocks are growth companies’ stocks. All mature companies’ stocks are suitable for a retirement fund. KO is a mature company’s stock.",
+    "question": "Based on the above information, is the following statement true, false, or uncertain? KO is a company stock and a growth company’s stock.",
+    "answer": "B",
+    "flag": "parsing error",
+    "predicted_answer": "A"
+  },
+  {
+    "id": "folio-validation-0079",
+    "context": "No bakery is spicy. All cupcakes are bakeries. All hotpots are spicy. All products of Baked by Melissa are cupcakes. If dried Thai chilies are spicy or a bakery, then dried Thai chilies are a hotpot or are spicy.",
+    "question": "Based on the above information, is the following statement true, false, or uncertain? Dried Thai chilies are a product of Baked by Melissa.",
+    "answer": "B",
+    "flag": "parsing error",
+    "predicted_answer": "B"
+  },
+  {
+    "id": "folio-validation-0083",
+    "context": "No bakery is spicy. All cupcakes are bakeries. All hotpots are spicy. All products of Baked by Melissa are cupcakes. If dried Thai chilies are spicy or a bakery, then dried Thai chilies are a hotpot or are spicy.",
+    "question": "Based on the above information, is the following statement true, false, or uncertain? Dried Thai chilies are cupcakes and a product of Baked by Melissa.",
+    "answer": "B",
+    "flag": "parsing error",
+    "predicted_answer": "B"
+  },
+  {
+    "id": "folio-validation-0107",
+    "context": "It costs US $205 to take the GRE test. ETS provides financial aid to those GRE applicants who prove economic hardship. Economic hardship refers to difficulty caused by having too little money or too few resources. Tom lives in a single-parent family. His dad has been out of work for more than a year.",
+    "question": "Based on the above information, is the following statement true, false, or uncertain? There is no financial aid available for the GRE test.",
+    "answer": "B",
+    "flag": "parsing error",
+    "predicted_answer": "B"
+  },
+  {
+    "id": "folio-validation-0109",
+    "context": "If people spill a lot of food on their clothing, then they do not tidy their spaces consistently and enjoy the process of cleaning. All foodies who go out frequently to find new food restaurants to try are people who spill a lot of food on their clothing. If people grew up as only children with no siblings, then they tidy their spaces consistently and enjoy the process of cleaning. If people have parents who are very busy with their regular jobs, then they grew up as only children with no siblings. All households with a high net income have people who have parents who are very busy with their regular jobs. Peter is either both a person who spills a lot of food on his clothing and grew up as an only child with no siblings, or he is neither a person who spills a lot of food on his clothing nor grew up as an only child with no siblings.",
+    "question": "Based on the above information, is the following statement true, false, or uncertain? Peter is either a foodie who goes out frequently to find new food restaurants to try or belongs to a household with a high net income.",
+    "answer": "B",
+    "flag": "parsing error",
+    "predicted_answer": "B"
+  },
+  {
+    "id": "folio-validation-0123",
+    "context": "If something can transport multiple passengers, then they are not empty. All airlines can transport multiple passengers. All planes are empty. All Boeing 707s are planes. If Greyhound is not an airline, then there are no Greyhound planes.",
+    "question": "Based on the above information, is the following statement true, false, or uncertain? A Greyhound is a Boeing 707.",
+    "answer": "B",
+    "flag": "parsing error",
+    "predicted_answer": "B"
+  },
+  {
+    "id": "folio-validation-0127",
+    "context": "All mammals are animals. All monkeys are mammals. An animal is either a monkey or a bird. All birds fly. All animals breathe. If something can fly, then it has wings. If Rock is neither a fly nor a bird, then Rock neither flies nor breathes.",
+    "question": "Based on the above information, is the following statement true, false, or uncertain? Rock does not have wings.",
+    "answer": "B",
+    "flag": "parsing error",
+    "predicted_answer": "C"
+  },
+  {
+    "id": "folio-validation-0139",
+    "context": "Machine Learning algorithms can be categorized as supervised learning, unsupervised learning, and reinforcement learning. Unsupervised learning doesn't require labelled data. The state-of-the-art text summarization model is trained with machine learning algorithms. Reinforcement learning is not used to train the state-of-the-art text summarization model. The Machine Learning algorithm for training text summarization model requires labelled data.",
+    "question": "Based on the above information, is the following statement true, false, or uncertain? Unsupervised learning is used to train the state-of-the-art text summarization model.",
+    "answer": "B",
+    "flag": "parsing error",
+    "predicted_answer": "C"
+  },
+  {
+    "id": "folio-validation-0149",
+    "context": "All students are humans. If someone studies, then they are a student. A person either studys or teaches. No young person teaches. Jerry neither teaches nor is a manager. Rose is young or a student.",
+    "question": "Based on the above information, is the following statement true, false, or uncertain? It is not true that Rose is a student and Jerry is a human.",
+    "answer": "B",
+    "flag": "success",
+    "predicted_answer": "B"
+  },
+  {
+    "id": "folio-validation-0006",
+    "context": "Monkeypox is an infectious disease caused by the monkeypox virus. Monkeypox virus can occur in certain animals, including humans. Humans are mammals. Mammals are animals. Symptons of Monkeypox include fever, headache, muscle pains, feeling tired, and so on. People feel tired when they get a glu.",
+    "question": "Based on the above information, is the following statement true, false, or uncertain? There is an animal.",
+    "answer": "A",
+    "flag": "parsing error",
+    "predicted_answer": "A"
+  },
+  {
+    "id": "folio-validation-0009",
+    "context": "There are six types of wild turkeys: Eastern wild turkey, Osceola wild turkey, Gould’s wild turkey, Merriam’s wild turkey, Rio Grande wild turkey, and Ocellated wild turkey. Tom is not an Eastern wild turkey. Tom is not an Osceola wild turkey. Tom is also not a Gould's wild turkey, or a Merriam's wild turkey, or a Rio Grande wild turkey. Tom is a wild turkey.",
+    "question": "Based on the above information, is the following statement true, false, or uncertain? Tom is an Ocellated wild turkey.",
+    "answer": "A",
+    "flag": "parsing error",
+    "predicted_answer": "A"
+  },
+  {
+    "id": "folio-validation-0018",
+    "context": "All rabbits are cute. Some turtles exist. An animal is either a rabbit or a squirrel. If something is skittish, then it is not still. All squirrels are skittish. Rock is still.",
+    "question": "Based on the above information, is the following statement true, false, or uncertain? Rock is a turtle or cute.",
+    "answer": "A",
+    "flag": "parsing error",
+    "predicted_answer": "C"
+  },
+  {
+    "id": "folio-validation-0024",
+    "context": "Beijing is the capital of the People's Republic of China. Beijing is the world's most populous national capital city. Beijing is located in Northern China. Beijing hosted the 2008 Summer Olympics and 2008 Summer Paralympics Games. Beijing has hosted both the Summer and Winter Olympics, along with the Summer and Winter Paralympics Many of Beijing's 91 universities consistently rank among the best in the Asia-Pacific and the world.",
+    "question": "Based on the above information, is the following statement true, false, or uncertain? Beijing has hosted both the 2008 Summer Olympics and a winter olympics.",
+    "answer": "A",
+    "flag": "parsing error",
+    "predicted_answer": "C"
+  },
+  {
+    "id": "folio-validation-0033",
+    "context": "Diamond Mine is a professional wrestling stable, formed in WWE. Roderick Strong leads Diamond Mine. Diamond Mine includes the Creed Brothers, and Ivy Nile. Imperium has a feud with Diamond Mine.",
+    "question": "Based on the above information, is the following statement true, false, or uncertain? Roderick strong leads a professional wrestling stable.",
+    "answer": "A",
+    "flag": "success",
+    "predicted_answer": "A"
+  },
+  {
+    "id": "folio-validation-0040",
+    "context": "All of Zaha Hadid's design styles are timeless. No mass product design is timeless. Either Zaha Hadid's design style or Kelly Wearstler's design style. All of Kelly Wearstler's design styles are evocative. All of Kelly Wearstler's design styles are dreamy. If a design by Max is timeless, then a design by Max is a mass product design and evocative.",
+    "question": "Based on the above information, is the following statement true, false, or uncertain? A design by Max is evocative and dreamy.",
+    "answer": "A",
+    "flag": "parsing error",
+    "predicted_answer": "B"
+  },
+  {
+    "id": "folio-validation-0042",
+    "context": "If a player is ranked highly by the Women's Tennis Association, then they are among the most active players in major tennis. Everyone who lost to Iga Świątek is ranked highly by the Women's Tennis Association. All female tennis players at Roland Garros 2022 lost to Iga Świątek. Either female tennis players at Roland Garros 2022 or male tennis players at Roland Garros 2022. All male tennis players at Roland Garros 2022 lost to Rafael Nadal. If Coco Gauff is a player who is ranked highly by the Women's Tennis Association or a player who lost to Rafael Nadal, then Coco Gauff is not a male tennis player at Roland Garros 2022.",
+    "question": "Based on the above information, is the following statement true, false, or uncertain? Coco Gauff is among the most active players in major tennis.",
+    "answer": "A",
+    "flag": "parsing error",
+    "predicted_answer": "C"
+  },
+  {
+    "id": "folio-validation-0046",
+    "context": "[BG] There are four seasons in a year: Spring, Summer, Fall, and Winter. All students who want to have a long vacation love summer the most. Emma's favorite season is summer. Mia's favorite season is not the same as Emma's. James wants to have a long vacation.",
+    "question": "Based on the above information, is the following statement true, false, or uncertain? James's favorite season is summer.",
+    "answer": "A",
+    "flag": "parsing error",
+    "predicted_answer": "B"
+  },
+  {
+    "id": "folio-validation-0060",
+    "context": "Billings is a city in Montana. Montana includes the cities of Butte, Helena, and Missoula. White Sulphur Springs and Butte are cities in the same state. The city of Pierre is not in Montana. Any city in Butte is not in Pierre.",
+    "question": "Based on the above information, is the following statement true, false, or uncertain? Montana is home to the city of Missoula.",
+    "answer": "A",
+    "flag": "parsing error",
+    "predicted_answer": "C"
+  },
+  {
+    "id": "folio-validation-0065",
+    "context": "All cows are bovines. Some pets are cows. If something is a bovine, then it is domesticated. No domesticated animals are alligators. Ted is an aligator.",
+    "question": "Based on the above information, is the following statement true, false, or uncertain? If Ted is a cow, then Ted is not a pet.",
+    "answer": "A",
+    "flag": "parsing error",
+    "predicted_answer": "C"
+  },
+  {
+    "id": "folio-validation-0069",
+    "context": "Badults is a British Sitcom series, starring members of Pappy's. Badults piloted in July 2013 on BBC Three. The Working title \"The Secret Dude Society\" was used for Badults. Andrew Collins was the script editor for Badults",
+    "question": "Based on the above information, is the following statement true, false, or uncertain? Andrew Collins was the script editor for a series with the working title \"The Secret Dude Society\".",
+    "answer": "A",
+    "flag": "parsing error",
+    "predicted_answer": "A"
+  },
+  {
+    "id": "folio-validation-0073",
+    "context": "All growth companies’ stocks are volatile. If the stock price is volatile, then it is not suitable for a retirement fund. Some companies’ stocks are growth companies’ stocks. All mature companies’ stocks are suitable for a retirement fund. KO is a mature company’s stock.",
+    "question": "Based on the above information, is the following statement true, false, or uncertain? If KO is a growth company’s stock or if its price is volatile, then KO is neither a company’s stock nor is its price volatile.",
+    "answer": "A",
+    "flag": "parsing error",
+    "predicted_answer": "A"
+  },
+  {
+    "id": "folio-validation-0077",
+    "context": "If people work in student jobs on campus, then they need to earn money to help pay for their college tuition. If people order takeout frequently in college, then they work in student jobs on campus. People either order takeout frequently in college or enjoy the dining hall meals and recipes. If people enjoy the dining hall meals and recipes, then they are not picky eaters. If people enjoy the dining hall meals and recipes, then they spend a lot of their time eating and catching up with friends in the campus dining halls. If Mary works in student jobs on campus and needs to earn money to help pay for her college tuition, then Mary is neither picky nor needs to earn money to help pay for her college tuition.",
+    "question": "Based on the above information, is the following statement true, false, or uncertain? Mary is not a picky eater and spends a lot of her time eating and catching up with friends in the campus dining halls.",
+    "answer": "A",
+    "flag": "parsing error",
+    "predicted_answer": "C"
+  },
+  {
+    "id": "folio-validation-0080",
+    "context": "No bakery is spicy. All cupcakes are bakeries. All hotpots are spicy. All products of Baked by Melissa are cupcakes. If dried Thai chilies are spicy or a bakery, then dried Thai chilies are a hotpot or are spicy.",
+    "question": "Based on the above information, is the following statement true, false, or uncertain? Dried Thai chilies are not a product of Baked by Melissa.",
+    "answer": "A",
+    "flag": "parsing error",
+    "predicted_answer": "A"
+  },
+  {
+    "id": "folio-validation-0082",
+    "context": "No bakery is spicy. All cupcakes are bakeries. All hotpots are spicy. All products of Baked by Melissa are cupcakes. If dried Thai chilies are spicy or a bakery, then dried Thai chilies are a hotpot or are spicy.",
+    "question": "Based on the above information, is the following statement true, false, or uncertain? Dried Thai chilies are neither a product of Baked by Melissa nor a bakery.",
+    "answer": "A",
+    "flag": "parsing error",
+    "predicted_answer": "B"
+  },
+  {
+    "id": "folio-validation-0007",
+    "context": "Monkeypox is an infectious disease caused by the monkeypox virus. Monkeypox virus can occur in certain animals, including humans. Humans are mammals. Mammals are animals. Symptons of Monkeypox include fever, headache, muscle pains, feeling tired, and so on. People feel tired when they get a glu.",
+    "question": "Based on the above information, is the following statement true, false, or uncertain? No one gets flu.",
+    "answer": "C",
+    "flag": "parsing error",
+    "predicted_answer": "B"
+  },
+  {
+    "id": "folio-validation-0008",
+    "context": "Monkeypox is an infectious disease caused by the monkeypox virus. Monkeypox virus can occur in certain animals, including humans. Humans are mammals. Mammals are animals. Symptons of Monkeypox include fever, headache, muscle pains, feeling tired, and so on. People feel tired when they get a glu.",
+    "question": "Based on the above information, is the following statement true, false, or uncertain? Symptons of Monkeypox include coughing.",
+    "answer": "C",
+    "flag": "parsing error",
+    "predicted_answer": "B"
+  },
+  {
+    "id": "folio-validation-0011",
+    "context": "There are six types of wild turkeys: Eastern wild turkey, Osceola wild turkey, Gould’s wild turkey, Merriam’s wild turkey, Rio Grande wild turkey, and Ocellated wild turkey. Tom is not an Eastern wild turkey. Tom is not an Osceola wild turkey. Tom is also not a Gould's wild turkey, or a Merriam's wild turkey, or a Rio Grande wild turkey. Tom is a wild turkey.",
+    "question": "Based on the above information, is the following statement true, false, or uncertain? Joey is a wild turkey.",
+    "answer": "C",
+    "flag": "parsing error",
+    "predicted_answer": "B"
+  },
+  {
+    "id": "folio-validation-0016",
+    "context": "All rabbits are cute. Some turtles exist. An animal is either a rabbit or a squirrel. If something is skittish, then it is not still. All squirrels are skittish. Rock is still.",
+    "question": "Based on the above information, is the following statement true, false, or uncertain? Rock is a turtle.",
+    "answer": "C",
+    "flag": "parsing error",
+    "predicted_answer": "B"
+  },
+  {
+    "id": "folio-validation-0017",
+    "context": "All rabbits are cute. Some turtles exist. An animal is either a rabbit or a squirrel. If something is skittish, then it is not still. All squirrels are skittish. Rock is still.",
+    "question": "Based on the above information, is the following statement true, false, or uncertain? Rock is not a turtle.",
+    "answer": "C",
+    "flag": "parsing error",
+    "predicted_answer": "A"
+  },
+  {
+    "id": "folio-validation-0025",
+    "context": "Beijing is the capital of the People's Republic of China. Beijing is the world's most populous national capital city. Beijing is located in Northern China. Beijing hosted the 2008 Summer Olympics and 2008 Summer Paralympics Games. Beijing has hosted both the Summer and Winter Olympics, along with the Summer and Winter Paralympics Many of Beijing's 91 universities consistently rank among the best in the Asia-Pacific and the world.",
+    "question": "Based on the above information, is the following statement true, false, or uncertain? Beijing is located in southern China.",
+    "answer": "C",
+    "flag": "parsing error",
+    "predicted_answer": "A"
+  },
+  {
+    "id": "folio-validation-0026",
+    "context": "Beijing is the capital of the People's Republic of China. Beijing is the world's most populous national capital city. Beijing is located in Northern China. Beijing hosted the 2008 Summer Olympics and 2008 Summer Paralympics Games. Beijing has hosted both the Summer and Winter Olympics, along with the Summer and Winter Paralympics Many of Beijing's 91 universities consistently rank among the best in the Asia-Pacific and the world.",
+    "question": "Based on the above information, is the following statement true, false, or uncertain? Beijing is the second largest Chinese city by urban population.",
+    "answer": "C",
+    "flag": "parsing error",
+    "predicted_answer": "A"
+  },
+  {
+    "id": "folio-validation-0039",
+    "context": "All of Zaha Hadid's design styles are timeless. No mass product design is timeless. Either Zaha Hadid's design style or Kelly Wearstler's design style. All of Kelly Wearstler's design styles are evocative. All of Kelly Wearstler's design styles are dreamy. If a design by Max is timeless, then a design by Max is a mass product design and evocative.",
+    "question": "Based on the above information, is the following statement true, false, or uncertain? A design by Max is a mass product design.",
+    "answer": "C",
+    "flag": "parsing error",
+    "predicted_answer": "A"
+  },
+  {
+    "id": "folio-validation-0043",
+    "context": "If a player is ranked highly by the Women's Tennis Association, then they are among the most active players in major tennis. Everyone who lost to Iga Świątek is ranked highly by the Women's Tennis Association. All female tennis players at Roland Garros 2022 lost to Iga Świątek. Either female tennis players at Roland Garros 2022 or male tennis players at Roland Garros 2022. All male tennis players at Roland Garros 2022 lost to Rafael Nadal. If Coco Gauff is a player who is ranked highly by the Women's Tennis Association or a player who lost to Rafael Nadal, then Coco Gauff is not a male tennis player at Roland Garros 2022.",
+    "question": "Based on the above information, is the following statement true, false, or uncertain? Coco Gauff has lost to Rafael Nadal.",
+    "answer": "C",
+    "flag": "parsing error",
+    "predicted_answer": "C"
+  },
+  {
+    "id": "folio-validation-0045",
+    "context": "All cats are mammals. Some pets are not mammals.",
+    "question": "Based on the above information, is the following statement true, false, or uncertain? No pets are cats.",
+    "answer": "C",
+    "flag": "parsing error",
+    "predicted_answer": "A"
+  },
+  {
+    "id": "folio-validation-0048",
+    "context": "[BG] There are four seasons in a year: Spring, Summer, Fall, and Winter. All students who want to have a long vacation love summer the most. Emma's favorite season is summer. Mia's favorite season is not the same as Emma's. James wants to have a long vacation.",
+    "question": "Based on the above information, is the following statement true, false, or uncertain? Mia's favorite season is spring.",
+    "answer": "C",
+    "flag": "parsing error",
+    "predicted_answer": "B"
+  },
+  {
+    "id": "folio-validation-0059",
+    "context": "Billings is a city in Montana. Montana includes the cities of Butte, Helena, and Missoula. White Sulphur Springs and Butte are cities in the same state. The city of Pierre is not in Montana. Any city in Butte is not in Pierre.",
+    "question": "Based on the above information, is the following statement true, false, or uncertain? Pierre and Bismarck are in the same state.",
+    "answer": "C",
+    "flag": "success",
+    "predicted_answer": "C"
+  },
+  {
+    "id": "folio-validation-0063",
+    "context": "All cows are bovines. Some pets are cows. If something is a bovine, then it is domesticated. No domesticated animals are alligators. Ted is an aligator.",
+    "question": "Based on the above information, is the following statement true, false, or uncertain? Ted is a pet.",
+    "answer": "C",
+    "flag": "parsing error",
+    "predicted_answer": "B"
+  },
+  {
+    "id": "folio-validation-0071",
+    "context": "All growth companies’ stocks are volatile. If the stock price is volatile, then it is not suitable for a retirement fund. Some companies’ stocks are growth companies’ stocks. All mature companies’ stocks are suitable for a retirement fund. KO is a mature company’s stock.",
+    "question": "Based on the above information, is the following statement true, false, or uncertain? KO is a company stock.",
+    "answer": "C",
+    "flag": "parsing error",
+    "predicted_answer": "B"
+  },
+  {
+    "id": "folio-validation-0076",
+    "context": "If people work in student jobs on campus, then they need to earn money to help pay for their college tuition. If people order takeout frequently in college, then they work in student jobs on campus. People either order takeout frequently in college or enjoy the dining hall meals and recipes. If people enjoy the dining hall meals and recipes, then they are not picky eaters. If people enjoy the dining hall meals and recipes, then they spend a lot of their time eating and catching up with friends in the campus dining halls. If Mary works in student jobs on campus and needs to earn money to help pay for her college tuition, then Mary is neither picky nor needs to earn money to help pay for her college tuition.",
+    "question": "Based on the above information, is the following statement true, false, or uncertain? Mary needs to earn money to help pay for her college tuition.",
+    "answer": "C",
+    "flag": "parsing error",
+    "predicted_answer": "C"
+  },
+  {
+    "id": "folio-validation-0027",
+    "context": "All aliens are extraterrestrial. If someone is from Mars, then they are aliens. No extraterrestrial is human. Everyone from Earth is a human. Marvin cannot be from Earth and from Mars. If Marvin is not from Earth, then Marvin is an extraterrestrial.",
+    "question": "Based on the above information, is the following statement true, false, or uncertain? Marvin is an alien.",
+    "answer": "B",
+    "flag": "parsing error",
+    "predicted_answer": "C"
+  },
+  {
+    "id": "folio-validation-0050",
+    "context": "No digital media are analog. Every printed text is analog. All streaming services are digital. If an object is a hardcover book then it is printed text. If 1984 is a streaming service, then 1984 is a hardcover book.",
+    "question": "Based on the above information, is the following statement true, false, or uncertain? 1984 is a streaming service.",
+    "answer": "B",
+    "flag": "parsing error",
+    "predicted_answer": "C"
+  },
+  {
+    "id": "folio-validation-0075",
+    "context": "All vehicle registration plates in Istanbul begin with the number 34. Plates that do not begin with the number 34 are not from Istanbul. Joe's vehicle registration plate is from Istanbul. Tom's license plate begins with the number 35. [BG] If a license plate begins with the number 35, then it does not begin with the number 34.",
+    "question": "Based on the above information, is the following statement true, false, or uncertain? Tom's license plate is from Istanbul.",
+    "answer": "B",
+    "flag": "parsing error",
+    "predicted_answer": "A"
+  },
+  {
+    "id": "folio-validation-0157",
+    "context": "No students who work in the library are from the computer science department. All students who have part-time jobs offered by the university are students who work in the library. All students who take the database course are from the computer science department. All students instructed by professor David are taking the database course. All students working in the lab are instructed by professor David. James is a student working in the lab. Jack neither has a part-time job offered by the university nor works in the lab.",
+    "question": "Based on the above information, is the following statement true, false, or uncertain? James has a part-time job offered by the university.",
+    "answer": "B",
+    "flag": "parsing error",
+    "predicted_answer": "A"
+  },
+  {
+    "id": "folio-validation-0177",
+    "context": "[BG] The Olympic games is a sporting event. The last Olympic games was in Tokyo. The United States won the most medals in Tokyo.",
+    "question": "Based on the above information, is the following statement true, false, or uncertain? The last Olympic games were not in Tokyo.",
+    "answer": "B",
+    "flag": "parsing error",
+    "predicted_answer": "C"
+  },
+  {
+    "id": "folio-validation-0051",
+    "context": "No digital media are analog. Every printed text is analog. All streaming services are digital. If an object is a hardcover book then it is printed text. If 1984 is a streaming service, then 1984 is a hardcover book.",
+    "question": "Based on the above information, is the following statement true, false, or uncertain? 1984 is not a streaming service.",
+    "answer": "A",
+    "flag": "parsing error",
+    "predicted_answer": "B"
+  },
+  {
+    "id": "folio-validation-0074",
+    "context": "All vehicle registration plates in Istanbul begin with the number 34. Plates that do not begin with the number 34 are not from Istanbul. Joe's vehicle registration plate is from Istanbul. Tom's license plate begins with the number 35. [BG] If a license plate begins with the number 35, then it does not begin with the number 34.",
+    "question": "Based on the above information, is the following statement true, false, or uncertain? Joe's license plate begins with the number 34.",
+    "answer": "A",
+    "flag": "parsing error",
+    "predicted_answer": "A"
+  },
+  {
+    "id": "folio-validation-0135",
+    "context": "Plungers suck. Vacuums suck. Vampires suck. Space is a vacuum. A duster is a household appliance that doesn't suck.",
+    "question": "Based on the above information, is the following statement true, false, or uncertain? Space sucks.",
+    "answer": "A",
+    "flag": "parsing error",
+    "predicted_answer": "A"
+  },
+  {
+    "id": "folio-validation-0158",
+    "context": "No students who work in the library are from the computer science department. All students who have part-time jobs offered by the university are students who work in the library. All students who take the database course are from the computer science department. All students instructed by professor David are taking the database course. All students working in the lab are instructed by professor David. James is a student working in the lab. Jack neither has a part-time job offered by the university nor works in the lab.",
+    "question": "Based on the above information, is the following statement true, false, or uncertain? James does not have a part-time job offered by the university.",
+    "answer": "A",
+    "flag": "parsing error",
+    "predicted_answer": "C"
+  },
+  {
+    "id": "folio-validation-0049",
+    "context": "No digital media are analog. Every printed text is analog. All streaming services are digital. If an object is a hardcover book then it is printed text. If 1984 is a streaming service, then 1984 is a hardcover book.",
+    "question": "Based on the above information, is the following statement true, false, or uncertain? 1984 is printed text.",
+    "answer": "C",
+    "flag": "parsing error",
+    "predicted_answer": "B"
+  },
+  {
+    "id": "folio-validation-0096",
+    "context": "If animals are loved by tourists, then they are Max's favorite animals. All animals from Australia are loved by tourists. All quokka are animals from Australia. All of Max's favorite animals are very fluffy. All of Max's favorite animals love to sleep. If a koala is very fluffy, then the koala is not a quokka.",
+    "question": "Based on the above information, is the following statement true, false, or uncertain? Koalas love to sleep.",
+    "answer": "C",
+    "flag": "parsing error",
+    "predicted_answer": "C"
+  },
+  {
+    "id": "folio-validation-0136",
+    "context": "Plungers suck. Vacuums suck. Vampires suck. Space is a vacuum. A duster is a household appliance that doesn't suck.",
+    "question": "Based on the above information, is the following statement true, false, or uncertain? Space is a vampire.",
+    "answer": "C",
+    "flag": "parsing error",
+    "predicted_answer": "A"
+  },
+  {
+    "id": "folio-validation-0160",
+    "context": "No students who work in the library are from the computer science department. All students who have part-time jobs offered by the university are students who work in the library. All students who take the database course are from the computer science department. All students instructed by professor David are taking the database course. All students working in the lab are instructed by professor David. James is a student working in the lab. Jack neither has a part-time job offered by the university nor works in the lab.",
+    "question": "Based on the above information, is the following statement true, false, or uncertain? Jack takes the database course.",
+    "answer": "C",
+    "flag": "parsing error",
+    "predicted_answer": "A"
+  }
+]

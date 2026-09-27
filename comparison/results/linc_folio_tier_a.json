@@ -1,0 +1,298 @@
+{
+  "collection": "folio_tier_a",
+  "metrics": {
+    "accuracy (pass@1 majority)": 0.3448275862068966
+  },
+  "predictions": [
+    {
+      "id": "folio-validation-0010",
+      "reference": "False",
+      "prediction": "False"
+    },
+    {
+      "id": "folio-validation-0020",
+      "reference": "False",
+      "prediction": "Uncertain"
+    },
+    {
+      "id": "folio-validation-0044",
+      "reference": "False",
+      "prediction": "False"
+    },
+    {
+      "id": "folio-validation-0047",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "folio-validation-0058",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "folio-validation-0064",
+      "reference": "False",
+      "prediction": "False"
+    },
+    {
+      "id": "folio-validation-0072",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "folio-validation-0079",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "folio-validation-0083",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "folio-validation-0107",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "folio-validation-0109",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "folio-validation-0123",
+      "reference": "False",
+      "prediction": "Uncertain"
+    },
+    {
+      "id": "folio-validation-0127",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "folio-validation-0139",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "folio-validation-0149",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "folio-validation-0006",
+      "reference": "True",
+      "prediction": "Error"
+    },
+    {
+      "id": "folio-validation-0009",
+      "reference": "True",
+      "prediction": "True"
+    },
+    {
+      "id": "folio-validation-0018",
+      "reference": "True",
+      "prediction": "Uncertain"
+    },
+    {
+      "id": "folio-validation-0024",
+      "reference": "True",
+      "prediction": "True"
+    },
+    {
+      "id": "folio-validation-0033",
+      "reference": "True",
+      "prediction": "Error"
+    },
+    {
+      "id": "folio-validation-0040",
+      "reference": "True",
+      "prediction": "Error"
+    },
+    {
+      "id": "folio-validation-0042",
+      "reference": "True",
+      "prediction": "True"
+    },
+    {
+      "id": "folio-validation-0046",
+      "reference": "True",
+      "prediction": "Error"
+    },
+    {
+      "id": "folio-validation-0060",
+      "reference": "True",
+      "prediction": "Error"
+    },
+    {
+      "id": "folio-validation-0065",
+      "reference": "True",
+      "prediction": "True"
+    },
+    {
+      "id": "folio-validation-0069",
+      "reference": "True",
+      "prediction": "True"
+    },
+    {
+      "id": "folio-validation-0073",
+      "reference": "True",
+      "prediction": "Error"
+    },
+    {
+      "id": "folio-validation-0077",
+      "reference": "True",
+      "prediction": "Error"
+    },
+    {
+      "id": "folio-validation-0080",
+      "reference": "True",
+      "prediction": "Error"
+    },
+    {
+      "id": "folio-validation-0082",
+      "reference": "True",
+      "prediction": "Error"
+    },
+    {
+      "id": "folio-validation-0007",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "folio-validation-0008",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "folio-validation-0011",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "folio-validation-0016",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "folio-validation-0017",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "folio-validation-0025",
+      "reference": "Uncertain",
+      "prediction": "Uncertain"
+    },
+    {
+      "id": "folio-validation-0026",
+      "reference": "Uncertain",
+      "prediction": "Uncertain"
+    },
+    {
+      "id": "folio-validation-0039",
+      "reference": "Uncertain",
+      "prediction": "Uncertain"
+    },
+    {
+      "id": "folio-validation-0043",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "folio-validation-0045",
+      "reference": "Uncertain",
+      "prediction": "Uncertain"
+    },
+    {
+      "id": "folio-validation-0048",
+      "reference": "Uncertain",
+      "prediction": "Uncertain"
+    },
+    {
+      "id": "folio-validation-0059",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "folio-validation-0063",
+      "reference": "Uncertain",
+      "prediction": "Uncertain"
+    },
+    {
+      "id": "folio-validation-0071",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "folio-validation-0076",
+      "reference": "Uncertain",
+      "prediction": "Uncertain"
+    },
+    {
+      "id": "folio-validation-0027",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "folio-validation-0050",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "folio-validation-0075",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "folio-validation-0157",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "folio-validation-0177",
+      "reference": "False",
+      "prediction": "Error"
+    },
+    {
+      "id": "folio-validation-0051",
+      "reference": "True",
+      "prediction": "Uncertain"
+    },
+    {
+      "id": "folio-validation-0074",
+      "reference": "True",
+      "prediction": "Error"
+    },
+    {
+      "id": "folio-validation-0135",
+      "reference": "True",
+      "prediction": "True"
+    },
+    {
+      "id": "folio-validation-0158",
+      "reference": "True",
+      "prediction": "True"
+    },
+    {
+      "id": "folio-validation-0049",
+      "reference": "Uncertain",
+      "prediction": "Uncertain"
+    },
+    {
+      "id": "folio-validation-0096",
+      "reference": "Uncertain",
+      "prediction": "Error"
+    },
+    {
+      "id": "folio-validation-0136",
+      "reference": "Uncertain",
+      "prediction": "Uncertain"
+    },
+    {
+      "id": "folio-validation-0160",
+      "reference": "Uncertain",
+      "prediction": "Uncertain"
+    }
+  ]
+}

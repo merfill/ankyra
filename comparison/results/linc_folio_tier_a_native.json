@@ -1,0 +1,999 @@
+{
+  "label": "folio_tier_a",
+  "task": "folio-neurosymbolic-8shot",
+  "nshot": 8,
+  "n_samples": 10,
+  "temperature": 0.8,
+  "metrics": {
+    "accuracy (pass@1 majority)": 0.7413793103448276,
+    "cost_usd": 34.4351
+  },
+  "predictions": [
+    {
+      "id": "folio-validation-0010",
+      "reference": "False",
+      "prediction": "False",
+      "samples": [
+        "False",
+        "False",
+        "False",
+        "Error",
+        "False",
+        "False",
+        "False",
+        "Error",
+        "False",
+        "False"
+      ]
+    },
+    {
+      "id": "folio-validation-0020",
+      "reference": "False",
+      "prediction": "Uncertain",
+      "samples": [
+        "Error",
+        "Uncertain",
+        "Uncertain",
+        "Error",
+        "Error",
+        "Error",
+        "Uncertain",
+        "Error",
+        "Error",
+        "Error"
+      ]
+    },
+    {
+      "id": "folio-validation-0044",
+      "reference": "False",
+      "prediction": "Uncertain",
+      "samples": [
+        "Error",
+        "Uncertain",
+        "Error",
+        "Error",
+        "Uncertain",
+        "Error",
+        "Error",
+        "Error",
+        "Uncertain",
+        "Error"
+      ]
+    },
+    {
+      "id": "folio-validation-0047",
+      "reference": "False",
+      "prediction": "Uncertain",
+      "samples": [
+        "Error",
+        "Error",
+        "Uncertain",
+        "Error",
+        "Error",
+        "Uncertain",
+        "Uncertain",
+        "Error",
+        "Error",
+        "Uncertain"
+      ]
+    },
+    {
+      "id": "folio-validation-0058",
+      "reference": "False",
+      "prediction": "Uncertain",
+      "samples": [
+        "Error",
+        "Uncertain",
+        "Error",
+        "Error",
+        "Error",
+        "Uncertain",
+        "Uncertain",
+        "Uncertain",
+        "Error",
+        "Error"
+      ]
+    },
+    {
+      "id": "folio-validation-0064",
+      "reference": "False",
+      "prediction": "Uncertain",
+      "samples": [
+        "Error",
+        "Error",
+        "Error",
+        "Uncertain",
+        "False",
+        "Error",
+        "Error",
+        "Error",
+        "Error",
+        "Error"
+      ]
+    },
+    {
+      "id": "folio-validation-0072",
+      "reference": "False",
+      "prediction": "Error",
+      "samples": [
+        "Error",
+        "Error",
+        "Error",
+        "Error",
+        "Error",
+        "Error",
+        "Error",
+        "Error",
+        "Error",
+        "Error"
+      ]
+    },
+    {
+      "id": "folio-validation-0079",
+      "reference": "False",
+      "prediction": "False",
+      "samples": [
+        "Error",
+        "Error",
+        "Error",
+        "Error",
+        "Error",
+        "False",
+        "False",
+        "Error",
+        "Error",
+        "Error"
+      ]
+    },
+    {
+      "id": "folio-validation-0083",
+      "reference": "False",
+      "prediction": "False",
+      "samples": [
+        "Error",
+        "Error",
+        "False",
+        "Error",
+        "False",
+        "Error",
+        "False",
+        "Error",
+        "False",
+        "False"
+      ]
+    },
+    {
+      "id": "folio-validation-0107",
+      "reference": "False",
+      "prediction": "Uncertain",
+      "samples": [
+        "Error",
+        "Error",
+        "Error",
+        "Uncertain",
+        "Uncertain",
+        "Error",
+        "Uncertain",
+        "Error",
+        "Error",
+        "Error"
+      ]
+    },
+    {
+      "id": "folio-validation-0109",
+      "reference": "False",
+      "prediction": "Uncertain",
+      "samples": [
+        "Error",
+        "Error",
+        "Uncertain",
+        "Error",
+        "Error",
+        "False",
+        "Error",
+        "Uncertain",
+        "Uncertain",
+        "Error"
+      ]
+    },
+    {
+      "id": "folio-validation-0123",
+      "reference": "False",
+      "prediction": "Uncertain",
+      "samples": [
+        "Uncertain",
+        "Error",
+        "Error",
+        "Error",
+        "Error",
+        "Error",
+        "Error",
+        "Error",
+        "Error",
+        "Error"
+      ]
+    },
+    {
+      "id": "folio-validation-0127",
+      "reference": "False",
+      "prediction": "Uncertain",
+      "samples": [
+        "Error",
+        "Error",
+        "Error",
+        "Error",
+        "Error",
+        "Uncertain",
+        "Uncertain",
+        "Error",
+        "Uncertain",
+        "Error"
+      ]
+    },
+    {
+      "id": "folio-validation-0139",
+      "reference": "False",
+      "prediction": "Uncertain",
+      "samples": [
+        "Error",
+        "Error",
+        "Error",
+        "Error",
+        "Uncertain",
+        "Error",
+        "Error",
+        "Error",
+        "Uncertain",
+        "Error"
+      ]
+    },
+    {
+      "id": "folio-validation-0149",
+      "reference": "False",
+      "prediction": "False",
+      "samples": [
+        "Error",
+        "Error",
+        "Error",
+        "False",
+        "Error",
+        "Error",
+        "False",
+        "False",
+        "False",
+        "False"
+      ]
+    },
+    {
+      "id": "folio-validation-0006",
+      "reference": "True",
+      "prediction": "True",
+      "samples": [
+        "Error",
+        "Error",
+        "True",
+        "Error",
+        "Error",
+        "Error",
+        "Error",
+        "Error",
+        "Error",
+        "Error"
+      ]
+    },
+    {
+      "id": "folio-validation-0009",
+      "reference": "True",
+      "prediction": "True",
+      "samples": [
+        "True",
+        "Error",
+        "Error",
+        "True",
+        "True",
+        "Error",
+        "True",
+        "Error",
+        "True",
+        "True"
+      ]
+    },
+    {
+      "id": "folio-validation-0018",
+      "reference": "True",
+      "prediction": "Uncertain",
+      "samples": [
+        "Error",
+        "Error",
+        "Uncertain",
+        "Error",
+        "Error",
+        "Uncertain",
+        "Error",
+        "Uncertain",
+        "Error",
+        "Error"
+      ]
+    },
+    {
+      "id": "folio-validation-0024",
+      "reference": "True",
+      "prediction": "True",
+      "samples": [
+        "Uncertain",
+        "True",
+        "Uncertain",
+        "Error",
+        "Error",
+        "True",
+        "True",
+        "True",
+        "Error",
+        "True"
+      ]
+    },
+    {
+      "id": "folio-validation-0033",
+      "reference": "True",
+      "prediction": "True",
+      "samples": [
+        "Error",
+        "Error",
+        "True",
+        "Error",
+        "Error",
+        "Error",
+        "True",
+        "True",
+        "True",
+        "Error"
+      ]
+    },
+    {
+      "id": "folio-validation-0040",
+      "reference": "True",
+      "prediction": "Uncertain",
+      "samples": [
+        "Error",
+        "Error",
+        "Error",
+        "Error",
+        "Uncertain",
+        "Error",
+        "Error",
+        "Uncertain",
+        "Error",
+        "True"
+      ]
+    },
+    {
+      "id": "folio-validation-0042",
+      "reference": "True",
+      "prediction": "True",
+      "samples": [
+        "True",
+        "Uncertain",
+        "Error",
+        "Uncertain",
+        "Error",
+        "Error",
+        "Error",
+        "Error",
+        "True",
+        "Error"
+      ]
+    },
+    {
+      "id": "folio-validation-0046",
+      "reference": "True",
+      "prediction": "Uncertain",
+      "samples": [
+        "Uncertain",
+        "Uncertain",
+        "Uncertain",
+        "True",
+        "Error",
+        "Uncertain",
+        "Error",
+        "Error",
+        "Error",
+        "Error"
+      ]
+    },
+    {
+      "id": "folio-validation-0060",
+      "reference": "True",
+      "prediction": "True",
+      "samples": [
+        "True",
+        "Error",
+        "Error",
+        "Error",
+        "True",
+        "Error",
+        "True",
+        "Error",
+        "True",
+        "Error"
+      ]
+    },
+    {
+      "id": "folio-validation-0065",
+      "reference": "True",
+      "prediction": "True",
+      "samples": [
+        "Error",
+        "Error",
+        "True",
+        "Error",
+        "Error",
+        "True",
+        "True",
+        "True",
+        "Error",
+        "Error"
+      ]
+    },
+    {
+      "id": "folio-validation-0069",
+      "reference": "True",
+      "prediction": "True",
+      "samples": [
+        "True",
+        "True",
+        "Uncertain",
+        "Uncertain",
+        "Error",
+        "True",
+        "True",
+        "Error",
+        "Error",
+        "Error"
+      ]
+    },
+    {
+      "id": "folio-validation-0073",
+      "reference": "True",
+      "prediction": "True",
+      "samples": [
+        "Error",
+        "Error",
+        "Error",
+        "Error",
+        "True",
+        "True",
+        "True",
+        "Error",
+        "Error",
+        "True"
+      ]
+    },
+    {
+      "id": "folio-validation-0077",
+      "reference": "True",
+      "prediction": "True",
+      "samples": [
+        "True",
+        "True",
+        "Error",
+        "Error",
+        "Error",
+        "True",
+        "True",
+        "True",
+        "Uncertain",
+        "Uncertain"
+      ]
+    },
+    {
+      "id": "folio-validation-0080",
+      "reference": "True",
+      "prediction": "True",
+      "samples": [
+        "Error",
+        "Error",
+        "Error",
+        "Error",
+        "Error",
+        "Error",
+        "True",
+        "Error",
+        "Error",
+        "Error"
+      ]
+    },
+    {
+      "id": "folio-validation-0082",
+      "reference": "True",
+      "prediction": "True",
+      "samples": [
+        "Error",
+        "Error",
+        "True",
+        "Error",
+        "Error",
+        "True",
+        "Error",
+        "Error",
+        "Error",
+        "True"
+      ]
+    },
+    {
+      "id": "folio-validation-0007",
+      "reference": "Uncertain",
+      "prediction": "Uncertain",
+      "samples": [
+        "Error",
+        "Error",
+        "Error",
+        "Error",
+        "Error",
+        "Uncertain",
+        "Uncertain",
+        "Error",
+        "Error",
+        "Error"
+      ]
+    },
+    {
+      "id": "folio-validation-0008",
+      "reference": "Uncertain",
+      "prediction": "Uncertain",
+      "samples": [
+        "Error",
+        "Error",
+        "Uncertain",
+        "Error",
+        "Uncertain",
+        "Error",
+        "Uncertain",
+        "Error",
+        "Error",
+        "Error"
+      ]
+    },
+    {
+      "id": "folio-validation-0011",
+      "reference": "Uncertain",
+      "prediction": "Uncertain",
+      "samples": [
+        "Uncertain",
+        "Error",
+        "Uncertain",
+        "Uncertain",
+        "Error",
+        "Error",
+        "Error",
+        "Uncertain",
+        "Uncertain",
+        "Error"
+      ]
+    },
+    {
+      "id": "folio-validation-0016",
+      "reference": "Uncertain",
+      "prediction": "Uncertain",
+      "samples": [
+        "Uncertain",
+        "Error",
+        "Error",
+        "Uncertain",
+        "Error",
+        "Error",
+        "Uncertain",
+        "True",
+        "Error",
+        "Uncertain"
+      ]
+    },
+    {
+      "id": "folio-validation-0017",
+      "reference": "Uncertain",
+      "prediction": "Uncertain",
+      "samples": [
+        "Error",
+        "Error",
+        "Error",
+        "Error",
+        "Uncertain",
+        "True",
+        "Uncertain",
+        "Uncertain",
+        "Error",
+        "Error"
+      ]
+    },
+    {
+      "id": "folio-validation-0025",
+      "reference": "Uncertain",
+      "prediction": "Uncertain",
+      "samples": [
+        "Error",
+        "Error",
+        "Error",
+        "Uncertain",
+        "Error",
+        "Error",
+        "Error",
+        "True",
+        "Error",
+        "Error"
+      ]
+    },
+    {
+      "id": "folio-validation-0026",
+      "reference": "Uncertain",
+      "prediction": "Uncertain",
+      "samples": [
+        "Uncertain",
+        "Uncertain",
+        "Uncertain",
+        "Error",
+        "Uncertain",
+        "Error",
+        "Uncertain",
+        "Uncertain",
+        "Error",
+        "Error"
+      ]
+    },
+    {
+      "id": "folio-validation-0039",
+      "reference": "Uncertain",
+      "prediction": "Uncertain",
+      "samples": [
+        "Error",
+        "Error",
+        "Error",
+        "Error",
+        "Error",
+        "Uncertain",
+        "Error",
+        "Error",
+        "True",
+        "Uncertain"
+      ]
+    },
+    {
+      "id": "folio-validation-0043",
+      "reference": "Uncertain",
+      "prediction": "Uncertain",
+      "samples": [
+        "Error",
+        "Error",
+        "Uncertain",
+        "Error",
+        "Error",
+        "Uncertain",
+        "Error",
+        "Error",
+        "Error",
+        "Error"
+      ]
+    },
+    {
+      "id": "folio-validation-0045",
+      "reference": "Uncertain",
+      "prediction": "Uncertain",
+      "samples": [
+        "Uncertain",
+        "Uncertain",
+        "Error",
+        "Error",
+        "Uncertain",
+        "Error",
+        "Uncertain",
+        "Error",
+        "Uncertain",
+        "Error"
+      ]
+    },
+    {
+      "id": "folio-validation-0048",
+      "reference": "Uncertain",
+      "prediction": "Uncertain",
+      "samples": [
+        "Error",
+        "Error",
+        "Error",
+        "Uncertain",
+        "Uncertain",
+        "Uncertain",
+        "Uncertain",
+        "Error",
+        "Error",
+        "Uncertain"
+      ]
+    },
+    {
+      "id": "folio-validation-0059",
+      "reference": "Uncertain",
+      "prediction": "Uncertain",
+      "samples": [
+        "Error",
+        "Uncertain",
+        "Uncertain",
+        "Error",
+        "Error",
+        "Error",
+        "Error",
+        "Uncertain",
+        "Error",
+        "Uncertain"
+      ]
+    },
+    {
+      "id": "folio-validation-0063",
+      "reference": "Uncertain",
+      "prediction": "Uncertain",
+      "samples": [
+        "Error",
+        "Uncertain",
+        "Uncertain",
+        "Uncertain",
+        "Uncertain",
+        "Uncertain",
+        "Uncertain",
+        "Error",
+        "Error",
+        "Error"
+      ]
+    },
+    {
+      "id": "folio-validation-0071",
+      "reference": "Uncertain",
+      "prediction": "Uncertain",
+      "samples": [
+        "Uncertain",
+        "Error",
+        "True",
+        "Uncertain",
+        "Error",
+        "Uncertain",
+        "Error",
+        "Error",
+        "True",
+        "Error"
+      ]
+    },
+    {
+      "id": "folio-validation-0076",
+      "reference": "Uncertain",
+      "prediction": "Uncertain",
+      "samples": [
+        "Error",
+        "Error",
+        "Error",
+        "Error",
+        "Uncertain",
+        "Uncertain",
+        "Error",
+        "Uncertain",
+        "Error",
+        "Error"
+      ]
+    },
+    {
+      "id": "folio-validation-0027",
+      "reference": "False",
+      "prediction": "Uncertain",
+      "samples": [
+        "Error",
+        "Error",
+        "Error",
+        "Error",
+        "Error",
+        "Error",
+        "Uncertain",
+        "Uncertain",
+        "Uncertain",
+        "Error"
+      ]
+    },
+    {
+      "id": "folio-validation-0050",
+      "reference": "False",
+      "prediction": "False",
+      "samples": [
+        "Error",
+        "Error",
+        "Error",
+        "Error",
+        "Error",
+        "False",
+        "Error",
+        "Error",
+        "False",
+        "Error"
+      ]
+    },
+    {
+      "id": "folio-validation-0075",
+      "reference": "False",
+      "prediction": "False",
+      "samples": [
+        "True",
+        "Error",
+        "Error",
+        "Error",
+        "False",
+        "False",
+        "Error",
+        "False",
+        "Error",
+        "Error"
+      ]
+    },
+    {
+      "id": "folio-validation-0157",
+      "reference": "False",
+      "prediction": "False",
+      "samples": [
+        "False",
+        "True",
+        "Error",
+        "False",
+        "Error",
+        "False",
+        "True",
+        "False",
+        "Error",
+        "False"
+      ]
+    },
+    {
+      "id": "folio-validation-0177",
+      "reference": "False",
+      "prediction": "False",
+      "samples": [
+        "False",
+        "False",
+        "Error",
+        "Error",
+        "False",
+        "False",
+        "Error",
+        "Error",
+        "False",
+        "Error"
+      ]
+    },
+    {
+      "id": "folio-validation-0051",
+      "reference": "True",
+      "prediction": "True",
+      "samples": [
+        "True",
+        "True",
+        "Error",
+        "Error",
+        "Error",
+        "Error",
+        "True",
+        "Error",
+        "True",
+        "Error"
+      ]
+    },
+    {
+      "id": "folio-validation-0074",
+      "reference": "True",
+      "prediction": "True",
+      "samples": [
+        "True",
+        "Error",
+        "True",
+        "True",
+        "Error",
+        "Error",
+        "True",
+        "True",
+        "Error",
+        "Error"
+      ]
+    },
+    {
+      "id": "folio-validation-0135",
+      "reference": "True",
+      "prediction": "True",
+      "samples": [
+        "True",
+        "True",
+        "True",
+        "Uncertain",
+        "Error",
+        "True",
+        "Error",
+        "True",
+        "True",
+        "Error"
+      ]
+    },
+    {
+      "id": "folio-validation-0158",
+      "reference": "True",
+      "prediction": "True",
+      "samples": [
+        "True",
+        "True",
+        "Error",
+        "True",
+        "True",
+        "True",
+        "True",
+        "True",
+        "True",
+        "Error"
+      ]
+    },
+    {
+      "id": "folio-validation-0049",
+      "reference": "Uncertain",
+      "prediction": "Uncertain",
+      "samples": [
+        "Error",
+        "Error",
+        "Error",
+        "Error",
+        "Error",
+        "Error",
+        "Error",
+        "Error",
+        "Uncertain",
+        "Error"
+      ]
+    },
+    {
+      "id": "folio-validation-0096",
+      "reference": "Uncertain",
+      "prediction": "Uncertain",
+      "samples": [
+        "Error",
+        "Uncertain",
+        "True",
+        "Error",
+        "Error",
+        "Uncertain",
+        "Uncertain",
+        "Error",
+        "Error",
+        "Error"
+      ]
+    },
+    {
+      "id": "folio-validation-0136",
+      "reference": "Uncertain",
+      "prediction": "Uncertain",
+      "samples": [
+        "Uncertain",
+        "Error",
+        "Uncertain",
+        "Error",
+        "Error",
+        "Error",
+        "Error",
+        "Error",
+        "Error",
+        "Error"
+      ]
+    },
+    {
+      "id": "folio-validation-0160",
+      "reference": "Uncertain",
+      "prediction": "Uncertain",
+      "samples": [
+        "Uncertain",
+        "Uncertain",
+        "Uncertain",
+        "Error",
+        "Uncertain",
+        "Uncertain",
+        "Uncertain",
+        "Uncertain",
+        "Error",
+        "Error"
+      ]
+    }
+  ]
+}

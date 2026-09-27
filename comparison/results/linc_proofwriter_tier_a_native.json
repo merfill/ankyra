@@ -1,0 +1,778 @@
+{
+  "label": "proofwriter_tier_a",
+  "task": "proofwriter-neurosymbolic-8shot",
+  "nshot": 8,
+  "n_samples": 10,
+  "temperature": 0.8,
+  "metrics": {
+    "accuracy (pass@1 majority)": 0.8666666666666667,
+    "cost_usd": 27.8888
+  },
+  "predictions": [
+    {
+      "id": "AttNeg-OWA-D0-1002",
+      "reference": "True",
+      "prediction": "True",
+      "samples": [
+        "True",
+        "True",
+        "Error",
+        "Error",
+        "Error",
+        "Error",
+        "True",
+        "Error",
+        "True",
+        "Error"
+      ]
+    },
+    {
+      "id": "AttNoneg-OWA-D0-1002",
+      "reference": "True",
+      "prediction": "True",
+      "samples": [
+        "Error",
+        "True",
+        "Error",
+        "Error",
+        "Error",
+        "True",
+        "Error",
+        "Error",
+        "Error",
+        "True"
+      ]
+    },
+    {
+      "id": "RelNeg-OWA-D0-1",
+      "reference": "True",
+      "prediction": "True",
+      "samples": [
+        "Error",
+        "True",
+        "Error",
+        "Error",
+        "True",
+        "True",
+        "True",
+        "True",
+        "True",
+        "Error"
+      ]
+    },
+    {
+      "id": "AttNoneg-OWA-D0-1009",
+      "reference": "False",
+      "prediction": "False",
+      "samples": [
+        "False",
+        "Error",
+        "Error",
+        "Error",
+        "Error",
+        "Error",
+        "Error",
+        "False",
+        "Error",
+        "False"
+      ]
+    },
+    {
+      "id": "RelNeg-OWA-D0-10",
+      "reference": "False",
+      "prediction": "False",
+      "samples": [
+        "Error",
+        "Error",
+        "False",
+        "False",
+        "False",
+        "Error",
+        "False",
+        "False",
+        "False",
+        "Error"
+      ]
+    },
+    {
+      "id": "RelNoneg-OWA-D0-1008",
+      "reference": "False",
+      "prediction": "False",
+      "samples": [
+        "Error",
+        "False",
+        "Error",
+        "False",
+        "Error",
+        "Error",
+        "False",
+        "Error",
+        "False",
+        "False"
+      ]
+    },
+    {
+      "id": "AttNeg-OWA-D0-1019",
+      "reference": "Uncertain",
+      "prediction": "False",
+      "samples": [
+        "Error",
+        "Error",
+        "False",
+        "False",
+        "Error",
+        "Error",
+        "False",
+        "Error",
+        "Error",
+        "Error"
+      ]
+    },
+    {
+      "id": "AttNoneg-OWA-D0-101",
+      "reference": "Uncertain",
+      "prediction": "Uncertain",
+      "samples": [
+        "Uncertain",
+        "Uncertain",
+        "Uncertain",
+        "Uncertain",
+        "Error",
+        "Uncertain",
+        "Uncertain",
+        "Uncertain",
+        "Error",
+        "Error"
+      ]
+    },
+    {
+      "id": "RelNoneg-OWA-D0-1011",
+      "reference": "Uncertain",
+      "prediction": "Uncertain",
+      "samples": [
+        "Error",
+        "Error",
+        "Uncertain",
+        "Uncertain",
+        "Error",
+        "Error",
+        "Uncertain",
+        "Error",
+        "Error",
+        "Error"
+      ]
+    },
+    {
+      "id": "AttNeg-OWA-D1-10",
+      "reference": "True",
+      "prediction": "True",
+      "samples": [
+        "Error",
+        "Error",
+        "Error",
+        "True",
+        "Error",
+        "Error",
+        "True",
+        "True",
+        "Uncertain",
+        "Error"
+      ]
+    },
+    {
+      "id": "RelNeg-OWA-D1-102",
+      "reference": "True",
+      "prediction": "True",
+      "samples": [
+        "Error",
+        "True",
+        "Error",
+        "Uncertain",
+        "Error",
+        "Error",
+        "Error",
+        "Uncertain",
+        "Error",
+        "True"
+      ]
+    },
+    {
+      "id": "RelNoneg-OWA-D1-1",
+      "reference": "True",
+      "prediction": "True",
+      "samples": [
+        "True",
+        "True",
+        "True",
+        "True",
+        "Error",
+        "True",
+        "True",
+        "True",
+        "True",
+        "Error"
+      ]
+    },
+    {
+      "id": "AttNeg-OWA-D1-100",
+      "reference": "False",
+      "prediction": "False",
+      "samples": [
+        "Error",
+        "Error",
+        "False",
+        "Error",
+        "Error",
+        "Error",
+        "Error",
+        "False",
+        "Error",
+        "False"
+      ]
+    },
+    {
+      "id": "AttNoneg-OWA-D1-1006",
+      "reference": "False",
+      "prediction": "False",
+      "samples": [
+        "False",
+        "Error",
+        "False",
+        "Error",
+        "False",
+        "Error",
+        "False",
+        "False",
+        "Error",
+        "False"
+      ]
+    },
+    {
+      "id": "RelNeg-OWA-D1-1020",
+      "reference": "False",
+      "prediction": "False",
+      "samples": [
+        "Error",
+        "Error",
+        "Error",
+        "Uncertain",
+        "Error",
+        "Error",
+        "False",
+        "False",
+        "Error",
+        "Error"
+      ]
+    },
+    {
+      "id": "AttNoneg-OWA-D1-1020",
+      "reference": "Uncertain",
+      "prediction": "Uncertain",
+      "samples": [
+        "Error",
+        "Error",
+        "Error",
+        "Uncertain",
+        "Uncertain",
+        "Error",
+        "Error",
+        "Error",
+        "Error",
+        "Uncertain"
+      ]
+    },
+    {
+      "id": "RelNeg-OWA-D1-1023",
+      "reference": "Uncertain",
+      "prediction": "Uncertain",
+      "samples": [
+        "Error",
+        "Uncertain",
+        "Error",
+        "Error",
+        "Error",
+        "Uncertain",
+        "Error",
+        "Uncertain",
+        "Error",
+        "Uncertain"
+      ]
+    },
+    {
+      "id": "RelNoneg-OWA-D1-1009",
+      "reference": "Uncertain",
+      "prediction": "Uncertain",
+      "samples": [
+        "Uncertain",
+        "Uncertain",
+        "Uncertain",
+        "Uncertain",
+        "Uncertain",
+        "Uncertain",
+        "Uncertain",
+        "Uncertain",
+        "Uncertain",
+        "Uncertain"
+      ]
+    },
+    {
+      "id": "AttNeg-OWA-D2-1009",
+      "reference": "True",
+      "prediction": "True",
+      "samples": [
+        "Error",
+        "True",
+        "True",
+        "True",
+        "Error",
+        "True",
+        "Error",
+        "True",
+        "Error",
+        "True"
+      ]
+    },
+    {
+      "id": "AttNoneg-OWA-D2-102",
+      "reference": "True",
+      "prediction": "True",
+      "samples": [
+        "Error",
+        "True",
+        "True",
+        "True",
+        "True",
+        "Error",
+        "Error",
+        "True",
+        "True",
+        "Error"
+      ]
+    },
+    {
+      "id": "RelNoneg-OWA-D2-1001",
+      "reference": "True",
+      "prediction": "Uncertain",
+      "samples": [
+        "Error",
+        "Error",
+        "Error",
+        "Uncertain",
+        "Error",
+        "Error",
+        "Uncertain",
+        "Error",
+        "Error",
+        "Error"
+      ]
+    },
+    {
+      "id": "AttNeg-OWA-D2-1011",
+      "reference": "False",
+      "prediction": "False",
+      "samples": [
+        "Error",
+        "Error",
+        "Uncertain",
+        "Error",
+        "False",
+        "False",
+        "False",
+        "True",
+        "False",
+        "Error"
+      ]
+    },
+    {
+      "id": "RelNeg-OWA-D2-1004",
+      "reference": "False",
+      "prediction": "False",
+      "samples": [
+        "False",
+        "False",
+        "Error",
+        "Error",
+        "False",
+        "Error",
+        "Error",
+        "Error",
+        "False",
+        "False"
+      ]
+    },
+    {
+      "id": "RelNoneg-OWA-D2-1007",
+      "reference": "False",
+      "prediction": "False",
+      "samples": [
+        "False",
+        "False",
+        "False",
+        "False",
+        "Error",
+        "False",
+        "False",
+        "False",
+        "Error",
+        "Error"
+      ]
+    },
+    {
+      "id": "AttNeg-OWA-D2-1020",
+      "reference": "Uncertain",
+      "prediction": "Uncertain",
+      "samples": [
+        "Error",
+        "Error",
+        "Error",
+        "Uncertain",
+        "Uncertain",
+        "Uncertain",
+        "Uncertain",
+        "Uncertain",
+        "Uncertain",
+        "Uncertain"
+      ]
+    },
+    {
+      "id": "AttNoneg-OWA-D2-1021",
+      "reference": "Uncertain",
+      "prediction": "Uncertain",
+      "samples": [
+        "Uncertain",
+        "True",
+        "Uncertain",
+        "Uncertain",
+        "Error",
+        "Error",
+        "Uncertain",
+        "Error",
+        "Error",
+        "Error"
+      ]
+    },
+    {
+      "id": "RelNeg-OWA-D2-1012",
+      "reference": "Uncertain",
+      "prediction": "Uncertain",
+      "samples": [
+        "Uncertain",
+        "Uncertain",
+        "Uncertain",
+        "Uncertain",
+        "Error",
+        "Uncertain",
+        "Uncertain",
+        "Uncertain",
+        "Uncertain",
+        "Uncertain"
+      ]
+    },
+    {
+      "id": "AttNoneg-OWA-D3-100",
+      "reference": "True",
+      "prediction": "True",
+      "samples": [
+        "Error",
+        "Error",
+        "True",
+        "Uncertain",
+        "True",
+        "Error",
+        "Error",
+        "True",
+        "Error",
+        "True"
+      ]
+    },
+    {
+      "id": "RelNeg-OWA-D3-1011",
+      "reference": "True",
+      "prediction": "Uncertain",
+      "samples": [
+        "Uncertain",
+        "Uncertain",
+        "Uncertain",
+        "True",
+        "Error",
+        "Uncertain",
+        "Error",
+        "Error",
+        "True",
+        "Uncertain"
+      ]
+    },
+    {
+      "id": "RelNoneg-OWA-D3-1009",
+      "reference": "True",
+      "prediction": "True",
+      "samples": [
+        "True",
+        "True",
+        "True",
+        "True",
+        "Error",
+        "True",
+        "True",
+        "True",
+        "True",
+        "Error"
+      ]
+    },
+    {
+      "id": "AttNeg-OWA-D3-1001",
+      "reference": "False",
+      "prediction": "False",
+      "samples": [
+        "False",
+        "Error",
+        "Error",
+        "False",
+        "Uncertain",
+        "Error",
+        "Error",
+        "False",
+        "Uncertain",
+        "False"
+      ]
+    },
+    {
+      "id": "AttNoneg-OWA-D3-1002",
+      "reference": "False",
+      "prediction": "False",
+      "samples": [
+        "False",
+        "False",
+        "False",
+        "Error",
+        "False",
+        "False",
+        "False",
+        "Error",
+        "False",
+        "False"
+      ]
+    },
+    {
+      "id": "RelNoneg-OWA-D3-1027",
+      "reference": "False",
+      "prediction": "False",
+      "samples": [
+        "False",
+        "False",
+        "Error",
+        "Error",
+        "False",
+        "False",
+        "False",
+        "False",
+        "False",
+        "False"
+      ]
+    },
+    {
+      "id": "AttNeg-OWA-D3-1016",
+      "reference": "Uncertain",
+      "prediction": "True",
+      "samples": [
+        "Error",
+        "True",
+        "Error",
+        "True",
+        "Error",
+        "Error",
+        "True",
+        "Error",
+        "True",
+        "Error"
+      ]
+    },
+    {
+      "id": "RelNeg-OWA-D3-1062",
+      "reference": "Uncertain",
+      "prediction": "Uncertain",
+      "samples": [
+        "Error",
+        "Uncertain",
+        "Uncertain",
+        "Error",
+        "Error",
+        "Uncertain",
+        "Uncertain",
+        "Error",
+        "Error",
+        "Uncertain"
+      ]
+    },
+    {
+      "id": "RelNoneg-OWA-D3-1033",
+      "reference": "Uncertain",
+      "prediction": "Uncertain",
+      "samples": [
+        "Uncertain",
+        "Error",
+        "Uncertain",
+        "Uncertain",
+        "Error",
+        "Error",
+        "Uncertain",
+        "Error",
+        "Uncertain",
+        "Uncertain"
+      ]
+    },
+    {
+      "id": "AttNeg-OWA-D5-1009",
+      "reference": "True",
+      "prediction": "True",
+      "samples": [
+        "True",
+        "True",
+        "True",
+        "Error",
+        "Error",
+        "Uncertain",
+        "True",
+        "True",
+        "True",
+        "True"
+      ]
+    },
+    {
+      "id": "AttNoneg-OWA-D5-1",
+      "reference": "True",
+      "prediction": "True",
+      "samples": [
+        "True",
+        "True",
+        "Error",
+        "True",
+        "True",
+        "Error",
+        "True",
+        "True",
+        "Error",
+        "True"
+      ]
+    },
+    {
+      "id": "RelNeg-OWA-D5-1026",
+      "reference": "True",
+      "prediction": "Uncertain",
+      "samples": [
+        "Uncertain",
+        "True",
+        "Error",
+        "Error",
+        "True",
+        "Error",
+        "Uncertain",
+        "Uncertain",
+        "Error",
+        "Error"
+      ]
+    },
+    {
+      "id": "AttNoneg-OWA-D5-1003",
+      "reference": "False",
+      "prediction": "False",
+      "samples": [
+        "False",
+        "False",
+        "False",
+        "False",
+        "False",
+        "False",
+        "False",
+        "False",
+        "Error",
+        "False"
+      ]
+    },
+    {
+      "id": "RelNeg-OWA-D5-1029",
+      "reference": "False",
+      "prediction": "Uncertain",
+      "samples": [
+        "Error",
+        "Error",
+        "Error",
+        "Error",
+        "Uncertain",
+        "Error",
+        "Error",
+        "Error",
+        "True",
+        "False"
+      ]
+    },
+    {
+      "id": "RelNoneg-OWA-D5-1009",
+      "reference": "False",
+      "prediction": "False",
+      "samples": [
+        "False",
+        "False",
+        "False",
+        "False",
+        "False",
+        "False",
+        "False",
+        "False",
+        "False",
+        "Error"
+      ]
+    },
+    {
+      "id": "AttNeg-OWA-D5-1015",
+      "reference": "Uncertain",
+      "prediction": "Uncertain",
+      "samples": [
+        "Uncertain",
+        "Uncertain",
+        "Uncertain",
+        "Error",
+        "Error",
+        "Error",
+        "Error",
+        "Uncertain",
+        "Uncertain",
+        "Error"
+      ]
+    },
+    {
+      "id": "AttNoneg-OWA-D5-1022",
+      "reference": "Uncertain",
+      "prediction": "Uncertain",
+      "samples": [
+        "Uncertain",
+        "Uncertain",
+        "Uncertain",
+        "Uncertain",
+        "Uncertain",
+        "Uncertain",
+        "Uncertain",
+        "True",
+        "Uncertain",
+        "Uncertain"
+      ]
+    },
+    {
+      "id": "RelNoneg-OWA-D5-1036",
+      "reference": "Uncertain",
+      "prediction": "Uncertain",
+      "samples": [
+        "Uncertain",
+        "Error",
+        "Error",
+        "Error",
+        "Uncertain",
+        "Error",
+        "Error",
+        "Uncertain",
+        "Error",
+        "Uncertain"
+      ]
+    }
+  ]
+}
