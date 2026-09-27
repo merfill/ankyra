@@ -1,31 +1,35 @@
-% !TeX program = xelatex
+% !TeX program = pdflatex
+% English mirror of the Russian article. Numbers and structure match the Russian
+% version. Build: pdflatex.
 
-\documentclass[11pt,a4paper]{article}
+\documentclass[12pt,a4paper]{article}
 
-% ---- Кодировка и язык ----
+% ---- Language ----
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage[english]{babel}
 
-% ---- Математика ----
+% ---- Mathematics ----
 \usepackage{amsmath}
 \usepackage{amssymb}
 
-% ---- Геометрия ----
+% ---- Geometry ----
 \usepackage{geometry}
 \geometry{margin=2.5cm}
 
-% ---- Интервалы ----
+% ---- Spacing ----
 \usepackage{parskip}
 \usepackage{setspace}
 \onehalfspacing
 
-% ---- Ссылки ----
+% ---- Links ----
 \usepackage[hidelinks]{hyperref}
 
-% ---- Заголовок ----
-\title{Doxa and Logos: Formalizing the Functions\\
-of a Non-Formalizable Source in Neuro-Symbolic Systems}
+\setlength{\emergencystretch}{3em}
+
+% ---- Title ----
+\title{Doxa and Logos: An Operator Model of the Interaction\\
+between a Language Model and a Formal System}
 \author{Vladimir Lapshin\thanks{\texttt{merfill@yandex.ru}}}
 \date{}
 
@@ -33,702 +37,351 @@ of a Non-Formalizable Source in Neuro-Symbolic Systems}
 \maketitle
 
 \begin{abstract}
-Formal systems have a fundamental limit: Gödel's and Turing's theorems describe the
-boundaries of closed systems, not of human thinking, which constantly expands and revises
-its formalisms. We propose a distinction between \emph{doxa} --- an unformalizable source of
-lived experience, the cultural field, and bodily knowledge --- and \emph{logos} ---
-rigorous, verifiable knowledge. We claim that although the content of doxa is
-unformalizable, the functions of its interaction with logos can be described formally. We
-introduce a family of interaction operators and distinguish three roles within it:
-\emph{external} (doxastic) operators supply a proposal not derivable from the theory;
-\emph{internal} (logotic) operators compute the system's reaction; \emph{protocol} operators
-record, classify, and control the exchange, making it checkable. We show that this
-distinction has rigorous formal analogues in modern logic --- doxastic logic, non-monotonic
-logics, abduction --- but none of them formalizes doxa as such. Finally, we describe a
-working system, Ankyra, in which a large language model plays the role of doxa and a
-symbolic engine plays the role of logos; the principle ``the LLM proposes, the engine
-decides'' ensures transparency: nothing enters the theory without a verbatim quotation or an
-explicit hypothesis tag, and the strength of an answer never exceeds the strength of its
-premises.
+Large language models translate text into a formal language well, but they cannot reason soundly: they do not distinguish a correct step from a plausible one, they do not track what an answer rests on, and they do not refuse to guess. Symbolic solvers can do all of this, but they cannot read text. We propose to treat this division not as an engineering compromise but as the epistemological distinction between \emph{doxa} and \emph{logos}: doxa is a source of proposals that have no derivation inside the system; logos is a formal system that accepts or rejects them by strict rules. We introduce a family of interaction operators between doxa and logos and distinguish three roles within it: external (doxastic) operators supply a proposal not derivable from the theory; internal (logotic) operators compute the system's reaction; protocol operators record, classify, and control the exchange. The central claim is that this interface is asymmetric. We show that the distinction has rigorous formal analogues --- doxastic logic, non-monotonic logics, abduction --- and that each of them describes one of the interaction operations. We also describe a working system, Ankyra, in which a large language model plays the role of doxa and a symbolic engine plays the role of logos.
 \end{abstract}
 
 \section{Introduction}
 
-Formal systems have a fundamental limit. G\"odel's incompleteness theorems showed that any
-sufficiently rich consistent system contains statements it can neither prove nor disprove
-[1]. Turing's halting problem showed that no general algorithm exists that, for any program
-and input, would determine whether it halts [2]. These results are usually interpreted as
-absolute limits of cognition.
+Formal systems have a fundamental limit. G\"odel's incompleteness theorems showed that any sufficiently rich consistent system contains statements it can neither prove nor disprove \cite{godel}. Turing's halting problem showed that no general algorithm exists that, for any program and input, would determine whether it halts \cite{turing36}. These results are usually interpreted as absolute limits of cognition.
 
-We propose a different interpretation. These are the limits of \textit{static} systems ---
-closed sets of axioms and inference rules. But human thinking is not a static system. It
-does not begin with a fixed set of axioms and derive consequences to exhaustion. It
-constantly expands, revises, and augments its formalisms, relying on what the ancient
-tradition called \textit{doxa}.
+We propose a different interpretation. These are the limits of \emph{static} systems --- closed sets of axioms and inference rules. But human thinking is not a static system. It does not begin with a fixed set of axioms and derive consequences to exhaustion. It constantly expands, revises, and augments its formalisms, relying on what the ancient tradition called \emph{doxa}.
 
-The distinction between doxa and logos has a long history. Already in Xenophanes (6th
-c.~BCE), \textit{doxa} ($\delta\acute{o}\xi\alpha$) denotes knowledge with
-\textit{indeterminate truth value} --- as opposed to certain knowledge. Parmenides (5th
-c.~BCE) contrasts $\delta\acute{o}\xi\alpha$ with \textit{truth}
-($\grave{\alpha}\lambda\acute{\eta}\theta\epsilon\iota\alpha$): doxa is the ``deceptive
-order'' of the sensory world, whereas truth is accessible only to \textit{logos} --- pure
-thought that does not trust the evidence of eyes and ears [3]. It was Parmenides, as
-historians of philosophy note, who first drew the distinction between the data of the senses
-and the data of logos and asserted that \textit{only the latter is real and true}.
+The distinction between doxa and logos has a long history. Already in Xenophanes (6th c.~BCE) \emph{doxa} ($\delta\acute{o}\xi\alpha$) denotes knowledge with \emph{indeterminate truth value} --- as opposed to certain knowledge. Parmenides (5th c.~BCE) contrasts $\delta\acute{o}\xi\alpha$ with \emph{truth} ($\grave{\alpha}\lambda\acute{\eta}\theta\epsilon\iota\alpha$): doxa is the ``deceptive order'' of the sensory world, whereas truth is accessible only to \emph{logos} --- pure thought that does not trust the evidence of eyes and ears \cite{diels}. It is in Parmenides that the distinction between the data of the senses and the data of logos becomes radical: only the latter, on his view, is real and true.
 
-Plato radicalized this distinction. For him, $\delta\acute{o}\xi\alpha$ is cognition of
-\textit{what appears}, whereas \textit{episteme}
-($\grave{\epsilon}\pi\iota\sigma\tau\acute{\eta}\mu\eta$) is cognition of \textit{what is}.
-Doxa may be true or false, but it always remains \textit{unstable}, \textit{finite},
-\textit{contingent} --- it ``is expressed by relation to an object, not by justification of
-truth'' [4]. Episteme, by contrast, is knowledge \textit{accompanied by logos}, that is, by
-explanation, justification, \textit{rigorous reasoning}. Aristotle then refined this: doxa
-is \textit{opinion}, which may be true but lacks \textit{necessary} character; episteme is
-knowledge of \textit{the necessary}, obtained through \textit{demonstration} [5].
+Plato radicalized this distinction. For him, $\delta\acute{o}\xi\alpha$ is cognition of \emph{what appears}, whereas \emph{episteme} ($\grave{\epsilon}\pi\iota\sigma\tau\acute{\eta}\mu\eta$) is cognition of \emph{what is}. Doxa may be true or false, but it always remains \emph{unstable}, \emph{finite}, \emph{contingent} --- it ``is expressed by relation to an object, not by justification of truth'' \cite{plato}. Episteme, by contrast, is knowledge \emph{accompanied by logos}, that is, by explanation, justification, \emph{rigorous reasoning}.
 
-Thus, in the ancient tradition a stable distinction emerged: \textit{doxa} is opinion,
-experience, probabilistic judgment rooted in the sensory and cultural; \textit{logos} (or
-\textit{episteme}) is rigorous, justified, verifiable knowledge. Doxa is \textit{wider}, but
-\textit{less reliable}. Logos is \textit{narrower}, but \textit{guaranteed}.
+In the \emph{Theaetetus}, Plato discusses and ultimately rejects the definition of knowledge as ``true opinion with logos.'' This matters for us: logos is not simply ``added'' to doxa; it works differently.
 
-We use these terms in their original sense, with one principled clarification. \textit{Doxa
-is non-formalizable.} It is not ``under-formalized knowledge,'' not ``incomplete logos,''
-not ``raw material for formalization.'' It is \textit{a different type of knowledge}. Logos
-is not ``improved doxa.'' It is \textit{a product of a different coordinate system}. Doxa is
-\textit{lived experience}, \textit{collective non-formalizable knowledge}, \textit{the
-cultural field}, \textit{embodiment}, \textit{historicity}. It is \textit{wider} than logos
-but \textit{does not reduce} to it. It \textit{does not prove} --- it \textit{proposes}. It
-does not \textit{guarantee} --- it \textit{suggests probabilistically}. And this is
-\textit{not a deficiency}. This is its \textit{nature}. This is the \textit{foundation} of
-the distinction.
+Aristotle then refined this: doxa is \emph{opinion}, which may be true but lacks \emph{necessary} character; episteme is knowledge of \emph{the necessary}, obtained through \emph{demonstration} \cite{aristotle}.
 
-The attempt to formalize everything is \textit{excessive formalization}, a relic of an era
-when mathematics seemed the only path to rigorous knowledge and everything non-formalizable
-was considered inferior. In reality, human thinking always relies on \textit{both} sources:
-on doxa as an inexhaustible background of lived experience, and on logos as an instrument of
-verification and guarantee. Doxa is \textit{not cancelled} by logos. It \textit{nourishes}
-it.
+Thus, in the ancient tradition a stable distinction emerged: \emph{doxa} is opinion, experience, probabilistic judgment rooted in the sensory and cultural; \emph{logos} (or \emph{episteme}) is rigorous, justified, verifiable knowledge. Doxa is \emph{wider}, but \emph{less reliable}. Logos is \emph{narrower}, but \emph{guaranteed}.
 
-The key thesis of our work is the following. Although the \textit{content} of doxa is
-fundamentally non-formalizable, the \textit{functions} of doxa --- how it is used to expand
-formal systems --- can be \textit{described formally}. We introduce a family of operators of
-the doxa--logos interaction and distinguish three roles within it: \textit{external}
-(doxastic) operators, which supply a proposal not derivable from the theory;
-\textit{internal} (logotic) operators, by which the formal system computes its reaction to
-that proposal; and \textit{protocol} operators, which record, classify and control the
-exchange. Only the external operators take the current formal theory and return an
-\textit{extension} marked as a \textit{proposal}, not as a \textit{derivation}; the fate of
-that proposal is decided by logos, which \textit{does not produce} it itself.
+Before identifying these terms with anything in a system, let us fix what distinguishes doxa from logos. Not through negation (``doxa is not formalized knowledge''), but through positive characteristics.
 
-This approach does not attempt to ``overcome'' G\"odel's theorems. It accepts them as a
-description of the limits of \textit{closed} systems and shows how an \textit{open} system
-can develop, using doxa as an external source. The relation to the notion of an
-\textit{oracle} is structural: doxa is not part of the machine, but the machine can consult
-it [6]. Doxa is \textit{external} to the formal system; this does not require it to be
-non-computable, a point we return to in Sections 3 and 5.
+\begin{itemize}
+	\item \textbf{Historicity.} Experience accumulates in layers: the new does not cancel the old but lies on top of it. Logos expands by adding axioms, but it does not layer.
+	\item \textbf{Associativity.} Doxa links the heterogeneous --- it sees similarity where formally there is none. Logos links only what is linked by inference rules.
+	\item \textbf{Immediacy.} Doxa gives an answer without derivation, before verification. Logos reaches an answer only through derivation.
+	\item \textbf{Contextuality.} In doxa, meaning is determined by context. In logos, meaning is fixed by the language $L$.
+	\item \textbf{Probabilism.} Doxa gives a degree of confidence, not a binary. Logos gives ``proven'' or ``not proven'', with nothing in between.
+\end{itemize}
 
-The paper is structured as follows. In Section 2 we examine the theoretical foundations: the
-distinction between doxa and logos in the ancient tradition and in modern logic, a survey of
-doxastic logic, non-monotonic logics, abduction, and dynamic logics of belief. In Section 3
-we introduce the operator family of the doxa--logos interaction and its formal properties.
-In Section 4 we describe a concrete implementation of this model. In Section 5 we discuss
-the limits of the approach, its relation to hypercomputation, and practical implications for
-explainable AI. Section 6 concludes.
+These are characteristics of a type of knowledge, not of its bearer. They do not claim anything about how doxa is ``really'' arranged; they fix how it \emph{differs} from a formal system when it is regarded as a source of proposals.
 
-\section{Theoretical Foundations}
+In this paper we use a large language model in the role of doxa. This is not a metaphor and not an analogy: the LLM satisfies all five characteristics.
 
-In Section 1 we introduced the distinction between doxa and logos and showed its ancient
-origins. Here we will not repeat the history. Our task is to show that this distinction has
-\textit{rigorous formal analogues} in modern logic and that these analogues are
-\textit{relevant} to our model.
+\begin{itemize}
+	\item \textbf{Historicity.} The LLM is trained on accumulated human text, and its weights carry traces of many epochs and genres. Fine-tuning adds layers without erasing previous ones.
+	\item \textbf{Associativity.} Attention links tokens by statistical proximity, not by inference rules. The model sees similarity where formally there is none.
+	\item \textbf{Immediacy.} The answer is produced in one direct pass, without explicit derivation and without intermediate verification.
+	\item \textbf{Contextuality.} The meaning of a token depends on the entire context window; the same word in different contexts receives a different representation.
+	\item \textbf{Probabilism.} The output of the model is a probability distribution over the next token, not a binary verdict.
+\end{itemize}
 
-We do not claim that these formalisms ``solve'' the problem of doxa. We claim that they
-\textit{describe particular aspects} of how doxa functions. And these aspects \textit{can be
-used} to build a working system.
+It is precisely this correspondence that makes the identification meaningful. If the LLM did not possess these characteristics, using it in the role of doxa would be impossible, and the distinction would remain a philosophical metaphor. It is not one.
+
+Why such an identification becomes possible only now. The formal side has been developed for centuries: logic, proof theory, decision procedures, specification languages. Logos was and remains the subject of exact research. Doxa, by contrast, remained without an instrument: it was described philosophically, but could not be addressed by a machine. The large language model is the first instrument of this kind. That is why a distinction known for two and a half thousand years becomes an \emph{architectural principle} only now, rather than a philosophical metaphor.
+
+\emph{Logos} in our system is a symbolic solver: a formal system that accepts or rejects the proposals of doxa by strict rules. The distinction between doxa and logos does not mean that one cancels the other. Human thinking relies on both sources: doxa supplies content, logos verifies and holds it. In this paper we are interested not in the nature of doxa as such, but in the \emph{interface} between it and a formal system.
+
+The key thesis of the paper is the following. Although doxa is not a theory in the language of the formal system, \emph{the functions of its interaction with that system} can be described formally. We introduce a family of interaction operators and distinguish three roles within it: \emph{external} (doxastic) operators supply a proposal not derivable from the theory; \emph{internal} (logotic) operators compute the system's reaction to the proposal; \emph{protocol} operators record, classify, and control the exchange. The fate of the proposal is decided by logos --- it \emph{does not produce} it itself.
+
+The paper is structured as follows. In Section~2 we examine the theoretical foundations: the distinction between doxa and logos in the ancient tradition and in modern logic, a survey of doxastic logic, non-monotonic logics, abduction, and dynamic logics of belief. In Section~3 we introduce the family of interaction operators between doxa and logos and its formal properties. In Section~4 we describe a concrete implementation of this model. In Section~5 we discuss the limits of the approach and its practical implications for explainable AI. Section~6 concludes.
+
+\section{Theoretical foundations}
+
+In Section~1 we introduced the distinction between doxa and logos and showed its ancient origins. Here we will not repeat the history. Our task is to show that this distinction has \emph{rigorous formal analogues} in modern logic and that these analogues are \emph{relevant} to our model.
+
+We consider three approaches: doxastic logic, non-monotonic logics, and abduction. Each captures a separate aspect of the interaction between doxa and logos. None of them describes doxa as such --- and this is not required: we are interested not in the nature of doxa, but in those functions through which it extends a formal system. These functions are what we describe in Section~3.
 
 \subsection*{Doxastic logic}
 
-The term ``doxastic logic'' was introduced by \textit{Hintikka} in 1962 for the formal
-modeling of \textit{opinions and beliefs} ($\delta\acute{o}\xi\alpha$) of an agent, as
-distinct from knowledge ($\grave{\epsilon}\pi\iota\sigma\tau\acute{\eta}\mu\eta$) [7]. The
-basic operator $B_\alpha$ reads as ``Alpha believes that...''. Doxastic logic deals with
-\textit{synchronic} principles --- how beliefs are related to one another at a given moment.
+The term ``doxastic logic'' was introduced by \emph{Hintikka} in 1962 for the formal modeling of an agent's \emph{opinions and beliefs} ($\delta\acute{o}\xi\alpha$), as distinct from knowledge ($\grave{\epsilon}\pi\iota\sigma\tau\acute{\eta}\mu\eta$) \cite{hintikka}. The basic operator $B_\alpha$ reads as ``Alpha believes that\dots''. Doxastic logic deals with \emph{synchronic} principles --- how beliefs are related to one another at a given moment.
 
-But it is \textit{silent} about how beliefs change over time. This limitation was
-recognized, and the response to it was \textit{dynamic doxastic logic} (DDL), introduced by
-\textit{Krister Segerberg} in the 1990s [8]. DDL adds to static doxastic logic \textit{modal
-operators of belief change}: $[*p]q$ reads as ``$q$ holds after revision of beliefs by $p$''
-[9].
+But it is \emph{silent} about how beliefs change over time. This limitation was recognized, and the response to it was \emph{dynamic doxastic logic} (DDL), introduced by \emph{Krister Segerberg} in the 1990s \cite{segerberg01}. DDL adds to static doxastic logic \emph{modal operators of belief change}: $[*p]q$ reads as ``$q$ holds after revision of beliefs by $p$'' \cite{segerberg10}.
 
-Here an important clarification is needed. \textit{Doxa does not change.} Doxa is an
-inexhaustible source of lived experience, the cultural field, bodily knowledge. It is
-\textit{primary} and \textit{invariant} in the sense that it is not an object of revision.
-What changes is the \textit{formal system} --- logos. The beliefs that DDL speaks of are a
-\textit{formalized slice} of doxa, fixed in the language of logic. DDL describes the
-\textit{protocol of revision} of this slice when new information arrives. But doxa itself
-remains \textit{beyond} revision. It is the \textit{source}, not the \textit{object}.
-
-Thus DDL is a formal analogue not of doxa as such, but of the \textit{operator of revision
-of the formal system} under the influence of doxa. This is precisely what we call a
-\textit{function of doxa}.
+Thus DDL is a formal analogue not of doxa as such, but of the \emph{operator of revision of the formal system} when a new proposal arrives from doxa. This is precisely what we call a \emph{function of doxa}.
 
 \subsection*{Non-monotonic logics}
 
-Classical logic is \textit{monotonic}: if $\Gamma \vdash \phi$, then $\Gamma \cup \Delta
-\vdash \phi$. Adding new axioms \textit{does not cancel} previously derived consequences.
-But a formal system interacting with doxa works differently. New experience may
-\textit{cancel} old conclusions. If I know that Tweety is a bird, I assume he can fly. If I
-later learn that Tweety is a penguin, I \textit{cancel} the conclusion ``Tweety flies,''
-although it previously followed from ``Tweety is a bird.''
+Classical logic is \emph{monotonic}: if $\Gamma \vdash \phi$, then $\Gamma \cup \Delta \vdash \phi$. Adding new axioms \emph{does not cancel} previously derived consequences. But a formal system interacting with doxa works differently. New experience may \emph{cancel} old conclusions. If I know that Tweety is a bird, I assume he can fly. If I later learn that Tweety is a penguin, I \emph{cancel} the conclusion ``Tweety flies,'' although it previously followed from ``Tweety is a bird.''
 
-\textit{Non-monotonic logics} are formal systems that model precisely this
-\textit{defeasibility} of conclusions. Classical approaches include:
+\emph{Non-monotonic logics} are formal systems that model precisely this \emph{defeasibility} of conclusions. Classical approaches include:
 
 \begin{itemize}
-\item \textbf{Default Logic} by \textit{Reiter}: rules of the form ``if $A$ and there is no
-information about exceptions, then $B$,'' which can be defeated when an exception appears
-[10]. \item \textbf{Circumscription} by \textit{McCarthy}: minimization of ``abnormal''
-situations, allowing default conclusions [11]. \item \textbf{Autoepistemic logic} by
-\textit{Moore}: modeling an agent's beliefs about its own beliefs [12].
+	\item \textbf{Default Logic} by \emph{Reiter}: rules of the form ``if $A$ and there is no information about exceptions, then $B$,'' which can be defeated when an exception appears \cite{reiter}.
+	\item \textbf{Circumscription} by \emph{McCarthy}: minimization of ``abnormal'' situations, allowing default conclusions \cite{mccarthy}.
+	\item \textbf{Autoepistemic logic} by \emph{Moore}: modeling an agent's beliefs about its own beliefs \cite{moore}.
 \end{itemize}
 
-All these formalisms acknowledge that \textit{the conclusions of a formal system are not
-final}. They are \textit{defeasible} when new information from doxa arrives. And this is not
-a ``deficiency.'' It is a \textit{property} of a system that is \textit{open} to interaction
-with doxa. Non-monotonic logics formalize this property but \textit{do not eliminate} it.
-They show how a system can \textit{work} with defeasible conclusions without losing
-coherence.
+All these formalisms acknowledge that \emph{the conclusions of a formal system are not final}. They are \emph{defeasible} when new information from doxa arrives. And this is not a ``deficiency.'' It is a \emph{property} of a system that is \emph{open} to interaction with doxa. Non-monotonic logics formalize this property but \emph{do not eliminate} it. They show how a system can \emph{work} with defeasible conclusions without losing coherence.
 
 \subsection*{Abduction}
 
-If non-monotonic logics describe the \textit{cancellation} of conclusions, then
-\textit{abduction} describes the \textit{generation} of new hypotheses. The term was
-introduced by \textit{Charles Sanders Peirce} (1839--1914), who distinguished three types of
-inference: deduction, induction, and \textit{abduction} --- ``the creative generation of
-explanatory hypotheses'' [13].
+If non-monotonic logics describe the \emph{cancellation} of conclusions, then \emph{abduction} describes the \emph{generation} of new hypotheses. The term was introduced by \emph{Charles Sanders Peirce} (1839--1914), who distinguished three types of inference: deduction, induction, and \emph{abduction} --- ``the creative generation of explanatory hypotheses'' \cite{peirce_ru}.
 
-Peirce characterized abduction as reasoning ``from consequence to cause.'' If we observe a
-fact $Q$, and know that $P \to Q$, abduction allows us to \textit{suppose} $P$ as a
-\textit{possible explanation} of $Q$. This is not deduction (where $P$ \textit{necessarily}
-follows) nor induction (where $P$ \textit{probably} follows). It is the \textit{generation
-of a hypothesis} that \textit{explains} the observation [14].
+Peirce characterized abduction as reasoning ``from consequence to cause.'' If we observe a fact $Q$, and know that $P \to Q$, abduction allows us to \emph{suppose} $P$ as a \emph{possible explanation} of $Q$. This is not deduction (where $P$ \emph{necessarily} follows) nor induction (where $P$ \emph{probably} follows). It is the \emph{generation of a hypothesis} that \emph{explains} the observation \cite{peirce_cp}.
 
-In contemporary philosophy of science, abduction is often identified with
-\textit{``inference to the best explanation''} (IBE). However, as researchers note,
-\textit{the identification of abduction with IBE is not rigorous}. Peirce distinguished the
-\textit{generation} of a hypothesis (abduction in the narrow sense) from the
-\textit{selection} of the best one (IBE). For our model, it is precisely \textit{generation}
-that matters: doxa \textit{proposes} hypotheses, and the formal system \textit{verifies}
-them [15].
+In contemporary philosophy of science, abduction is often identified with \emph{``inference to the best explanation''} (IBE). However, as researchers note, \emph{the identification of abduction with IBE is not rigorous}. Peirce distinguished the \emph{generation} of a hypothesis (abduction in the narrow sense) from the \emph{selection} of the best one (IBE). For our model, it is precisely \emph{generation} that matters: doxa \emph{proposes} hypotheses, and the formal system \emph{verifies} them \cite{niiniluoto}.
 
-Abduction is \textit{formalizable} --- but only on condition that we formalize the entire
-``pattern'' of abductive inference, including the rules of hypothesis generation and
-justification. There exist formal systems in which abduction is added to propositional logic
-as an \textit{external extension operator} [22]. This is precisely what we call the
-\textit{operator of hypothesis generation}.
+Abduction is \emph{formalizable} --- but only on condition that we formalize the entire ``pattern'' of abductive inference, including the rules of hypothesis generation and justification. There exist formal systems in which abduction is added to propositional logic as an \emph{external extension operator} \cite{kakas}. This means that abduction can be described not as an inference rule inside the logic, but as an operation over the theory that supplies a new proposal to it.
 
 \subsection*{What remains beyond formalization}
 
-We have surveyed three formal approaches: doxastic logic (including DDL), non-monotonic
-logics, abduction. Each \textit{captures} one aspect of the interaction between doxa and a
-formal system. But \textit{none of them formalizes doxa as such}.
+The three approaches describe different operations over a formal theory. Doxastic logic and DDL work with an agent's beliefs as a formalized slice; non-monotonic logics describe the cancellation of conclusions when new information arrives; abduction supplies a new proposal to the theory. None of them works with doxa as an object: all three deal with operations, not with the source. It is precisely these operations that we call \emph{functions of doxa}.
 
-Doxastic logic formalizes the \textit{structure} of beliefs as a formalized slice of doxa.
-DDL --- the \textit{protocol} of revision of this slice. Non-monotonic logics --- the
-\textit{defeasibility} of conclusions when new information from doxa arrives. Abduction ---
-the \textit{generation} of hypotheses that doxa proposes for extending the system. But the
-\textit{content} of doxa --- its \textit{embodiment}, \textit{historicity},
-\textit{contextuality} --- remains \textit{beyond} these formalisms.
-
-And this is not a ``deficiency'' of these systems. It is a \textit{boundary} they themselves
-acknowledge. Non-monotonic logics, for example, are \textit{computationally more complex}
-than classical logic [16], and for many of them the problem of deciding whether a goal is a
-consequence is \textit{undecidable} or of very high complexity [23]. This means that
-\textit{no general algorithm exists} that could, for any theory and goal, determine whether
-the goal is a consequence. We can build a \textit{procedure}, but we cannot guarantee that
-it terminates.
-
-Abduction, in turn, generates a \textit{multitude} of hypotheses, and choosing among them is
-a \textit{separate task} with no formal criterion of ``truth.'' Propositional abduction is a
-$\Sigma_2^P$-complete problem, that is, \textit{harder} than NP and coNP [18], and
-logic-based abduction is computationally hard in general [17].
-
-This is precisely why our model \textit{does not attempt} to formalize doxa. It
-\textit{uses} formal systems to describe the \textit{functions} of doxa, leaving the
-\textit{content} of doxa beyond formalization. This is \textit{not a defeat}. It is an
-\textit{acknowledgment of the boundary} and the \textit{construction of an interface} to it.
-It is worth stressing that non-formalizability is not the same as non-computability: doxa is
-not a theory in $L$, but the carrier through which it is consulted need not be a
-non-computable oracle.
+A separate difficulty is associated with these operations. Non-monotonic logics are computationally more complex than classical logic \cite{vinkov}, and for many of them the entailment problem is undecidable or of very high complexity \cite{cadoli}: no general algorithm exists that, for any theory and goal, would determine whether the goal is a consequence. A procedure can be built, but its termination cannot be guaranteed. Abduction, in turn, generates a multitude of hypotheses, and choosing among them is a separate task without a formal criterion of truth: propositional abduction is $\Sigma_2^P$-complete \cite{eiter95b}, and logical abduction is computationally hard in the general case \cite{eiter95}.
 
 \subsection*{Connection to our model}
 
-We claim that the \textit{functions} of doxa --- how it is used to expand formal systems ---
-can be \textit{described formally}. In the family of Section 3 each formal approach
-considered above corresponds to one operator, and the operator belongs to one of the three
-roles:
+The functions of doxa --- how it extends a formal system --- we describe formally. Each of the three approaches above corresponds to one operator, and this operator belongs to one of three roles:
+
+Let an operator be a transition $o: F \to F'$, and let $\Delta = F' \setminus F$ be its increment. The classification of operators is by \emph{role}: what exactly the operator \emph{produces} --- a proposal, a new theory, or a record.
 
 \begin{itemize}
-\item \textbf{Doxastic logic} $\to$ operator of \textit{fixation} (what the agent ``holds''
-as beliefs). This is a \textit{protocol} function of the environment, realized by the
-journal. \item \textbf{Dynamic doxastic logic} $\to$ operator of \textit{revision of the
-formal system}. This is \textit{internal}: \textit{logos} computes how the theory changes
-when new information from doxa arrives. \item \textbf{Non-monotonic logics} $\to$ operator
-of \textit{cancellation}. This is \textit{internal}: \textit{logos} recomputes what follows
-when exceptions obtained from doxa appear. \item \textbf{Abduction} $\to$ operator of
-\textit{hypothesis generation}. This is \textit{external}: doxa supplies a hypothesis that
-the formal system verifies.
+	\item \textbf{Doxastic logic} $\to$ the \emph{fixation} operator (what the agent ``holds'' as beliefs). This is a \emph{protocol} function of the environment, implemented by the journal.
+	\item \textbf{Dynamic doxastic logic} $\to$ the \emph{revision of the formal system} operator. This is an \emph{internal} operator: \emph{logos} computes how the theory changes when new information arrives from doxa.
+	\item \textbf{Non-monotonic logics} $\to$ the \emph{cancellation} operator. This is an \emph{internal} operator: \emph{logos} recomputes what follows when exceptions obtained from doxa appear.
+	\item \textbf{Abduction} $\to$ the \emph{hypothesis generation} operator. This is an \emph{external} operator: doxa supplies a hypothesis that the formal system verifies.
 \end{itemize}
 
-This is \textit{not} an exhaustive list. We will return to it in Section 3, where we
-introduce the \textit{family of operators of the doxa--logos interaction}. But it is already
-clear: the distinction between doxa and logos is \textit{not} a philosophical abstraction.
-It has \textit{rigorous formal analogues} in modern logic. And these analogues \textit{can
-be used} to build a working system.
+This is \emph{not} an exhaustive list. We will return to it in Section~3, where we introduce the \emph{family of interaction operators between doxa and logos}. But it is already clear: the distinction between doxa and logos \emph{is not} a philosophical abstraction. It has \emph{rigorous formal analogues} in modern logic. And these analogues \emph{can be used} to build a working system.
 
-\section{The Operator Family of the Doxa--Logos Interaction}
+\section{A family of interaction operators between doxa and logos}
 
-In Section 2 we showed that the distinction between doxa and logos has formal analogues in
-modern logic. These analogues describe particular aspects of the interaction between doxa
-and a formal system. Now we turn to \textit{synthesis}. Our task is to describe the
-\textit{functions} through which doxa and logos interact --- not the content of doxa, which
-is non-formalizable, but the \textit{protocol} of its use. The central point of this section
-is that this protocol is \textit{asymmetric}: doxa contributes the content of proposals,
-while everything that decides, records and controls their fate belongs to logos and to the
-environment of the interaction.
+In Section~2 we showed that the distinction between doxa and logos rests on formal analogues in modern logic. Here we introduce the \emph{family of operators} through which doxa and logos interact. We are interested not in the content of doxa, but in the \emph{protocol} of its use. The central claim of the section is that this protocol is \emph{asymmetric}: doxa supplies the content of proposals, whereas everything that decides, records, and controls their fate belongs to logos and the interaction environment.
 
 \subsection*{Basic definitions and the role criterion}
 
-Let $F = (A, R, L)$ be a formal system with axioms $A$, inference rules $R$ and language
-$L$, and let $\mathrm{Cn}(F)$ be its consequence set. Let $D$ be doxa: an inexhaustible
-field of lived experience, the cultural field, bodily knowledge, historicity. $D$ is not
-part of $F$, and it is not a theory in $L$.
+Let $F = (A, R, L)$ be a formal system with axioms $A$, inference rules $R$, and language $L$, and let $\mathrm{Cn}(F)$ be the set of its consequences. Let $D$ be doxa: an inexhaustible field of lived experience, the cultural field, bodily knowledge, historicity. $D$ is not part of $F$, and it is not a theory in $L$.
 
-Two clarifications are needed before the operators are defined. First,
-\textit{non-formalizability is not non-computability}. Doxa is non-formalizable in the sense
-that it is not a system whose content can be captured by axioms and rules of $L$; this does
-not mean that the \textit{carrier} through which it is consulted must be a non-computable
-oracle. What matters for the model is that the increment doxa supplies is \textit{external}
-to $F$. Second, an operator may extend the \textit{theory} (new axioms, rules or objects) or
-the \textit{language} itself; a change of $L$ changes what counts as a formula, and the two
-kinds of extension must not be conflated.
+Before defining the operators, one clarification is needed. An operator may extend the \emph{theory} (new axioms, rules, or objects) or the \emph{language} itself; changing $L$ changes what counts as a formula, and the two kinds of extension must not be confused. In what follows we consider only extensions of the theory: the language $L$ is assumed fixed, and everything doxa supplies is expressed in it.
 
-Let an operator be a transition $o: F \to F'$, and let $\Delta = F' \setminus F$ be its
-increment. The classification of the operators is by \textit{role}, not by position:
-protocol functions, too, lie outside $F$, but they are not a source of content.
+Let an operator be a transition $o: F \to F'$, and let $\Delta = F' \setminus F$ be its increment. The classification of operators is by \emph{role}, not by position: protocol functions also lie outside $F$, but they are not a source of content.
 
 \begin{itemize}
-\item An \textbf{external} (doxastic) operator introduces an increment that is not derivable
-from $F$, i.e. $\Delta \not\subseteq \mathrm{Cn}(F)$; its content originates in doxa. \item
-An \textbf{internal} (logotic) operator computes $F'$ from $F$ and from input already
-supplied; every element of $\Delta$ is determined by $F$ and that input. \item A
-\textbf{protocol} operator neither introduces content nor computes in $F$; it makes the
-exchange well-defined, deterministic and auditable.
+	\item \textbf{External} (doxastic) operator \emph{produces a proposal}: content that was neither in the input nor in $F$. The source of this content is doxa. Formally: $o(F, x) = \langle F', P \rangle$, where $P$ is a proposal and $P \notin \mathrm{Cn}(F \cup \{x\})$.
+	\item \textbf{Internal} (logotic) operator \emph{produces a new theory}: $F'$, computed from $F$ and the input. Formally: $o(F, x) = F'$, where $F'$ is a deterministic function of $F$ and $x$ under fixed rules (for example, a fixed AGM selection function).
+	\item \textbf{Protocol} operator \emph{produces a record}: it does not change $F$, but records, classifies, or controls an act of consultation. It makes the exchange well-defined, deterministic, and verifiable.
 \end{itemize}
 
 \begin{center}
 \begin{tabular}{p{2.4cm}p{4.6cm}p{6.2cm}}
 \hline
-\textbf{Class} & \textbf{Members} & \textbf{Role} \\
+\textbf{Class} & \textbf{Composition} & \textbf{Role} \\
 \hline
-External (doxastic) & $o_{\text{abd}}, o_{\text{anal}}, o_{\text{int}}$ & supply a proposal not derivable from $F$ \\
-Internal (logotic) & $o_{\text{rev}}, o_{\text{def}}, o_{\text{spec}}, o_{\text{ctx}}$ & compute the reaction of logos within $F$ \\
-Protocol (environment) & journal/fixation, classification, declaration, grounding, waves & make the exchange well-defined and auditable \\
+External (doxastic) & $o_{\text{abd}}, o_{\text{anal}}, o_{\text{int}}$ & supply a proposal that is neither in the input nor in $F$ \\
+Internal (logotic) & $o_{\text{rev}}, o_{\text{def}}, o_{\text{spec}}, o_{\text{ctx}}$ & compute a new theory from $F$ and the input \\
+Protocol (environment) & journal/fixation, classification, declaration, grounding, waves & make the exchange well-defined and verifiable \\
 \hline
 \end{tabular}
 \end{center}
 
 \subsection*{External operators (doxastic)}
 
-\textbf{Operator of generation ($o_{\text{abd}}$).} Takes $F$ and an observation $Q$ and
-returns $F'$ containing a \textit{hypothesis} $P$ that explains $Q$. Formally
-$o_{\text{abd}}: F \times Q \to F'$ with $F' = F \cup \{P\}$ and $P \notin \mathrm{Cn}(F)$.
-This is the formal analogue of abduction. The hypothesis is \textit{proposed}, not derived;
-logos checks it for compatibility with $F$ and for explanatory power [22].
+\textbf{Generation operator ($o_{\text{abd}}$).} Takes $F$ and an observation $Q$ and returns $F'$ containing a \emph{hypothesis} $P$ that explains $Q$. Formally, $o_{\text{abd}}: F \times Q \to F'$, where $F' = F \cup \{P\}$ and $P \notin \mathrm{Cn}(F)$. This is the formal analogue of abduction. The hypothesis is \emph{proposed}, not derived; logos checks it for compatibility with $F$ and for explanatory power \cite{kakas}.
 
-\textbf{Operator of analogy ($o_{\text{anal}}$).} Takes a familiar domain $F_1$ and a new
-domain $F_2$ and returns $F_2'$ in which the structure of $F_1$ is transferred to $F_2$. The
-choice of the structural mapping is external; logos only verifies whether it is preserved.
+\textbf{Analogy operator ($o_{\text{anal}}$).} Takes a familiar domain $F_1$ and a new domain $F_2$ and returns $F_2'$ in which the structure of $F_1$ is transferred to $F_2$. The choice of the structural mapping is external; logos only checks whether it is preserved.
 
-\textbf{Operator of intuition ($o_{\text{int}}$).} Takes $F$ and a goal $\phi$ and returns
-an answer $\phi'$ that does not follow from $F$. This is the operator closest to an oracle.
-Doxa \textit{gives} the answer; logos verifies it if it can, and otherwise defers it as a
-hypothesis. What is oracle-like here is the \textit{source} of the answer, not the carrier,
-which may well be computable.
+\textbf{Intuition operator ($o_{\text{int}}$).} Takes $F$ and a goal $\phi$ and returns an answer $\phi'$ that does not follow from $F$. This operator is closest to an oracle. Doxa \emph{gives} the answer; logos verifies it if it can, otherwise defers it as a hypothesis. What is oracle-like here is the \emph{source} of the answer, not the bearer, which may well be computable.
 
 \subsection*{Internal operators (logotic)}
 
-These operators are often mistaken for functions of doxa because they are triggered by
-doxa's input. In fact they are computed by logos; the input is only their argument.
+These operators are often mistaken for functions of doxa because they are triggered by its input. In fact it is logos that computes them; the input is only their argument.
 
-\textbf{Operator of revision ($o_{\text{rev}}$).} Given $F$ and new information $p$
-(supplied externally), returns $F'$ in which beliefs are revised in light of $p$. Formally
-$o_{\text{rev}}: F \times P \to F'$. This is the formal analogue of AGM revision [21] and of
-dynamic doxastic logic (DDL). Doxa supplies $p$; logos decides how $p$ affects $F$.
+\textbf{Revision operator ($o_{\text{rev}}$).} Given $F$ and new information $p$ (supplied from outside), returns $F'$ in which beliefs are revised in light of $p$. Formally, $o_{\text{rev}}: F \times P \to F'$. This is the formal analogue of AGM revision \cite{agm} and of dynamic doxastic logic (DDL). Doxa supplies $p$; logos decides how $p$ affects $F$.
 
-\textbf{Operator of cancellation ($o_{\text{def}}$).} Given $F$ and an exception $e$
-(supplied externally), returns $F'$ in which previously derived consequences are cancelled.
-Formally $o_{\text{def}}: F \times E \to F'$. This is the formal analogue of non-monotonic
-logics. Cancellation is not deletion of axioms: what was derivable ceases to be derivable
-under the new configuration.
+\textbf{Cancellation operator ($o_{\text{def}}$).} Given $F$ and an exception $e$ (supplied from outside), returns $F'$ in which previously derived consequences are cancelled. Formally, $o_{\text{def}}: F \times E \to F'$. This is the formal analogue of non-monotonic logics. Cancellation does not mean deleting axioms: what was derivable ceases to be derivable under the new configuration.
 
-\textbf{Operator of specificity ($o_{\text{spec}}$).} Given $F$ and two conflicting rules
-$r_1, r_2$, returns $F'$ in which the more specific one is selected. Formally
-$o_{\text{spec}}: F \times \{r_1, r_2\} \to F'$. Specificity is a relation \textit{computed
-by logos} over the hierarchy of $F$; doxa does not supply it. This is the formal analogue of
-specificity-based preference in non-monotonic logics.
+\textbf{Specificity operator ($o_{\text{spec}}$).} Given $F$ and two conflicting rules $r_1, r_2$, returns $F'$ in which the more specific one is selected. Formally, $o_{\text{spec}}: F \times \{r_1, r_2\} \to F'$. Specificity is a relation \emph{computed by logos} over the hierarchy of $F$; doxa does not supply it. This is the formal analogue of specificity preference in non-monotonic logics.
 
-\textbf{Operator of context application ($o_{\text{ctx}}$).} Given $F$ and a declared
-context $\Gamma$, returns $F'$ in which the meanings of terms are redefined in accordance
-with $\Gamma$. This is the formal analogue of situation logic. The context is
-\textit{declared} by the protocol (see below); its \textit{application} is internal.
+\textbf{Context application operator ($o_{\text{ctx}}$).} Given $F$ and a declared context $\Gamma$, returns $F'$ in which the meanings of terms are redefined in accordance with $\Gamma$. This is the formal analogue of situation logic. The context is \emph{declared} by the protocol (see below); its \emph{application} is internal.
 
 \subsection*{Protocol operators (environment)}
 
-These functions belong neither to doxa nor to logos. They introduce no content and compute
-nothing in $F$, yet without them the interaction cannot be carried out correctly.
+These functions belong neither to doxa nor to logos. They introduce no content and compute nothing in $F$, but without them the interaction cannot be carried out correctly.
 
-\textbf{Journal and fixation ($o_{\text{fix}}$).} Each step is recorded in a journal: the
-identifier of the operator, the wave, the rationale, the source, and the result (accepted,
-rejected or deferred). The journal is the protocol of the interaction and is part neither of
-doxa nor of logos. Fixation here means selecting the formalized slice of doxa that is being
-consulted; it is a bookkeeping act of the environment, not a function of doxa.
+\textbf{Journal and fixation ($o_{\text{fix}}$).} Each step is recorded in the journal: operator identifier, wave, rationale, source, and result (accepted, rejected, deferred). The journal is the protocol of interaction, not part of either doxa or logos. Fixation here means selecting the formalized slice of doxa that is being consulted; it is an accounting action of the environment, not a function of doxa.
 
-\textbf{Deterministic classification.} Every proposal is classified by fixed rules (see the
-role of logos below), independently of any ``mood''; this is what keeps the exchange
-reproducible.
+\textbf{Deterministic classification.} Every proposal is classified by fixed rules (see the role of logos below), independently of ``mood''; this is what makes the exchange reproducible.
 
-\textbf{Context and fragment declaration.} A context $\Gamma$ or a required fragment of a
-logic is \textit{declared} as a parameter of the run; its application is internal (see
-$o_{\text{ctx}}$ above).
+\textbf{Declaration of context and fragment.} The context $\Gamma$ or the required logic fragment is \emph{declared} as a run parameter; its application is internal (see $o_{\text{ctx}}$ above).
 
-\textbf{Grounding checks.} Verbatim-quote checks and other structural witnesses certify that
-a proposal is anchored in its source.
+\textbf{Grounding checks.} Checks of verbatim quotations and other structural arbiters certify that a proposal is anchored in the source.
 
-\textbf{Wave protocol.} The rule ``at most one proposal per consulting act'' makes each act
-verifiable and leaves a trace of where and why the theory changed.
+\textbf{Wave protocol.} The rule ``at most one proposal per act of consultation'' makes each act verifiable and leaves a trace of where and why the theory changed.
+
+\subsection*{Arbitrator}
+
+So far we have described operators that supply, compute, and record. But a question remains: who decides when the process stops, which of the competing proposals of doxa is accepted, and whether the goal has been reached? This question requires a separate role.
+
+\textbf{The Arbitrator} is an external instance that belongs neither to doxa nor to logos, but for which the system exists. The Arbitrator produces no content and computes no reaction of logos; it \emph{chooses} and \emph{bears responsibility} for the choice. Formally, the Arbitrator can be described as a function $W: \mathcal{S} \to \mathcal{D}$, where $\mathcal{S}$ is the space of system states and $\mathcal{D}$ is the space of decisions (continue, stop, choose one of the competing hypotheses).
+
+The Arbitrator may be:
+\begin{itemize}
+    \item a \emph{human} --- a researcher, user, or expert who makes decisions where a formal criterion is absent or insufficient;
+    \item an \emph{external program} --- a test runner, verifier, or oracle that returns an objective verdict (for example, whether a test passed);
+    \item a \emph{composition} --- for example, an automatic arbitrator makes decisions in known cases, and a human is involved only when the automatic one abstains.
+\end{itemize}
+
+The Arbitrator is by principle \emph{not} part of the formal system. If it were part of it, it would itself be subject to formal verification, and we would have a regress. The Arbitrator lies \emph{outside} the interface of doxa and logos, but it is precisely what makes the interface \emph{meaningful}. Without the Arbitrator the system works, but does not live: it solves problems, but does not know why.
+
+The model \emph{deliberately does not automate} the Arbitrator's step fully. No formal criterion resolves a dispute between incompatible proposals of doxa if both are compatible with the theory. The choice remains with the one who \emph{is responsible} for the choice --- a human or an external program acting by a pre-declared criterion.
 
 \subsection*{Properties of the family}
 
-The external operators do not commute, and the order of their application is essential.
-Suppose $F$ contains \texttt{is\_a(tweety, bird)} and the default \texttt{bird}
-$\Rightarrow$ \texttt{fly}, and suppose doxa may propose \texttt{is\_a(tweety, penguin)},
-after which logos has a more specific default \texttt{penguin} $\Rightarrow$
-$\neg$\,\texttt{fly}. Applying $o_{\text{abd}}$ first and $o_{\text{spec}}$ second selects
-the penguin default and cancels \texttt{fly}. Applying $o_{\text{spec}}$ first finds no
-competing rule and concludes \texttt{fly}; the later $o_{\text{abd}}$ then does not select
-but forces a \textit{revision}. The same operators in two orders yield different theories:
-the process is historical, and each step changes the space of possible next steps.
+External operators do not commute, and the order of their application matters. Let $F$ contain \texttt{is\_a(tweety, bird)} and the default \texttt{bird} $\Rightarrow$ \texttt{fly}, and suppose doxa can propose \texttt{is\_a(tweety, penguin)}, after which logos has a more specific default \texttt{penguin} $\Rightarrow$ $\neg$\,\texttt{fly}. If $o_{\text{abd}}$ is applied first and $o_{\text{spec}}$ second, the penguin default is selected and \texttt{fly} is cancelled. If $o_{\text{spec}}$ is applied first, there is no competing rule yet and \texttt{fly} is derived; the subsequent $o_{\text{abd}}$ then does not select but forces a \emph{revision}. The same operators in a different order yield different theories: the process is historical, and each step changes the space of possible next steps.
 
-The family is not reducible to a single operator. The expression $o_1 \cup o_2$ is not an
-operator: because the effect of $o_2$ depends on whether $o_1$ has already been applied,
-there is no function of the initial $F$ alone that captures the pair.
+The family does not reduce to a single operator. The expression $o_1 \cup o_2$ is not an operator: since the effect of $o_2$ depends on whether $o_1$ has already been applied, there is no function of the initial $F$ alone that would capture this pair.
 
-External operators do not guarantee a result. $o_{\text{abd}}$ may propose a contradictory
-hypothesis, $o_{\text{anal}}$ an inappropriate mapping, $o_{\text{int}}$ an erroneous
-answer. This is not a defect but the nature of doxa: it proposes, it does not guarantee.
-Internal operators, by contrast, are deterministic functions of $F$ and their input;
-protocol operators guarantee determinism and auditability, not truth.
+External operators do not guarantee a result. $o_{\text{abd}}$ may propose a contradictory hypothesis, $o_{\text{anal}}$ an unsuitable mapping, $o_{\text{int}}$ an erroneous answer. This is not a defect but the nature of doxa: it proposes, but does not guarantee. Internal operators, by contrast, are deterministic functions of $F$ and their input; protocol operators guarantee determinism and verifiability, not truth.
+
+We also note that composition of operators is not always defined, idempotence is absent, and reversibility is absent. Repeated application of $o_{\text{abd}}$ may generate a new hypothesis, and cancellation of a hypothesis does not remove it from the journal but only changes its status. A full study of the algebraic properties of the family is the subject of a separate paper; here we fix only those properties that are essential for what follows.
 
 \subsection*{The process of reasoning}
 
-Reasoning is a \textit{sequence} of extensions:
+Reasoning is a \emph{sequence} of extensions:
 \[
-F_0 \xrightarrow{o_1} F_1 \xrightarrow{o_2} F_2 \xrightarrow{o_3} \dots
+	F_0 \xrightarrow{o_1} F_1 \xrightarrow{o_2} F_2 \xrightarrow{o_3} \dots
 \]
-where each step is an \textit{act} of consulting doxa, labelled by the operator that
-mediates it; the recording, classification and application of each act are performed by the
-protocol. Not a ``computation'' but a \textit{consultation} of the source.
+where each step is an \emph{act} of consulting doxa, marked by the operator that mediates it; fixation, classification, and application of each act are performed by the protocol. Not a ``computation'', but a \emph{consultation} of the source.
 
-Each step is \textit{recorded} in a \textit{journal}: the identifier of the operator, the
-wave, the rationale, the source, and the result (accepted / rejected / deferred). The
-journal is the \textit{protocol} of interaction between doxa and logos. It is \textit{not
-part} of either doxa or logos. It is the \textit{interface} --- a protocol operator, not a
-function of doxa.
+Each step is \emph{recorded} in the \emph{journal}: operator identifier, wave, rationale, source, and result (accepted / rejected / deferred). The journal is the \emph{protocol} of the interaction between doxa and logos. It \emph{is not} part of either doxa or logos. It is an \emph{interface}, a protocol operator, not a function of doxa.
 
 \subsection*{The role of logos}
 
-Logos is \textit{not passive}. It \textit{classifies} each proposal of doxa:
+Logos is \emph{not passive}. It \emph{classifies} every proposal of doxa:
 
 \begin{itemize}
-\item \texttt{derivable} --- the proposal already follows from $F$. Accepted as
-\textit{narrative}. \item \texttt{cited} --- the proposal is grounded in a
-\textit{quotation} from the text. Added to the axioms. \item \texttt{hypothesis} --- the
-proposal is new. Recorded in the journal with the mark $H$. \item \texttt{rejected} --- the
-proposal fails verification. Discarded with a reason code.
+	\item \textbf{derivable} --- the proposal already follows from $F$. Accepted as \emph{narrative}.
+	\item \textbf{cited} --- the proposal is grounded in a \emph{quotation} from the text. Added to the axioms.
+	\item \textbf{hypothesis} --- the proposal is new. Recorded in the journal with the mark $H$.
+	\item \textbf{rejected} --- the proposal fails verification. Discarded with a reason code.
 \end{itemize}
 
-The classification is a protocol function; the verdict it produces belongs to logos. It is
-\textit{deterministic}: it depends on the \textit{structure} of $F$ and the \textit{content}
-of the proposal, not on the ``mood'' of logos. This is the \textit{guarantee} that logos
-does not ``yield'' to doxa. It \textit{accepts} only what it \textit{can} accept. And it
-\textit{honestly} says when it \textit{cannot}.
+Classification is a protocol function; the verdict it issues belongs to logos. Classification is \emph{deterministic}: it depends on the \emph{structure} of $F$ and the \emph{content} of the proposal, not on the ``mood'' of logos. This is the \emph{guarantee} that logos does not ``yield'' to doxa. It \emph{accepts} only what it \emph{can} accept. And it \emph{honestly} says when it \emph{cannot}.
 
 \subsection*{Limits of the model}
 
-The model \textit{does not claim} to formalize doxa. It \textit{does not say} what doxa
-``really is.'' It \textit{does not assert} that doxa ``reduces'' to operators. It
-\textit{describes} only the \textit{functions} through which doxa \textit{interacts} with
-logos.
+The model \textbf{does not guarantee} completeness. The list of operators is \emph{open}. There may be operators we have \emph{not} identified. There may be aspects of doxa that are \emph{not} expressed through operators. The model \emph{does not claim} otherwise.
 
-The model \textit{does not guarantee} completeness. The list of operators is \textit{open}.
-There may be operators we have \textit{not identified}. There may be aspects of doxa that
-are \textit{not expressed} through operators. The model \textit{does not claim} otherwise.
-
-The model \textit{does not solve} the problem of incompleteness. It \textit{accepts} it as a
-\textit{boundary} of logos and shows how an \textit{open} system can \textit{develop}, using
-doxa as an \textit{external source}. This is \textit{not an overcoming} of G\"odel. It is
-\textit{life} with G\"odel. Not ``after'' him. But \textit{together} with him.
+The model shows how a theory can expand through an external source. The increment comes from outside, and logos accepts, rejects, or defers it. The point at which the system stops shifts from the closure of the theory to its interface with doxa.
 
 \section{Implementation: Ankyra}
 
-In Section 3 we introduced the operator family of the doxa--logos interaction. Here we show
-that the model is not a theoretical construct: it is implemented in a working system, the
-hybrid neuro-symbolic reasoning engine Ankyra [19]. We describe how each of the three roles
-is realized --- the external operators, the internal operators and the protocol --- and note
-that a full description of the architecture is the subject of a separate work.
+In Section~3 we introduced the family of interaction operators between doxa and logos. Here we show that this model is not a theoretical construct: it is implemented in a working system, the hybrid neuro-symbolic reasoning system Ankyra \cite{ankyra}. We describe how each of the three roles is implemented --- external operators, internal operators, and the protocol --- and note that a full description of the architecture and its empirical evaluation is the subject of a separate paper \cite{ankyra_paper}.
 
 \subsection*{Doxa is the LLM}
 
-The key claim we wish to make explicit: \textit{doxa in Ankyra is a large language model}.
-Not an ``analogy.'' Not a ``metaphor.'' Not a ``philosophical illustration.'' The LLM
-\textit{is} the carrier through which doxa is consulted in machine form.
-
-From the preceding exposition, the reader might have formed the impression that doxa is
-something mystical and inexpressible, accessible only to human consciousness. We claim the
-opposite. Doxa is a \textit{field of knowledge} accessible through language. The LLM is
-trained on texts, i.e., on language, and language is not merely a means of transmitting
-information. It is a \textit{world-picture} --- a lens that sets the grid of perception. The
-LLM is a hypertrophied version of this lens. It is trained on texts that already contain
-knowledge about the world, and it reconstructs reality through the patterns of language. It
-is a snapshot of snapshots --- language about language, and precisely for this reason the
-LLM makes it possible to regard it as doxa: it \textit{does not possess truth}, but it is
-\textit{full of life}. The LLM as doxa in compressed form: the lived experience of humanity
-compressed into matrices of weights; the cultural field accessible through prediction of the
-next token; historicity frozen in probabilities.
-
-It is important not to over-read the oracle analogy. The LLM is a computable function of its
-input, and nothing in the model requires a non-computable source. What makes it a doxa
-carrier is not a lack of computability but its \textit{externality} to the formal theory:
-the increment it proposes is not derivable from the axioms and rules in $L$. Doxa is
-non-formalizable here in the precise sense of not being a theory in the language of logos
---- not in the sense of being beyond computation.
+What exactly the LLM brings into the system in the role of doxa. It is trained on texts, and text is not merely a means of transmitting information but a picture of the world: grammar, lexicon, and metaphors set the grid through which reality is reconstructed. The LLM is a hypertrophied version of that grid. It carries compressed human experience: the cultural field accessible through prediction of the next token; historicity frozen in probabilities. This is what makes it a bearer of doxa --- not computability and not architecture, but the fact that it is a \emph{cast} of human language and experience.
 
 \subsection*{The principle: the LLM proposes, the engine decides}
 
-The core of Ankyra is the distinction between two participants. The LLM plays the role of
-doxa: it reads the text, decomposes it into structure, and in the reasoning cycle proposes
-additional steps. The symbolic engine plays the role of logos: it turns the structure into a
-formal theory, closes it under inference, matches it against the question, and certifies
-what actually follows.
+The core of Ankyra is the distinction between two participants. The LLM plays the role of doxa: it reads the text, decomposes it into structure, and in the reasoning cycle proposes additional steps. The symbolic engine plays the role of logos: it turns the structure into a formal theory, closes it under inference, matches it against the question, and certifies what actually follows.
 
-The boundary is absolute. The LLM never possesses truth. Nothing enters the theory that the
-engine cannot justify either by a verbatim quotation from the text or by an explicit
-hypothesis mark.
+The boundary is absolute. The LLM never possesses truth. Nothing enters the theory that the engine cannot justify either by a verbatim quotation from the text or by an explicit hypothesis mark.
 
 \subsection*{The proposal contract}
 
-Every statement the LLM wishes to add is deterministically classified into one of four
-categories: \texttt{derivable} (already follows from the theory), \texttt{cited} (supported
-by a verbatim quotation), \texttt{hypothesis} (knowledge not present in the text),
-\texttt{rejected} (fails verification). This is a direct implementation of the operator of
-hypothesis generation ($o_{\text{abd}}$): the LLM proposes, the engine classifies, nothing
-is accepted without grounds. The distinction between \texttt{cited} and \texttt{hypothesis}
-makes the answers honest: a conclusion based on quotations is \texttt{proven}, a conclusion
-based on assumptions is \texttt{proven\_under(H)} with a listing of those assumptions. An
-answer is never stronger than the grounds behind it.
+Every statement the LLM wishes to add is deterministically classified into one of four categories: \texttt{derivable} (already follows from the theory), \texttt{cited} (supported by a verbatim quotation), \texttt{hypothesis} (knowledge not present in the text), \texttt{rejected} (fails verification). This is a direct implementation of the generation operator ($o_{\text{abd}}$): the LLM proposes, the engine classifies, nothing is accepted without grounds. The distinction between \texttt{cited} and \texttt{hypothesis} makes the answers honest: a conclusion based on quotations is \texttt{proven}, a conclusion based on assumptions is \texttt{proven\_under(H)} with a listing of those assumptions. An answer is never stronger than the grounds behind it.
 
 \subsection*{The reasoning cycle}
 
-A task passes through four phases: \textit{phase 0} --- decomposition (the LLM decomposes
-the text into structure), \textit{phase 1} --- solving (the engine closes the theory),
-\textit{phase 2} --- the hint cycle (the LLM proposes one step at a time if the theory does
-not solve the question), \textit{phase 3} --- explanation (the chain is assembled
-mechanically from the proof history).
+A task passes through four phases: \emph{phase 0} --- decomposition (the LLM decomposes the text into structure), \emph{phase 1} --- solving (the engine closes the theory), \emph{phase 2} --- the hint cycle (the LLM proposes one step at a time if the theory does not solve the question), \emph{phase 3} --- explanation (the chain is assembled mechanically from the proof history).
 
-The hint cycle (phase 2) is organized into \textit{waves}. A wave is one complete act of
-consulting doxa: the engine checks the current state of the theory and formulates the gaps,
-the LLM receives a hint with these gaps and proposes \textit{exactly one} typed proposal,
-the engine classifies this proposal and applies or discards it, after which the wave is
-recorded in the journal and the cycle begins anew. The constraint ``one proposal per wave''
-is principled: it makes each consultation of doxa verifiable and leaves a trace by which one
-can reconstruct at which step and why the answer changed.
+The hint cycle (phase 2) is organized into \emph{waves}. A wave is one complete act of consulting doxa: the engine checks the current state of the theory and formulates the gaps, the LLM receives a hint with these gaps and proposes \emph{exactly one} typed proposal, the engine classifies this proposal and applies or discards it, after which the wave is recorded in the journal and the cycle begins anew. The constraint ``one proposal per wave'' is principled: it makes each consultation of doxa verifiable and leaves a trace by which one can reconstruct at which step and why the answer changed.
 
-The hint cycle implements the process of consulting doxa from Section 3: each wave is one
-act $F_i \xrightarrow{o} F_{i+1}$, mediated by an \textit{external} operator, while
-recording, classification and application are performed by the protocol.
+The hint cycle implements the process of consulting doxa from Section~3: each wave is one act $F_i \xrightarrow{o} F_{i+1}$, mediated by an \emph{external} operator, whereas fixation, classification, and application are performed by the protocol.
 
 \subsection*{The journal}
 
-Each step is recorded in the journal: the identifier of the operator, the wave, the
-rationale, the source, the result. The journal is the protocol of interaction between doxa
-and logos, not part of either. It realizes the \textit{protocol} role of the family (journal
-and fixation): it records each act of consulting doxa and makes the process verifiable and
-reproducible. It is not a function of doxa.
+Each step is recorded in the journal: operator identifier, wave, rationale, source, result. The journal is the protocol of interaction between doxa and logos, not part of either. It implements the \emph{protocol} role of the family (journal and fixation): it records each act of consulting doxa and makes the process verifiable and reproducible. This is not a function of doxa.
 
-\subsection*{Monotonic base and moving answer}
+\subsection*{Monotone base and moving answer}
 
-The base --- axioms, rules, hypotheses --- only grows: premises are never deleted, the goal
-is never weakened. But the answer may change as new information arrives. Each change is
-recorded as a \texttt{Revision} with an indication of the wave and the assumptions involved.
-This is an \textit{internal} operator of the family (revision, $o_{\text{rev}}$): doxa
-supplies the information, logos computes how it affects the theory, and the decision is
-recorded, not hidden.
+The base --- axioms, rules, hypotheses --- only grows: premises are never deleted, the goal is never weakened. But the answer may change as new information arrives. Each change is recorded as a \texttt{Revision} with an indication of the wave and the assumptions involved. This is an \emph{internal} operator of the family (revision, $o_{\text{rev}}$): doxa supplies information, logos computes how it affects the theory, and the decision is recorded, not hidden.
 
 \subsection*{Engines and the declared fragment}
 
-Ankyra is not a monolithic solver but an orchestrator of formalizations and decision
-procedures. Different kinds of tasks require different logics: Horn clauses (L0), stratified
-negation (L1), disjunction and quantifiers (L2), finite-domain constraints (L3), arithmetic
-(L4), defaults with specificity (D). These engines are \textit{internal} operators of the
-family (logos-side): L1 and D realize cancellation ($o_{\text{def}}$) and specificity
-($o_{\text{spec}}$) respectively, and L2 realizes case analysis within the decision
-procedure. None of them is a source of content.
+Ankyra is not a monolithic solver but an orchestrator of formalizations and decision procedures. Different kinds of tasks require different logics: Horn clauses (L0), stratified negation (L1), disjunction and quantifiers (L2), finite-domain constraints (L3), arithmetic (L4), defaults with specificity (D). These engines are \emph{internal} operators of the family (the logotic side): L1 and D implement, respectively, cancellation ($o_{\text{def}}$) and specificity ($o_{\text{spec}}$), while L2 implements case analysis inside the decision procedure. None of them is a source of content.
 
-The choice of procedure is carried out through the \textit{contract of the declared
-fragment}: the engine examines the constructed theory and query and derives the set of
-required features. If the fragment fits within the available capabilities, the corresponding
-procedure is chosen; if not, the result is the named gap \texttt{out\_of\_fragment}, rather
-than a silent downgrade to a weaker logic. The declaration of the fragment is a
-\textit{protocol} function; its application is internal, and the system honestly reports a
-mismatch instead of guessing.
+The choice of procedure is carried out through the contract of the declared fragment: the engine examines the constructed theory and query and derives the set of required features. If the fragment fits within the available capabilities, the corresponding procedure is chosen; if not, the result is the named gap \texttt{out\_of\_fragment}, rather than a silent downgrade to a weaker logic. The declaration of the fragment is a \emph{protocol} function; its application is internal, and the system honestly reports a mismatch rather than guessing.
+
+\subsection*{The Arbitrator in the implementation}
+
+In Ankyra, the role of the Arbitrator is divided. The automatic Arbitrator is a \emph{test runner}: it returns an objective verdict (the test passed or not) and does not depend on the proposals of doxa. The user Arbitrator is a \emph{human} who accepts tasks, sets goals, and decides when the process is complete. The automatic Arbitrator is involved in phase 1 (when the goal is checked) and in phase 2 (when a proposal of doxa changes the theory); the user Arbitrator is involved in the external interface of the system. A full description of the Arbitrator's role in the architecture is the subject of a separate paper \cite{ankyra_paper}.
 
 \subsection*{Honesty by construction}
 
-The value of the system rests on guarantees provided mechanically: there are no facts in the
-theory belonging to the model; the question is never a source; there is no natural-language
-parsing in deterministic code; having assumed \texttt{P}, one cannot refute
-\texttt{$\neg$P}; an answer that used assumptions is always marked
-\texttt{proven\_under(H)}. This is the implementation of the property of transparency of the
-interface: logos accepts only what it can accept, and honestly says when it cannot.
+The value of the system rests on guarantees provided mechanically: there are no facts in the theory belonging to the model; the question is never a source; there is no natural-language parsing in deterministic code; having assumed \texttt{P}, one cannot refute \texttt{$\neg$P}; an answer that used assumptions is always marked \texttt{proven\_under(H)}. This is the implementation of the transparency property of the interface: logos accepts only what it can accept, and honestly says when it cannot.
 
 \subsection*{Connection to the conceptual model}
 
-Ankyra realizes the three roles of the family from Section 3. \textit{External}: the
-proposal contract (the operator of generation, $o_{\text{abd}}$). \textit{Internal}:
-revision (the \texttt{Revision} bookkeeping), cancellation (L1), specificity (D).
-\textit{Protocol}: the journal, deterministic classification, quote grounding checks, the
-wave protocol, and the declaration of the fragment. Two external operators are not yet
-implemented: analogy ($o_{\text{anal}}$) and intuition ($o_{\text{int}}$). The system does
-not claim completeness: it implements what it can implement honestly, and honestly says what
-it cannot.
+Ankyra implements the three roles of the family from Section~3. \emph{External}: the proposal contract (generation operator, $o_{\text{abd}}$). \emph{Internal}: revision (accounting of \texttt{Revision}), cancellation (L1), specificity (D). \emph{Protocol}: journal, deterministic classification, grounding checks of quotations, wave protocol, and declaration of the fragment. The role of the \emph{Arbitrator} is implemented as a composition of an automatic (test runner) and a user (human) component. Two external operators are not yet implemented: analogy ($o_{\text{anal}}$) and intuition ($o_{\text{int}}$). The system does not claim completeness: it implements what it can implement honestly, and honestly says what it cannot.
 
 \section{Discussion}
 
-We have introduced the distinction between doxa and logos, shown its formal analogues, and
-proposed a family of operators of the doxa--logos interaction, implemented in Ankyra. Now we
-must discuss the limits of this approach: what it explains, what it does not explain, and
-what consequences follow from it.
+We have introduced the distinction between doxa and logos, shown its formal analogues, and proposed the family of interaction operators between doxa and logos, implemented in Ankyra. Now we must discuss the limits of the approach: what it explains, what it does not explain, and what consequences follow from it.
 
 \subsection*{What the model explains}
 
-The model explains how a formal system can develop without violating its own correctness.
-G\"odel's and Turing's theorems describe the limits of closed systems. Our model shows that
-an open system --- one that interacts with doxa through an explicit interface --- can expand
-without that expansion being a derivation within it. The expansion comes from outside. Logos
-does not produce it. It accepts, rejects, or defers it.
+The model shows how a formal system can expand. G\"odel's and Turing's theorems describe the limits of closed systems. Our model shows that an open system --- one that interacts with doxa through an explicit interface --- can expand without that expansion being a derivation within it. The expansion comes from outside. Logos does not produce it. It accepts, rejects, or defers it.
 
-This is not an ``overcoming'' of the incompleteness theorems. It is their acceptance as a
-description of a boundary and the construction of an interface to what lies beyond it.
-Incompleteness is not removed but \textit{relocated}: the resulting theory $F'$ is again
-incomplete if it is consistent and rich enough, but the point at which the system stops has
-moved from the closure to the interface. We do not claim that doxa ``solves'' the halting
-problem or incompleteness. We claim only that a system that honestly acknowledges the
-boundary and consults an external source can continue to work where a closed system would
-stop.
+Incompleteness is not eliminated but \emph{transferred}: the resulting theory $F'$ is again incomplete if it is consistent and sufficiently rich, but the point at which the system stops has shifted from closure to the interface. The system continues to work where a closed system would have stopped.
 
 \subsection*{Limits of the approach}
 
-The model does not formalize the content of doxa. We introduce this as a principled
-limitation, not as a temporary difficulty. Doxa is non-formalizable by nature --- not
-because ``we have not yet found a way,'' but because it is not a system. It is a stream,
-experience, the cultural field, embodiment, historicity. To formalize its content would be
-to turn it into logos, that is, to destroy what it is.
+The model works with the functions of interaction, not with the content of doxa. This is a boundary of the subject matter, not a temporary limitation: doxa is not a theory in the language $L$, and there is nothing to describe in it --- except those operations through which it extends a formal system. These operations are what the model is about.
 
-The model also does not guarantee that the set of operators we have identified is complete.
-We regard it as an open list. The operators of analogy and intuition, not implemented in the
-current version, show that the space of operators is wider than what we have described.
-There may exist operators we do not see. This is not a deficiency of the model but a
-consequence of its subject matter.
+The model also does not guarantee that the set of operators we have identified is complete. We regard it as an open list. The operators of analogy and intuition, not implemented in the current version, show that the space of operators is wider than what we have described. There may exist operators we do not see. This is not a deficiency of the model but a consequence of its subject matter.
 
-Finally, the model does not provide a criterion for the ``correct'' choice among competing
-proposals of doxa. If two operators generate incompatible hypotheses, the system records the
-conflict but does not resolve it automatically. The choice remains with the \textit{Witness}
---- the person or external authority who bears responsibility for the choice and for whom
-the system exists. The model deliberately does not automate this step: no formal criterion
-decides between incompatible proposals of doxa.
+Finally, the model does not provide a criterion for the ``correct'' choice among competing proposals of doxa. If two operators generate incompatible hypotheses, the system records the conflict but does not resolve it automatically. The choice remains with the \emph{Arbitrator} (Section~3) --- a human or an external program acting by a declared criterion. The model deliberately does not automate this step: no formal criterion resolves a dispute between incompatible proposals of doxa if both are compatible with the theory.
 
-\subsection*{Connection to hypercomputation}
+\subsection*{Connection to the oracle}
 
-In computation theory, the notion of an oracle was introduced by Turing to describe a
-machine that can obtain answers to questions not solvable by its own procedure [6]. The
-oracle is not part of the machine, but the machine can consult it. Doxa in our model plays a
-role structurally close to the oracle: it does not enter the formal system, but the system
-can ask it questions and receive proposals.
+In computation theory, the notion of an oracle was introduced by Turing to describe a machine that can obtain answers to questions not solvable by its own procedure \cite{turing39}. The oracle is not part of the machine, but the machine can consult it. Doxa in our model plays a structurally close role.
 
-However, there is an important difference. The oracle in computation theory gives
-\textit{true} answers to questions of a certain class. Doxa does not give true answers. It
-gives \textit{proposals} that may be true, false, or indeterminate. This is precisely why
-the interface to doxa includes classification: a proposal enters the system not as truth but
-as a hypothesis requiring verification. Logos does not trust doxa. It uses it.
-
-This difference is principled. Hypercomputation in the strict sense remains a theoretical
-notion: it is unknown whether it is physically realizable [20]. Our model does not claim to
-go beyond the limits of computability, and it does not require the source to be
-non-computable. It describes how a system, remaining within the limits of computability, can
-expand through a source that is \textit{external} to it --- whether that source is
-computable, as an LLM is, or not.
+There is, however, an important difference. The oracle gives \emph{true} answers to questions of a certain class. Doxa does not give true answers: it gives \emph{proposals} that may be true, false, or indeterminate. This is precisely why the interface to doxa includes classification --- a proposal enters the system not as truth but as a hypothesis requiring verification. Logos does not trust doxa. It uses it.
 
 \subsection*{Practical consequences}
 
-For explainable artificial intelligence, the model gives one clear principle: \textit{an
-answer must not be stronger than its grounds}. If the system derived a conclusion from
-quotations --- that is one thing. If from assumptions --- another. If from a mixture --- a
-third, and this third must be explicitly marked. The user has the right to know what the
-answer rests on.
+For explainable artificial intelligence, the model gives one clear principle: \emph{an answer must not be stronger than its grounds}. If the system derived a conclusion from quotations --- that is one thing. If from assumptions --- another. If from a mixture --- a third, and this third must be explicitly marked. The user has the right to know what the answer rests on.
 
-For system verification, this means that verifiability does not require full formalization.
-It is enough that each step is traceable to a source and that each extension is recorded in
-the journal. Doxa remains non-formalizable, but its \textit{trace} in the system is formal.
+For system verification, this means that verifiability does not require full formalization. It is enough that each step is traceable to a source and that each extension is recorded in the journal. Doxa remains non-formalizable, but its \emph{trace} in the system is formal.
 
-For the architecture of hybrid systems, this means that the division between the neural and
-symbolic parts is not an engineering compromise. It is a structural division reflecting the
-distinction between doxa and logos. The neural part is not ``weaker'' than the symbolic. It
-does what the symbolic cannot do. The symbolic part is not ``stricter'' than the neural. It
-does what the neural must not do. Each side is strong in its own way.
+For the architecture of hybrid systems, this means that the division between the neural and symbolic parts is not an engineering compromise. It is a structural division reflecting the distinction between doxa and logos. The neural part is not ``weaker'' than the symbolic. It does what the symbolic cannot do. The symbolic part is not ``stricter'' than the neural. It does what the neural must not do. Each side is strong in its own way.
 
 \subsection*{What remains open}
 
-The model leaves several questions open. How do operators of the different roles compose ---
-are there laws relating external, internal and protocol steps, identities, priorities? How
-does one measure the effectiveness of an operator --- by the depth of change in the theory,
-by the number of accepted proposals, by the contribution to the final answer? How does one
-distinguish an operator that genuinely extends the system from one that merely reformulates
-what is already known? These questions have no answer within the present work. They point to
-the direction of further research.
+The model leaves several questions open. How do operators of different roles relate to one another --- are there laws linking external, internal, and protocol steps, identities, priorities? How does one measure the effectiveness of an operator --- by the depth of change in the theory, by the number of accepted proposals, by the contribution to the final answer? How does one distinguish an operator that genuinely extends the system from one that merely reformulates what is already known? These questions have no answer within the present work. They point to the direction of further research.
+
+\section{Related work}
+
+\subsection*{Map of the field}
+
+A 2026 systematic survey \cite{survey2026} (178 works, 2020--2025) identifies four stable patterns of neuro-symbolic integration: sequential cascade, symbolic validator, symbolic planner with a neural executor, and differentiable integration. Ankyra is closest to the sequential cascade with a bounded cycle, but it differs in two respects: a proposal protocol under which every statement enters the theory only with a quotation or an assumption tag, and a declared fragment under which a mismatch between the required and available logic yields an honest \texttt{out\_of\_fragment} rather than a silent downgrade to a weaker procedure. The same survey notes that meta-cognitive abilities --- monitoring one's own conclusions, recognizing a lack of knowledge, switching modes --- appear in only 5\% of the works; \texttt{out\_of\_fragment} and \texttt{proven\_under(H)} can be seen as a contribution to exactly this niche.
+
+The closest system in spirit is \emph{Autonomous Trustworthy Agents} (ATA) \cite{ata}: it also pursues determinism and checkability, but achieves them by \emph{removing} the LLM from the runtime entirely (the LLM builds a knowledge base offline; only the symbolic solver runs online). Ankyra keeps the LLM in the loop, constraining it through the protocol; the two are different points on the same spectrum. The same approach to verifying regulatory documents with an SMT solver is described in \cite{nsc}.
+
+\subsection*{Language model and symbolic solver}
+
+Translator-plus-solver pipelines (Logic-LM \cite{logiclm}, LINC \cite{linc}) also hand reasoning over to a symbolic solver, but trust the translation entirely: if the formalization is wrong, so is the conclusion. In our model the boundary is stricter: every statement enters the theory only with a verbatim quotation or an explicit assumption tag, answer strength is derived from the premises (\texttt{proven} versus \texttt{proven\_under}), and a mismatch between the required and available logic yields an honest \texttt{out\_of\_fragment} rather than a hidden downgrade to a weaker procedure. An empirical comparison of Ankyra with Logic-LM and LINC on common input is given in the companion paper \cite{ankyra_paper}.
+
+\subsection*{Non-monotonic reasoning and defaults}
+
+Default logic \cite{reiter} and circumscription \cite{mccarthy} formalize the defeasibility of conclusions; Ankyra implements a defaults layer with specificity via \texttt{is\_a} and honestly reports an undecided conflict rather than guessing a winner. The philosophical framing (doxa/logos) introduced in this paper differs from purely engineering approaches to separating the LLM and the solver: it derives an architectural principle from an epistemological distinction going back to the ancient tradition.
+
+\subsection*{Proof history and checkability}
+
+The reliance on an automatically assembled proof history aligns Ankyra with work on checkable proof. The explanation here is a presentation of the derivation, not a second opinion about it: the model may not add facts to it, and every step names the rule that fired, the bindings used, and the supporting quotation or hypothesis.
 
 \section{Conclusion}
 
-We have proposed an interpretation of the incompleteness theorems not as absolute limits of
-cognition but as limits of static systems. Human thinking is not a static system: it
-develops by relying on doxa --- a non-formalizable source of lived experience, the cultural
-field, and bodily knowledge. The distinction between doxa and logos has formal analogues in
-modern logic, but none of them formalizes doxa as such.
+We have proposed an interpretation of the incompleteness theorems not as absolute limits of cognition but as limits of static systems. Human thinking is not a static system: it develops by relying on doxa --- a non-formalizable source of lived experience, the cultural field, and bodily knowledge. The distinction between doxa and logos has formal analogues in modern logic, but none of them formalizes doxa as such.
 
-Our contribution consists in introducing a family of operators of the doxa--logos
-interaction --- a formal interface between a non-formalizable source and a formal system ---
-and in showing that this interface is \textit{asymmetric}: external operators supply
-content, internal operators decide, and protocol operators make the exchange verifiable. The
-content of doxa is non-formalizable, but these functions can be described formally. We have
-implemented this model in the Ankyra system, where a large language model plays the role of
-doxa and a symbolic engine plays the role of logos [19]. The principle ``the LLM proposes,
-the engine decides'' ensures transparency: nothing enters the theory without grounds, and an
-answer is never stronger than the grounds behind it.
+Our contribution consists in the family of interaction operators between doxa and logos --- a formal interface between a source of proposals and a formal system --- and in the fact that this interface is \emph{asymmetric}: external operators supply content, internal ones decide, and protocol ones make the exchange verifiable. We have implemented this model in the Ankyra system, where a large language model plays the role of doxa and a symbolic solver plays the role of logos \cite{ankyra}. The principle ``the LLM proposes, the engine decides'' ensures transparency: nothing enters the theory without grounds, and an answer is never stronger than the grounds behind it.
 
-We do not claim to have solved the problem of incompleteness. We claim to have shown how a
-system can work with this problem without attempting to overcome it. Doxa does not cancel
-logos --- it nourishes it. And in this interaction there is not a defeat of formalization
-but its extension.
+We do not claim to have solved the problem of incompleteness. We claim to have shown how a system can work with this problem without attempting to overcome it. Doxa does not cancel logos --- it nourishes it. And in this interaction there is not a defeat of formalization but its extension.
 
 \begin{thebibliography}{99}
 
@@ -741,8 +394,6 @@ but its extension.
 	\bibitem{plato} Plato. Theaetetus // Plato. Collected Works: in 4~vols. Moscow: Mysl, 1990--1994. Vol.~2.
 
 	\bibitem{aristotle} Aristotle. Nicomachean Ethics // Aristotle. Collected Works: in 4~vols. Moscow: Mysl, 1975--1983. Vol.~4.
-
-	\bibitem{turing39} Turing A.~M. Systems of Logic Based on Ordinals // Proceedings of the London Mathematical Society. 1939. Ser.~2, Vol.~45. P.~161--228.
 
 	\bibitem{hintikka} Hintikka J. Knowledge and Belief: An Introduction to the Logic of the Two Notions. Ithaca: Cornell University Press, 1962.
 
@@ -762,21 +413,33 @@ but its extension.
 
 	\bibitem{niiniluoto} Niiniluoto I. Defending Abduction // Philosophy of Science. 1999. Vol.~66, No.~3. P.~S436--S451.
 
+	\bibitem{kakas} Kakas A.~C., Kowalski R.~A., Toni F. Abductive Logic Programming // Journal of Logic and Computation. 1992. Vol.~2, No.~6. P.~719--770.
+
 	\bibitem{vinkov} Vinkov M.~M., Fominykh I.~B. Temporal Non-Monotonic Logical Systems: Interrelations and Computational Complexity // Artificial Intelligence and Decision Making. 2008. No.~4. P.~19--25.
 
-	\bibitem{eiter95} Eiter T., Gottlob G. The Complexity of Logic-Based Abduction // Journal of the ACM. 1995. Vol.~42, No.~1. P.~3--42.
+	\bibitem{cadoli} Cadoli M., Schaerf M. A Survey of Complexity Results for Non-Monotonic Logics // Journal of Logic Programming. 1993. Vol.~17, No.~2--4. P.~127--160.
 
 	\bibitem{eiter95b} Eiter T., Gottlob G. Propositional Abduction is $\Sigma_2^P$-Complete // Information Processing Letters. 1995. Vol.~55, No.~4. P.~213--218.
 
-	\bibitem{ankyra} Ankyra: A domain-agnostic neuro-symbolic reasoning engine. GitHub repository. URL: \url{https://github.com/merfill/ankyra}
-
-	\bibitem{cotogno} Cotogno P. Hypercomputation and the Physical Church-Turing Thesis // The British Journal for the Philosophy of Science. 2003. Vol.~54, No.~2. P.~181--203.
+	\bibitem{eiter95} Eiter T., Gottlob G. The Complexity of Logic-Based Abduction // Journal of the ACM. 1995. Vol.~42, No.~1. P.~3--42.
 
 	\bibitem{agm} Alchourr\'on C.~E., G\"ardenfors P., Makinson D. On the Logic of Theory Change: Partial Meet Contraction and Revision Functions // The Journal of Symbolic Logic. 1985. Vol.~50, No.~2. P.~510--530.
 
-	\bibitem{kakas} Kakas A.~C., Kowalski R.~A., Toni F. Abductive Logic Programming // Journal of Logic and Computation. 1992. Vol.~2, No.~6. P.~719--770.
+	\bibitem{ankyra} Ankyra: A domain-agnostic neuro-symbolic reasoning engine. GitHub repository. URL: \url{https://github.com/merfill/ankyra}
 
-	\bibitem{cadoli} Cadoli M., Schaerf M. A Survey of Complexity Results for Non-Monotonic Logics // Journal of Logic Programming. 1993. Vol.~17, No.~2--4. P.~127--160.
+	\bibitem{ankyra_paper} Lapshin V. Ankyra: Sound Neuro-Symbolic Reasoning with Verifiable Proofs. (companion paper, in preparation).
+
+	\bibitem{turing39} Turing A.~M. Systems of Logic Based on Ordinals // Proceedings of the London Mathematical Society. 1939. Ser.~2, Vol.~45. P.~161--228.
+
+	\bibitem{survey2026} Bin Hakim S., Adil M., Velasquez A., Song H. H. Neuro-symbolic agentic AI: Architectures, integration patterns, applications, open challenges and future research directions // Computer Science Review. 2026. Vol.~60. Art.~100902. DOI: 10.1016/j.cosrev.2026.100902.
+
+	\bibitem{ata} Peer D., Stabinger S. ATA: Autonomous Trustworthy Agents. arXiv:2510.16381.
+
+	\bibitem{nsc} Hsia Y.-S., Yu F., Jiang J.-H. R. Neuro-Symbolic Compliance: LLM-driven SMT Verification of Regulatory Documents. arXiv:2601.06181.
+
+	\bibitem{logiclm} Pan L. et al. Logic-LM: Empowering Large Language Models with Symbolic Solvers for Faithful Logical Reasoning. Findings of EMNLP. 2023.
+
+	\bibitem{linc} Olausson T. X. et al. LINC: A Neurosymbolic Approach for Logical Reasoning by Combining Language Models with First-Order Logic Provers. EMNLP. 2023.
 
 \end{thebibliography}
 
