@@ -29,9 +29,11 @@
 % ---- Links ----
 \usepackage[hidelinks]{hyperref}
 
+\setlength{\emergencystretch}{3em}
+
 % ---- Title ----
 \title{Ankyra: Sound Neuro-Symbolic Reasoning\\
-with Machine-Checkable Proofs over Staged Decidable Logics}
+with Verifiable Proofs}
 \author{Vladimir Lapshin\thanks{\texttt{merfill@yandex.ru}}}
 \date{}
 
@@ -50,9 +52,11 @@ enters the theory without either a verbatim quotation or an explicit hypothesis 
 report a demonstration-scale evaluation on standard collections: on covered slices the
 system achieves high accuracy while producing no confidently wrong conclusions, and it
 abstains honestly (\texttt{out\_of\_fragment}) where the implemented logic cannot express
-the problem. We make no claim to state-of-the-art performance: the evaluation uses fixed
-subsamples rather than full test sets, and we state the statistical and methodological
-limitations explicitly.
+the problem. We also compare against two open-source neuro-symbolic systems --- Logic-LM and
+LINC --- on identical inputs and the same model, and show that under a small, inexpensive
+model the binding constraint is the translation interface rather than the reasoning. We make
+no claim to state-of-the-art performance: the evaluation uses fixed subsamples rather than
+full test sets, and we state the statistical and methodological limitations explicitly.
 \end{abstract}
 
 % ======================================================================
@@ -102,6 +106,9 @@ honest abstention \texttt{out\_of\_fragment} instead of a silent downgrade to a 
 logic.
 \item A staged-evaluation methodology for \emph{composite} benchmarks that separates the
 coverage ceiling (formalism) from the extraction ceiling (model) via a gold-fed mode.
+\item A common-input comparison with two open-source translator-plus-solver systems on the
+same rows and the same model, which separates the translation interface from the symbolic
+reasoning and quantifies the model-regime effect.
 \item A demonstration prototype on standard collections with a measurable soundness
 invariant: no confidently wrong conclusions.
 \end{itemize}
@@ -116,7 +123,8 @@ such as FOLIO (Section~\ref{sec:results}).
 protocol; Section~\ref{sec:example} gives worked examples per stage;
 Section~\ref{sec:formalisms} lists the formalisms and decision procedures;
 Section~\ref{sec:method} presents the evaluation methodology; Section~\ref{sec:results}
-reports results; Section~\ref{sec:limitations} discusses limitations;
+reports results; Section~\ref{sec:comparison} compares against Logic-LM and LINC on identical
+inputs; Section~\ref{sec:limitations} discusses limitations;
 Section~\ref{sec:related} covers related work.
 
 % ======================================================================
@@ -609,6 +617,258 @@ and eval 38/40. The two wrong rows in the eval split are annotated gold errors: 
 error, one ambiguity.
 
 % ======================================================================
+\section{Comparison with Logic-LM and LINC}
+\label{sec:comparison}
+
+The formalisms and gates above are this paper's contribution. A natural question is how the
+same problems are handled by the two closest open-source neuro-symbolic systems,
+Logic-LM~\cite{logiclm} and LINC~\cite{linc}. Both are translator-plus-solver pipelines: a
+language model writes a formalization and a symbolic prover decides it. Rather than contrast
+them qualitatively (as in Section~\ref{sec:related}), we report a \emph{common-input}
+comparison --- the same problem rows and the same language model for all three systems ---
+and then analyse what separates them.
+
+\subsection{Protocol}
+\label{sec:comparison-protocol}
+
+\paragraph{Inputs and model.} Every system receives the exact Ankyra sample rows and the
+same model the engine uses at run time: a small, inexpensive instruction model (DeepSeek V4
+Flash) behind an OpenAI-compatible endpoint. The external systems were not reimplemented.
+Their own prompt, symbolic back-end and scoring are driven unchanged by a thin adapter;
+because both were written against the legacy \texttt{openai<1} client, that client is
+redirected to the engine's provider, forced to the engine's model, and configured to
+disable the model's explicit thinking trace exactly as the engine does. Temperature-0 calls
+are cached, so the runs are reproducible at no further cost.
+
+\paragraph{Decoding.} Each system runs its own protocol, because that is the protocol its
+published accuracy refers to. Sampling here means running the language model several times
+on the same input to obtain $N$ candidate outputs. It is used to estimate the stability of
+the generation and to raise the chance that at least one candidate passes parsing.
+
+\begin{center}
+\small
+\begin{tabular}{p{1.7cm}p{6.3cm}p{6.5cm}}
+\toprule
+\textbf{System} & \textbf{Decoding} & \textbf{Why} \\
+\midrule
+Ankyra & temperature $0.1$, one sample, structured (tool/JSON) extraction & the engine's design; it never samples \\
+Logic-LM & temperature $0$, one sample, plus self-refinement & its published pipeline \\
+LINC & 8-shot, $10$ samples, temperature $0.8$, majority vote & its published pipeline \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+A matched-decoding ablation (all three greedy, one sample) is given in
+Section~\ref{sec:comparison-ablations}, so that the protocol itself is not silently doing
+the work.
+
+\paragraph{Metrics.} \emph{Solver accuracy} is the share of rows with a correct answer.
+Both a failed program execution and an abstention count as wrong; this is the strictest of
+our metrics, and we use it throughout. \emph{Coverage} is the share of rows whose program
+executed. \emph{Executable accuracy} is accuracy over the rows where the program actually
+ran. \emph{Confidently wrong answers} are executed programs with an incorrect answer: the
+external systems commit to such an answer, whereas Ankyra is sound relative to its
+formalization and produces no such answers.
+
+\paragraph{Scope.} This is not a reproduction of the two papers. They used GPT-3.5/GPT-4
+and their own splits; fixing the rows and the model makes the systems comparable but
+changes every absolute number. The object of interest is the \emph{relative} behaviour of
+the three pipelines under identical input.
+
+\subsection{Results}
+\label{sec:comparison-results}
+
+Solver accuracy and coverage are given in Tables~\ref{tab:cmp-main} and
+\ref{tab:cmp-cover}; Ankyra's numbers are the gates of Section~\ref{sec:results}.
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{llrrrr}
+\toprule
+\textbf{Stage} & \textbf{Collection (n)} & \textbf{Ankyra} & \textbf{Logic-LM} & \textbf{+refine} & \textbf{LINC} \\
+\midrule
+L0 & ProofWriter tier A (45) & 100.0 & 8.9 & --- & 86.7 \\
+L0 & ProofWriter tier D (300) & 99.0 & 6.7 & --- & 28.3$^{\ast}$ \\
+L1 & ProntoQA tier a (48) & 100.0 & 41.7 & --- & --- \\
+L2 & FOLIO L2+negation (58) & 69.0 & 6.9 & 39.7 & \textbf{74.1} \\
+L3 & AR-LSAT eval (30) & 76.7 & 53.3 & 63.3 & --- \\
+\bottomrule
+\end{tabular}
+\caption{Common-input comparison: solver accuracy in percent of all rows (non-executed
+programs and abstentions counted wrong). LINC runs its native protocol except
+$^{\ast}$ProofWriter tier D, which was run greedily (its one-sample value on tier A is
+$22.2\%$). ``---'' means the system does not support the collection. Logic-LM's $+$refine
+column applies its self-refinement where the released code implements it (FOLIO, AR-LSAT).}
+\label{tab:cmp-main}
+\end{table}
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{lrrrr}
+\toprule
+\textbf{Collection (n)} & \textbf{Ankyra} & \textbf{Logic-LM} & \textbf{+refine} & \textbf{LINC} \\
+\midrule
+ProofWriter tier A (45) & 100 & 13.3 & --- & 100 \\
+ProofWriter tier D (300) & 100 & 7.7 & --- & 32.0$^{\ast}$ \\
+ProntoQA tier a (48) & 100 & 41.7 & --- & --- \\
+FOLIO L2+negation (58) & 98.3 & 6.9 & 55.2 & 98.3 \\
+AR-LSAT eval (30) & 100 & 60.0 & 70.0 & --- \\
+\bottomrule
+\end{tabular}
+\caption{Coverage: percent of rows whose symbolic back-end executed.}
+\label{tab:cmp-cover}
+\end{table}
+
+The counts of confidently wrong answers are: Ankyra $0$ everywhere; Logic-LM $2$ (tier A),
+$3$ (tier D), $0$ (ProntoQA), $0\to9$ with self-refinement (FOLIO), $2$ (AR-LSAT); LINC $6$
+(tier A), $11^{\ast}$ (tier D), $14$ (FOLIO). Ankyra's zero is structural
+(Section~\ref{sec:comparison-interface}); an external zero only means the executed subset
+happened to be correct.
+
+A first impression is misleading, and two facts confirm this. First, LINC is competitive
+rather than broken: on FOLIO it reaches $74.1\%$, \emph{above} Ankyra's $69.0\%$. Second,
+Logic-LM's low figure is real for this model: even with two rounds of its own
+self-refinement it reaches only $39.7\%$ on FOLIO and $63.3\%$ on AR-LSAT, and it offers no
+self-refinement for its PyKE datasets.
+
+\subsection{Translation, not reasoning}
+\label{sec:comparison-translation}
+
+The symbolic back-ends are not the bottleneck. Feeding them hand-written formalizations of
+the same 58 FOLIO rows, with no model in the loop:
+
+\begin{center}
+\small
+\begin{tabular}{llrr}
+\toprule
+\textbf{System} & \textbf{Back-end} & \textbf{Gold-fed solver acc.} & \textbf{Gold-fed exe.\ acc.} \\
+\midrule
+LINC & NLTK/Prover9 & 54/58 (93.1\%) & 54/57 (94.7\%) \\
+Logic-LM & Prover9 & 47/58 (81.0\%) & 47/50 (94.0\%) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Running Logic-LM's solver on its own committed GPT-4 programs likewise reproduces
+paper-level behaviour offline (executable accuracy: FOLIO $80.4\%$, ProofWriter $79.6\%$,
+ProntoQA $83.2\%$, AR-LSAT $60.0\%$). The provers work; the interface fails: Logic-LM and
+LINC ask the model to write a program as text and then parse that text with a fragile
+parser, whereas Ankyra asks for structured JSON through tool calling and receives it without
+parsing. Re-executing the model's own saved programs offline shows exactly where the failure
+occurs:
+
+\begin{center}
+\small
+\begin{tabular}{lrrrrr}
+\toprule
+\textbf{Collection (n)} & \textbf{Executed} & \textbf{Exec.\ error} & \textbf{Parse fail.} & \textbf{Bullets} & \textbf{bare \texttt{x}} \\
+\midrule
+ProofWriter tier D (300) & 23 & 214 & 63 & 276 & 179 \\
+FOLIO (58) & 4 & 0 & 54 & 50 & 55 \\
+ProntoQA tier a (48) & 20 & 21 & 7 & 28 & --- \\
+AR-LSAT (30) & 18 & 12 & 0 & 0 & 0 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The dominant failures are surface syntactic details the model did not reproduce: Markdown
+bullet lists, bold text, and bare \texttt{x} where Logic-LM's grammar requires \texttt{\$x}.
+AR-LSAT uses a z3-expression grammar that the model mostly reproduces; its twelve failures
+are defects in Logic-LM's own z3 code translator (raising the $1$\,s execution timeout to
+$10$\,s changes nothing).
+
+\subsection{The interface is the difference}
+\label{sec:comparison-interface}
+
+The three systems require different output from the model. Ankyra extracts into a JSON
+schema through tool/function calling, and a deterministic builder turns that structure into
+the theory; format compliance is enforced by the API contract, not by the prompt, so the
+model only has to get the \emph{content} right. Logic-LM requires a program in a hand-written
+grammar (\texttt{Predicates:/Facts:/Rules:/Query:}, \texttt{:::}, \texttt{\$x}) read by a
+parser sensitive to syntax. LINC requires a \texttt{TEXT:/FOL:} scaffold and executes the
+extracted formulas; the scaffold is simple enough that a few of ten samples usually fit,
+which is why its sampling matters so much (Section~\ref{sec:comparison-ablations}). The
+central finding is that with a small, inexpensive model the binding constraint is the
+\emph{translation interface}, not the reasoning: Ankyra is nearly invariant to the model's
+formatting habits, while the free-text pipelines can break easily.
+
+\subsection{Model sensitivity}
+\label{sec:comparison-model}
+
+To understand how much of the result comes from the LLM itself and how much from the
+pipeline, we compared LINC's own ProofWriter test set under LINC's own code and protocol on
+a fixed 60-row subset (every sixth row). Only the DeepSeek column is our run. The GPT-4 and
+GPT-3.5 values are \emph{not} runs performed here: they are recomputed from the generations
+the LINC authors committed to their repository, whose configuration (8-shot, ten samples,
+temperature 0.8) matches the protocol we used and whose reference labels align row-for-row
+with ours. The comparison is therefore of model regimes over the same task and
+configuration, not of three runs performed in this study.
+
+\begin{center}
+\small
+\begin{tabular}{lr}
+\toprule
+\textbf{Model (same task, code and configuration)} & \textbf{Accuracy} \\
+\midrule
+GPT-4 (LINC's committed generations) & 100.0\% \\
+GPT-3.5-turbo-16k (LINC's committed generations) & 96.7\% \\
+DeepSeek V4 Flash (our run) & 85.0\% \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The model alone accounts for about twelve points, and LINC's published $96$--$98\%$ on the
+full test is consistent with the GPT rows. The external systems' published numbers
+therefore rest on GPT-3.5/GPT-4; Ankyra's contribution here is that it holds up under the
+weaker model.
+
+\subsection{Decoding ablations}
+\label{sec:comparison-ablations}
+
+\paragraph{LINC: greedy versus native.} On the same rows and tasks, moving LINC to its
+native protocol raises FOLIO from $34.5\%$ to $74.1\%$ and ProofWriter tier A from $22.2\%$
+to $86.7\%$. LINC's robustness lives substantially in its sampling/majority step; reporting
+only the greedy value would be misleading.
+
+\paragraph{Logic-LM: best-of-$N$.} Logic-LM does not sample. As a control, five samples per
+row at temperature $0.8$ on ProofWriter tier A yielded \emph{zero} executable programs out
+of $225$ (the greedy run produced $6$ of $45$). Higher temperature worsens its grammar
+compliance rather than rescuing it, so sampling does not explain the two systems' different
+behaviour.
+
+\paragraph{Logic-LM: self-refinement.} Its own refinement, implemented only for
+Prover9/FOLIO and z3/AR-LSAT, roughly triples FOLIO coverage ($6.9\%\to55.2\%$), raises
+FOLIO solver accuracy from $6.9\%$ to $39.7\%$ and AR-LSAT from $53.3\%$ to $63.3\%$, and
+introduces confidently wrong answers on FOLIO ($0\to9$).
+
+\subsection{What is not run, and why}
+\label{sec:comparison-notrun}
+
+The comparison is bounded by the code of the systems under evaluation, not by arbitrary
+choice. LINC's task registry contains only FOLIO and ProofWriter, so it cannot be run on
+ProntoQA, AR-LSAT or GSM8K; Logic-LM has no GSM8K path. Logic-LM's self-refinement exists
+only for Prover9 and z3 --- its prompt directory contains
+\texttt{self-correct-AR-LSAT.txt} and \texttt{self-correct-FOLIO.txt} and nothing else, and
+its executor map lists only those two back-ends --- so there is no self-refinement to run
+for its PyKE datasets (ProofWriter, ProntoQA). Per-prover capability was still measured,
+deliberately and without the model, by the gold-fed runs above. Stage L4 (arithmetic) and
+ProntoQA-OOD have no counterpart in either system and remain out of scope.
+
+\subsection{Caveats}
+\label{sec:comparison-caveats}
+
+Ankyra's figures are taken from the committed gates and live traces, but were not re-run on
+the same day as the external systems; one ProofWriter tier-A trace is an empty-question
+extraction failure (provider variance), so the saved traces show $44/45$ against the
+accepted gate $45/45$. LINC tier D is greedy rather than native, so it is a lower bound.
+Provider non-determinism is real even at temperature $0$; single runs are reported, as
+everywhere in this paper. Finally, the comparison is end-to-end --- prompt, decoding, parser
+and solver together --- which is exactly what is needed to see how well a method turns a
+small model into a sound answer.
+
+% ======================================================================
 \section{Limitations}
 \label{sec:limitations}
 
@@ -645,10 +905,13 @@ stage, and full first-order derivability is only semi-decidable. We therefore re
 stratified slices and an explicit \texttt{out\_of\_fragment} counter rather than a
 whole-collection score.
 
-\paragraph{No direct comparison with published results.} Published numbers are obtained on
-different collections, splits, protocols, and external models, so they are not directly
-comparable; we do not perform a common-input comparison. The contribution is an argument
-about soundness and checkability, with accuracy as supporting evidence.
+\paragraph{Comparison with published results.} Section~\ref{sec:comparison} does run a
+common-input comparison, but not against the \emph{published} numbers: published values are
+obtained on different collections, splits, protocols, and models, so the reported accuracies
+remain not directly comparable across papers. The comparison is with the released systems
+re-run on identical inputs and one model; the contribution remains an argument about
+soundness, checkability and robustness to the translation model, with accuracy as supporting
+evidence.
 
 \paragraph{Model and provider variability.} The numbers are tied to the extraction provider
 at run time; a different or updated model will change the text-fed columns. The gold-fed
@@ -660,6 +923,25 @@ defeasible/natural-language-inference (NLI) collection remains future work.
 % ======================================================================
 \section{Related work}
 \label{sec:related}
+
+\paragraph{Map of the field.} A 2026 systematic survey~\cite{survey2026} (178 works,
+2020--2025) identifies four stable patterns of neuro-symbolic integration: sequential
+cascade, symbolic validator, symbolic planner with a neural executor, and differentiable
+integration. Ankyra is closest to the sequential cascade with a bounded cycle, but it
+differs in two respects: a proposal protocol under which every statement enters the theory
+only with a quotation or an assumption tag, and a declared fragment under which a mismatch
+between the required and available logic yields an honest \texttt{out\_of\_fragment} rather
+than a silent downgrade to a weaker procedure. The same survey notes that meta-cognitive
+abilities --- monitoring one's own conclusions, recognizing a lack of knowledge, switching
+modes --- appear in only $5\%$ of the works; \texttt{out\_of\_fragment} and
+\texttt{proven\_under(H)} can be seen as a contribution to exactly this niche.
+
+The closest system in spirit is \emph{Autonomous Trustworthy Agents} (ATA)~\cite{ata}: it
+also pursues determinism and checkability, but achieves them by \emph{removing} the LLM from
+the runtime entirely (the LLM builds a knowledge base offline; only the symbolic solver runs
+online). Ankyra keeps the LLM in the loop, constraining it through the protocol; the two are
+different points on the same spectrum. The same approach to verifying regulatory documents
+with an SMT solver is described in~\cite{nsc}.
 
 \paragraph{Language-model reasoning without a certificate.} Chain-of-thought~\cite{cot} and
 self-consistency~\cite{selfconsistency} show that step-by-step text generation improves
@@ -675,7 +957,10 @@ Here the boundary is stricter: every statement enters the theory only with a ver
 quotation or an explicit assumption tag, answer strength is derived from the premises
 (\texttt{proven} versus \texttt{proven\_under}), and a mismatch between the required and
 available logic yields an honest \texttt{out\_of\_fragment} rather than a hidden downgrade
-to a weaker procedure.
+to a weaker procedure. Section~\ref{sec:comparison} re-runs both systems on identical inputs
+and the same model: their provers are sound and capable (gold-fed $81$--$93\%$ on FOLIO),
+but as free-text pipelines they are sensitive to a small model's formatting, while the
+structured interface of Ankyra is not.
 
 \paragraph{Collections as staged gates.} We use standard collections ---
 ProofWriter~\cite{proofwriter}, ProntoQA~\cite{prontoqa} and
@@ -712,10 +997,14 @@ that separates the method's coverage from the extraction ceiling.
 
 On fixed slices of standard collections the system achieves high accuracy without a single
 confidently wrong conclusion, and honestly abstains where its logic cannot express the
-problem. The evaluation is a demonstration prototype, not state of the art; the limitations
-above define the boundary of what these results support. Natural directions for further work
-are a real defeasible/NLI collection, finite function terms and multi-variable quantifiers
-(currently outside the fragment), and runs on full collections as budget becomes available.
+problem. A common-input comparison with Logic-LM and LINC shows that their symbolic reasoning
+is sound but their free-text translation interface is the wall under a small model, whereas
+Ankyra's structured extraction is robust to it; with a stronger model and its native
+sampling, LINC is competitive. The evaluation is a demonstration prototype, not state of the
+art; the limitations above define the boundary of what these results support. Natural
+directions for further work are a real defeasible/NLI collection, finite function terms and
+multi-variable quantifiers (currently outside the fragment), and runs on full collections as
+budget becomes available.
 
 \appendix
 
@@ -788,11 +1077,40 @@ uv run python -m evals.ar_lsat --sample eval --live
 uv run python -m evals.gsm8k --sample eval --live
 \end{verbatim}
 
+The common-input comparison of Section~\ref{sec:comparison} is reproducible from the
+repository: adapters and drivers live in \texttt{comparison/} and the per-row outputs in
+\texttt{comparison/results/}. The offline parts (adapters, gold-fed back-end checks) need no
+API; the live parts are the paid runs recorded there.
+
+\begin{verbatim}
+PYTHONPATH=$PWD /tmp/opencode/cmp/llm-venv/bin/python -m comparison.run_logicllm \
+    --repo /tmp/opencode/cmp/logicllm --action prepare
+PYTHONPATH=$PWD /tmp/opencode/cmp/llm-venv/bin/python -m comparison.run_logicllm \
+    --repo /tmp/opencode/cmp/logicllm --action all --collection folio_tier_a
+PYTHONPATH=$PWD /tmp/opencode/cmp/linc-venv/bin/python -m comparison.run_linc \
+    --repo /tmp/opencode/cmp/linc --collection folio_tier_a --nshot 8 \
+    --n-samples 10 --temperature 0.8 --jobs 6
+\end{verbatim}
+
 \begin{thebibliography}{99}
 
 	\bibitem{ankyra} Ankyra: A domain-agnostic neuro-symbolic reasoning engine. GitHub repository. URL: \url{https://github.com/merfill/ankyra}
 
 	\bibitem{doxa} Lapshin V. Doxa and Logos: Formalizing the Functions of a Non-Formalizable Source in Neuro-Symbolic Systems. (companion paper, in preparation).
+
+	\bibitem{logiclm} Pan L. et al. Logic-LM: Empowering Large Language Models with Symbolic Solvers for Faithful Logical Reasoning. Findings of EMNLP. 2023.
+
+	\bibitem{linc} Olausson T. X. et al. LINC: A Neurosymbolic Approach for Logical Reasoning by Combining Language Models with First-Order Logic Provers. EMNLP. 2023.
+
+	\bibitem{survey2026} Bin Hakim S., Adil M., Velasquez A., Song H. H. Neuro-symbolic agentic AI: Architectures, integration patterns, applications, open challenges and future research directions // Computer Science Review. 2026. Vol.~60. Art.~100902. DOI: 10.1016/j.cosrev.2026.100902.
+
+\bibitem{ata} Peer D., Stabinger S. ATA: Autonomous Trustworthy Agents. arXiv:2510.16381.
+
+	\bibitem{nsc} Hsia Y.-S., Yu F., Jiang J.-H. R. Neuro-Symbolic Compliance: LLM-driven SMT Verification of Regulatory Documents. arXiv:2601.06181.
+
+	\bibitem{cot} Wei J. et al. Chain-of-Thought Prompting Elicits Reasoning in Large Language Models. NeurIPS 2022. arXiv:2201.11903.
+
+	\bibitem{selfconsistency} Wang X. et al. Self-Consistency Improves Chain of Thought Reasoning in Language Models. ICLR 2023. arXiv:2203.11171.
 
 	\bibitem{proofwriter} Tafjord O., Mishra B. D., Clark P. ProofWriter: Generating Implications, Proofs, and Abductive Statements over Natural Language. AI2, arXiv:2012.13048.
 
@@ -806,18 +1124,10 @@ uv run python -m evals.gsm8k --sample eval --live
 
 	\bibitem{gsm8k} Cobbe K. et al. Training Verifiers to Solve Math Word Problems. 2021. arXiv:2110.14168.
 
-	\bibitem{logiclm} Pan L. et al. Logic-LM: Empowering Large Language Models with Symbolic Solvers for Faithful Logical Reasoning. Findings of EMNLP. 2023.
-
-	\bibitem{linc} Olausson T. X. et al. LINC: A Neurosymbolic Approach for Logical Reasoning by Combining Language Models with First-Order Logic Provers. EMNLP. 2023.
-
-	\bibitem{cot} Wei J. et al. Chain-of-Thought Prompting Elicits Reasoning in Large Language Models. NeurIPS 2022. arXiv:2201.11903.
-
-	\bibitem{selfconsistency} Wang X. et al. Self-Consistency Improves Chain of Thought Reasoning in Language Models. ICLR 2023. arXiv:2203.11171.
-
 	\bibitem{reiter} Reiter R. A Logic for Default Reasoning // Artificial Intelligence. 1980. Vol.~13, No.~1--2. P.~81--132.
 
 	\bibitem{mccarthy} McCarthy J. Circumscription---A Form of Non-Monotonic Reasoning // Artificial Intelligence. 1980. Vol.~13, No.~1--2. P.~27--39.
 
-\end{thebibliography}
+	\end{thebibliography}
 
 \end{document}

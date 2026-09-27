@@ -2,41 +2,41 @@
 
 A domain-general hybrid neuro-symbolic reasoning engine. Given a self-contained
 natural-language problem (conditions plus a question), Ankyra produces a
-step-by-step, mechanically verifiable reasoning trace and an answer with its
-logical status.
+step-by-step, mechanically verifiable reasoning trace and an answer with an
+explicit logical status.
 
-**Design commitment: the LLM proposes, the symbolic engine decides.** The model
-never owns truth. It may name predicates and propose rules freely, but every
-proposal is deterministically classified as one of:
+**Core principle: the LLM proposes, the symbolic engine decides.** The model never
+owns truth. It may name predicates and propose rules freely, but every proposal is
+deterministically classified into one of four categories:
 
-| category | condition | engine action |
+| Category | Condition | Engine action |
 |---|---|---|
-| `derivable` | already entailed by the theory | accept as narration only |
-| `cited` | a new fact grounded by a verbatim quote | add to the axioms |
-| `hypothesis` | knowledge not present in the text | record in the ledger, tag `H` |
-| `rejected` | fails schema, safety or quote checks | drop with a reason code |
+| `derivable` | already entailed by the theory | accepted as narration only |
+| `cited` | a new fact grounded by a verbatim quote | added to the axioms |
+| `hypothesis` | knowledge not present in the text | recorded in the ledger, tagged `H` |
+| `rejected` | fails schema, safety or quote checks | dropped with a reason code |
 
-An answer is reported with its strength: `proven`, `proven_under(H)` (depends on
-tagged hypotheses), or `not_proven`.
+Every answer carries its strength: `proven`, `proven_under(H)` (depends on tagged
+hypotheses), or `not_proven`.
 
 ## How it works
 
 1. **Phase 0 — decompose.** Two LLM calls. First, split the text and extract a
    structural decomposition of the descriptive part (`ProblemStructure`); a
-   deterministic builder unrolls and enriches it into a `Theory`. Then express the
-   question over the theory's canonical vocabulary (`QuestionStructure`) and settle
-   it into a `Query`.
+   deterministic builder unrolls and enriches it into a `Theory`. Then express
+   the question over the theory's canonical vocabulary (`QuestionStructure`) and
+   settle it into a `Query`.
 2. **Phase 1 — decide.** A deterministic Horn engine (`saturate`, `unify`,
    `match_goal`, `complementary`, transitive `is_a`, `verify`) derives the target
    to a fixed point. Every derived fact carries provenance.
 3. **Phase 2 — guided cycle.** While the answer is unresolved, the LLM proposes
-   one action per wave; the engine classifies it deterministically and applies or
-   drops it. The theory only grows; hypotheses are tracked in a ledger.
-4. **Phase 3 — explain.** The trace is built mechanically from the provenance
-   (no LLM). The model may only paraphrase the finished derivation.
+   one action per wave; the engine classifies it deterministically and either
+   applies or drops it. The theory only grows; hypotheses are tracked in a ledger.
+4. **Phase 3 — explain.** The trace is built mechanically from provenance, without
+   the LLM. The model may only paraphrase the finished derivation.
 
-Orchestration is a LangGraph `StateGraph`; the same steps are also available as a
-plain library API. See `ARCHITECTURE.md`.
+Orchestration runs on a LangGraph `StateGraph`; the same steps are also available
+as a plain library API. See `ARCHITECTURE.md`.
 
 ## Install
 
@@ -47,19 +47,19 @@ uv sync
 cp .env.example .env   # then set ANKYRA_API_KEY (and URL/model if different)
 ```
 
-Configuration is Dynaconf with the `ANKYRA_` prefix (see `.env.example`).
+Configuration uses Dynaconf with the `ANKYRA_` prefix (see `.env.example`).
 
 ### LLM providers
 
 The LLM is reached through a provider-agnostic factory (`ankyra.llm.providers`)
 behind the common LangChain `BaseChatModel` interface, so nothing above it depends
-on a concrete provider. `ANKYRA_LLM_PROVIDER` (default `openai`) selects the
-binding; `openai` covers **any OpenAI-compatible endpoint** (OpenAI, RouterAI,
-DeepSeek, OpenRouter, vLLM, Ollama's OpenAI API, …) configured by `ANKYRA_API_URL`,
-`ANKYRA_API_KEY` and `ANKYRA_MODEL`.
+on a specific provider. `ANKYRA_LLM_PROVIDER` (default `openai`) selects the
+binding; `openai` covers **any OpenAI-compatible endpoint** — OpenAI, RouterAI,
+DeepSeek, OpenRouter, vLLM, Ollama's OpenAI API — configured via `ANKYRA_API_URL`,
+`ANKYRA_API_KEY`, and `ANKYRA_MODEL`.
 
 To add a different SDK, register a builder in `PROVIDERS`
-(`src/ankyra/llm/providers.py`) — the engine and the extractors are untouched. An
+(`src/ankyra/llm/providers.py`); the engine and extractors stay untouched. An
 unknown provider is a clear configuration error, never a silent fallback.
 
 ## Quick start
@@ -97,22 +97,22 @@ Narration language is configurable (`ANKYRA_LANG`, default `en`).
 - **Pure deduction (rain).** Theory `{raining()}` plus the rule
   `raining() => is_wet(ground)`; the answer is `proven` with a two-step trace.
 - **Abduction (vehicle).** The text lists a vehicle's features but no class rules.
-  The engine derives nothing, then the LLM proposes class rules; they carry no
-  quote, so they become tagged hypotheses and the answer is
+  The engine derives nothing, then the LLM proposes class rules; since they carry
+  no quote, they become tagged hypotheses and the answer is
   `proven_under(H1, …)`. With `ANKYRA_ALLOW_HYPOTHESES=false` it refuses honestly.
 
 ## Numeric thresholds (optional)
 
-With `ANKYRA_BUILTINS=true`, a closed set of range-restricted comparisons
-(`eq`, `neq`, `lt`, `lte`, `gt`, `gte`) is available. A builtin is evaluated as a
-filter over a bound value, never matched against facts, e.g.
+With `ANKYRA_BUILTINS=true`, a closed set of range-restricted comparisons (`eq`,
+`neq`, `lt`, `lte`, `gt`, `gte`) becomes available. A builtin is evaluated as a
+filter over a bound value and is never matched against facts, e.g.
 `has_power(?x, ?p) AND gte(?p, 50)`. Every variable in a builtin must be bound by
 an earlier relational atom.
 
 ## Evaluation
 
-The `evals/` harness runs a set of increasing-difficulty problems and writes a
-full trace (raw LLM calls plus every intermediate artifact) per problem:
+The `evals/` harness runs a set of problems of increasing difficulty and writes a
+full trace per problem — raw LLM calls plus every intermediate artifact:
 
 ```bash
 uv run python -m evals.run                 # all problems -> evals/out/<id>.json
@@ -121,9 +121,9 @@ uv run python -m evals.narrate --lang ru   # read the reasoning
 ```
 
 Every live adapter (`evals.run`, `evals.proofwriter`, `evals.prontoqa`,
-`evals.prontoqa_ood`, `evals.folio`, `evals.ar_lsat`) takes `--jobs N` to run up to N
-problems concurrently on threads; per-problem flags stay in a `ContextVar`, so the pool
-is safe for heterogeneous problems.
+`evals.prontoqa_ood`, `evals.folio`, `evals.ar_lsat`) accepts `--jobs N` to run up
+to N problems concurrently on threads; per-problem flags stay in a `ContextVar`,
+so the pool is safe for heterogeneous problems.
 
 Tests: `uv run pytest` (offline), `ANKYRA_LIVE=1 uv run pytest -m live` (real LLM).
 
@@ -156,9 +156,9 @@ extraction, no LLM), so they gate the semantics with zero provider variance.
 
 The ProofWriter Tier D re-run (`--jobs 5`) has **0 grounded false proofs**, every
 determinate answer `proven` (197/199), and `depth-3ext` **150/150**; the two
-remaining misses are NatLang extraction errors answered as honest `unknown`, and the
-one no-target item was provider variance (a single `--ids` re-run answered it
-`proven`). ProntoQA is used as the L1 gate and is considered closed — no further
+remaining misses are NatLang extraction errors answered as honest `unknown`, and
+the one no-target item was provider variance (a single `--ids` re-run answered it
+`proven`). ProntoQA serves as the L1 gate and is considered closed — no further
 runs unless a later stage specifically needs it.
 
 ```bash
@@ -181,32 +181,72 @@ uv run python -m evals.analyze_folio         # FOLIO fragment-vs-extraction diag
 ```
 
 **L2** (disjunction, case split, finite-domain quantifiers, finite equality) is
-implemented behind `ANKYRA_LOGIC` (default `off`). It is gated LLM-free by the synthetic
-collection **65/65** (0 grounded false proofs), and its first live gate —
+implemented behind `ANKYRA_LOGIC` (default `off`). It is gated LLM-free by the
+synthetic collection **65/65** (0 grounded false proofs), and its first live gate —
 **ProntoQA-OOD tier a — is green: 41/42 (97.6%), 0 grounded false proofs**
-(`evals.prontoqa_ood`). On FOLIO L2 tier a the method covers **44/45** (gold-fed 42/45,
-0 grounded false proofs); text-fed is **extraction-bound (29–31/45)**, backlog G1–G4
-complete, residual wall G2 (missing premises). The FOLIO **negation slice** is
-L1-fragment by construction but **fragment-bound**: on the Horn path gold-fed == text-fed
-== 7/13, and its residual is reductio/contrapositive, so it is now scored by the clausal
-L2 procedure (`evals.folio.default_logic`) — gold-fed **12/13**, live **11/13**, **0
-grounded false proofs**, with the residual now extraction (the G2 wall) and no closed
-world applied (a global CWA would wrongly refute the four `Uncertain` rows). The gold-FOL
-diagnostic (`evals.analyze_folio`) separates method from extraction, i.e. the FOLIO gap
-is coverage/extraction, not the engine core.
+(`evals.prontoqa_ood`). On FOLIO L2 tier a the method covers **44/45** (gold-fed
+42/45, 0 grounded false proofs); text-fed is **extraction-bound (29–31/45)**,
+backlog G1–G4 complete, residual wall G2 (missing premises). The FOLIO **negation
+slice** is L1-fragment by construction but **fragment-bound**: on the Horn path
+gold-fed == text-fed == 7/13, and its residual is reductio/contrapositive, so it is
+now scored by the clausal L2 procedure (`evals.folio.default_logic`) — gold-fed
+**12/13**, live **11/13**, **0 grounded false proofs**, with the residual now
+extraction (the G2 wall) and no closed world applied (a global CWA would wrongly
+refute the four `Uncertain` rows). The gold-FOL diagnostic (`evals.analyze_folio`)
+separates method from extraction, i.e. the FOLIO gap is coverage/extraction, not the
+engine core.
 
 **L4** (exact rational arithmetic, with exact `max`/`min`) is implemented behind
-`ANKYRA_ARITH` as a separate numeric engine: a defined-quantity DAG plus finite linear
-systems over `fractions.Fraction`, decided exactly (`determined` / `underdetermined` /
-`inconsistent` / `out_of_fragment`). It is gated LLM-free by the synthetic collection
-**37/37** and hand-encoded gold **8/8** (0 `grounded_mismatch`), and the **live gate is
-green: dev 12/12, eval 38/40, 0 `grounded_mismatch`** — the only two non-correct rows are
-annotated reference errors (one dataset error, one ambiguity,
-`evals/data/gsm8k_notes.jsonl`). The L4 soundness invariant is **0 arithmetic errors**
-(a property of the exact procedure); a wrong number is a modelling error, never an
-arithmetic one. The extraction ceiling was raised by a general bounded repair pass
-(`ANKYRA_ARITH_REPAIRS`) and per-collection reading rules in `evals/skills/gsm8k/`, never
-by sampling.
+`ANKYRA_ARITH` as a separate numeric engine: a defined-quantity DAG plus finite
+linear systems over `fractions.Fraction`, decided exactly (`determined` /
+`underdetermined` / `inconsistent` / `out_of_fragment`). It is gated LLM-free by the
+synthetic collection **37/37** and hand-encoded gold **8/8** (0 `grounded_mismatch`),
+and the **live gate is green: dev 12/12, eval 38/40, 0 `grounded_mismatch`** — the
+only two non-correct rows are annotated reference errors (one dataset error, one
+ambiguity, `evals/data/gsm8k_notes.jsonl`). The L4 soundness invariant is **0
+arithmetic errors** (a property of the exact procedure); a wrong number is a
+modelling error, never an arithmetic one. The extraction ceiling was raised by a
+general bounded repair pass (`ANKYRA_ARITH_REPAIRS`) and per-collection reading
+rules in `evals/skills/gsm8k/`, never by sampling.
+
+## Comparison with Logic-LM and LINC
+
+Two open-source translator-plus-solver systems — [Logic-LM](https://github.com/teacherpeterpan/Logic-LLM)
+and [LINC](https://github.com/benlipkin/linc) — were run on the **same Ankyra
+sample rows** and with the **same model/provider** the engine uses, each in its
+own native decoding (Ankyra greedy; Logic-LM greedy plus self-refinement; LINC
+8-shot, 10 samples, T=0.8, majority vote). The harness and per-row outputs are
+in `comparison/`. Solver accuracy = correct / all rows, counting a non-executed
+program or an abstention as wrong:
+
+| Stage | Collection (n) | Ankyra | Logic-LM | +refine | LINC |
+|---|---|---|---|---|---|
+| L0 | ProofWriter tier A (45) | **100.0%** | 8.9% | — | 86.7% |
+| L0 | ProofWriter tier D (300) | **99.0%** | 6.7% | — | 28.3%\* |
+| L1 | ProntoQA tier a (48) | **100.0%** | 41.7% | — | — |
+| L2 | FOLIO L2+negation (58) | 69.0% | 6.9% | 39.7% | **74.1%** |
+| L3 | AR-LSAT eval (30) | **76.7%** | 53.3% | 63.3% | — |
+
+\* LINC tier D was run greedily; the native protocol was budgeted for tier A and
+FOLIO only. A dash means the system does not support that collection (LINC has
+only FOLIO and ProofWriter; Logic-LM has no GSM8K path, so L4 is not comparable).
+
+**What the numbers mean.** The external systems' symbolic back-ends are sound and
+capable: on gold FOLIO formulas with no model in the loop, LINC/Prover9 scores
+54/58 (93.1%) and Logic-LM/Prover9 47/58 (81.0%), and Logic-LM's own committed
+GPT-4 programs reproduce paper-level accuracy offline. The binding constraint
+under a small, inexpensive model is the **translation interface**: Ankyra extracts
+through structured tool/JSON calling, whereas Logic-LM and LINC require free text
+in a hand-written grammar that the model often fails to reproduce (Markdown lists,
+bare `x` instead of `$x`). LINC is competitive in its native protocol — on FOLIO it
+reaches 74.1%, *above* Ankyra's 69.0% — while Logic-LM's low figure is real for
+this model even with two rounds of its own self-refinement. Model isolation
+(LINC's own ProofWriter test, same code and configuration): GPT-4 100%, GPT-3.5
+96.7%, DeepSeek V4 Flash 85.0%; the GPT values are recomputed from LINC's
+committed generations, not runs performed here.
+
+Full methodology, failure attribution, decoding ablations and caveats:
+`docs/comparison.md`.
 
 ## Documentation
 
@@ -241,7 +281,7 @@ by sampling.
 - `docs/l4_plan.md` — L4: exact arithmetic (implemented).
 - `docs/defeasible_reasoning.md` — exceptions/defaults (the D layer).
 
-**Collections, gates and findings**
+**Collections, gates, and findings**
 
 - `docs/proofwriter.md` — ProofWriter (the L0 gate).
 - `docs/prontoqa.md` — ProntoQA (the L1 gate).
@@ -255,58 +295,77 @@ by sampling.
 - `docs/gsm8k.md` — GSM8K (the L4 gate).
 - `docs/quality_findings.md` — eval findings and open quality gaps.
 
+**External comparison**
+
+- `docs/comparison.md` — Ankyra vs Logic-LM vs LINC on the same rows and model:
+  results, failure analysis, model isolation, and caveats (`comparison/`).
+
 ## Status
 
-Core engine, guided cycle, hypotheses, explanation and builtins are implemented and
-covered by tests. **L0 is gated**: definite Horn on ProofWriter, Tier D re-run
-**297/300 (99%)** with 0 grounded false proofs and every determinate answer `proven`.
-**L1 is implemented and gated**: stratified negation-as-failure, disjointness
-constraints and the per-query declared closed world (`ANKYRA_NEGATION_MODE`), with
-ProntoQA 208/208 (tiers a+b, all `proven`, 0 grounded false proofs; the collection
-is considered closed) and LLM-free synthetic gates 40/40 (L1) and 8/8 (defeasible).
-**L2 is implemented and gated** behind `ANKYRA_LOGIC`: disjunction and case splits,
-conjunctive/disjunctive and open goals, finite-domain quantifiers (Skolemization plus
-witness enumeration) and finite equality (`=`/`≠`, fragment `equality`). The LLM-free
-synthetic gate is **65/65** with 0 grounded false proofs, and the **ProntoQA-OOD tier-a
-live gate is green: 41/42 (97.6%), 0 grounded false proofs**. On FOLIO L2 tier a the
-method covers **44/45** (gold-fed 42/45, 0 grounded false proofs); text-fed is
-extraction-bound (29–31/45, backlog G1–G4 complete, residual wall G2 missing premises).
-The FOLIO **negation slice** is L1-fragment by construction but fragment-bound, so it is
-scored by the clausal L2 procedure: gold-fed **12/13**, live **11/13**, 0 grounded false
-proofs (the residual is extraction, G2). The defeasible layer (D) is implemented behind
-`ANKYRA_DEFEASIBLE`. The
-declared-fragment contract (`docs/fragment_routing.md`) derives the required fragment
-from the built structure and refuses an unsupported one with a named
-`out_of_fragment`, instead of guessing; its LLM-free gate is **19/19**.
+The core engine, guided cycle, hypotheses, explanation, and builtins are
+implemented and covered by tests.
+
+**L0 is gated.** Definite Horn on ProofWriter: Tier D re-run **297/300 (99%)**
+with 0 grounded false proofs and every determinate answer `proven`.
+
+**L1 is implemented and gated.** Stratified negation-as-failure, disjointness
+constraints, and the per-query declared closed world (`ANKYRA_NEGATION_MODE`).
+ProntoQA: 208/208 (tiers a+b, all `proven`, 0 grounded false proofs; the collection
+is considered closed). LLM-free synthetic gates: 40/40 (L1), 8/8 (defeasible).
+
+**L2 is implemented and gated** behind `ANKYRA_LOGIC`. Disjunction and case splits,
+conjunctive/disjunctive and open goals, finite-domain quantifiers (Skolemization
+plus witness enumeration), and finite equality (`=`/`≠`, fragment `equality`). The
+LLM-free synthetic gate is **65/65** with 0 grounded false proofs, and the
+**ProntoQA-OOD tier-a live gate is green: 41/42 (97.6%), 0 grounded false proofs**.
+On FOLIO L2 tier a the method covers **44/45** (gold-fed 42/45, 0 grounded false
+proofs); text-fed is extraction-bound (29–31/45, backlog G1–G4 complete, residual
+wall G2 missing premises). The FOLIO **negation slice** is L1-fragment by
+construction but fragment-bound, so it is scored by the clausal L2 procedure:
+gold-fed **12/13**, live **11/13**, 0 grounded false proofs (the residual is
+extraction, G2).
+
+The defeasible layer (D) is implemented behind `ANKYRA_DEFEASIBLE`. The
+declared-fragment contract (`docs/fragment_routing.md`) derives the required
+fragment from the built structure and refuses an unsupported one with a named
+`out_of_fragment` instead of guessing; its LLM-free gate is **19/19**.
+
 **L3 is implemented and gated** as a separate engine behind `ANKYRA_CSP`: a general
-finite-domain CSP IR (boolean composition `all`/`any`/`not`, `count` over a value set,
-`count_compare`, factor projection, declared topologies) and a bounded in-repo solver,
-orchestrated by the LLM. LLM-free gates:
-synthetic **31/31**, gold-fed real games **27/27** (7 games), both 0 `grounded_mismatch`. The
-**AR-LSAT live eval gate is green: 23/30, 0 `grounded_mismatch`** (the 7 misses are
-honest abstentions). The extraction ceiling there was raised not by sampling (rejected,
-`docs/l3_plan.md` D-L3-10) but by an **error-driven, per-collection language
-specification** (`ANKYRA_LANGUAGE_SPEC`, `docs/task.md` §0.6). The guide is packaged as
-a per-collection **skill** (`evals/skills/<collection>/`, loaded by the harness via
-`evals/skills.py`); the format and auto-loading are done, and the task-specific content
-is the **budgeted step** — the `count`-rule attempt was dev-validated as a regression and
-reverted, so any further content needs a new dev-validated case
+finite-domain CSP IR (boolean composition `all`/`any`/`not`, `count` over a value
+set, `count_compare`, factor projection, declared topologies) and a bounded in-repo
+solver, orchestrated by the LLM. LLM-free gates: synthetic **31/31**, gold-fed real
+games **27/27** (7 games), both 0 `grounded_mismatch`. The **AR-LSAT live eval gate
+is green: 23/30, 0 `grounded_mismatch`** (the 7 misses are honest abstentions). The
+extraction ceiling there was raised not by sampling (rejected, `docs/l3_plan.md`
+D-L3-10) but by an **error-driven, per-collection language specification**
+(`ANKYRA_LANGUAGE_SPEC`, `docs/task.md` §0.6). The guide is packaged as a
+per-collection **skill** (`evals/skills/<collection>/`, loaded by the harness via
+`evals/skills.py`); the format and auto-loading are done, and the task-specific
+content is the **budgeted step** — the `count`-rule attempt was dev-validated as a
+regression and reverted, so any further content needs a new dev-validated case
 (`docs/implementation_plan.md` §8 item 28, `docs/l3_extension_plan.md` H5).
+
 **L4 is implemented and gated** as a separate numeric engine behind `ANKYRA_ARITH`:
 exact rational arithmetic (defined-quantity DAG, linear systems, exact `max`/`min`),
-Phase-0 extraction with a bounded repair pass, `Answer.kind "number"` and the `numeric`
-explanation. LLM-free gates: synthetic **37/37** and hand-encoded gold **8/8** (both 0
-`grounded_mismatch`); the **live gate is green: dev 12/12, eval 38/40, 0
-`grounded_mismatch`** (the only two non-correct rows are annotated reference errors — one
-dataset error, one ambiguity). The L4 soundness invariant is 0 arithmetic errors; a wrong
-number is a modelling error.
+Phase-0 extraction with a bounded repair pass, `Answer.kind "number"`, and the
+`numeric` explanation. LLM-free gates: synthetic **37/37** and hand-encoded gold
+**8/8** (both 0 `grounded_mismatch`); the **live gate is green: dev 12/12, eval
+38/40, 0 `grounded_mismatch`** (the only two non-correct rows are annotated
+reference errors — one dataset error, one ambiguity). The L4 soundness invariant is
+0 arithmetic errors; a wrong number is a modelling error.
 
-Known open items: FOLIO L2 extraction (residual **G2** — missing premises; the deferred
-`A′` repair); the FOLIO **negation slice is fragment-bound** and now scored at L2 (its
-open step is the language guide on the extraction-bound L2 tier a, `docs/implementation_plan.md`
-§8 item 29); the AR-LSAT **skill task-specific content** (item 28); Tier-2 **3b** bounded
-function terms (deferred — no function terms in the available FOLIO splits); the
-reachable-but-absent **2a** `↔`/`⊕` lowering and **2c** multi-variable quantification;
-full first-order unification (deferred — grounding is sound and terminating on the
-committed finite domains); extraction robustness on real text (`docs/folio.md` §9); and
-the items in `docs/quality_findings.md`.
+**Known open items.**
+
+- FOLIO L2 extraction (residual **G2** — missing premises; the deferred `A′` repair).
+- The FOLIO **negation slice is fragment-bound** and now scored at L2; its open step
+  is the language guide on the extraction-bound L2 tier a
+  (`docs/implementation_plan.md` §8 item 29).
+- The AR-LSAT **skill task-specific content** (item 28).
+- Tier-2 **3b** bounded function terms (deferred — no function terms in the
+  available FOLIO splits).
+- The reachable-but-absent **2a** `↔`/`⊕` lowering and **2c** multi-variable
+  quantification.
+- Full first-order unification (deferred — grounding is sound and terminating on
+  the committed finite domains).
+- Extraction robustness on real text (`docs/folio.md` §9), and the items in
+  `docs/quality_findings.md`.
