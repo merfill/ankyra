@@ -40,8 +40,8 @@ between a Language Model and a Formal System}
 
 \begin{abstract}
 Large language models translate text into a formal language well, but they
-cannot reason soundly: they do not distinguish a correct step from a plausible
-one, they do not track what an answer rests on, and they do not refuse to
+cannot reason soundly: they fail to distinguish a correct step from a
+plausible one, they do not track what an answer rests on, and they do not refuse to
 guess. Symbolic solvers can do all of this, but they cannot read text. We
 propose to treat this division not as an engineering compromise but as the
 epistemological distinction between \emph{doxa} and \emph{logos}: doxa is a
@@ -157,8 +157,8 @@ If the LLM did not possess these characteristics, using it in the role of doxa
 would be impossible, and the distinction would remain a philosophical metaphor.
 It is not one.
 
-Why such an identification becomes possible only now. The formal side has been
-developed for centuries: logic, proof theory, decision procedures,
+The reason this identification becomes possible only now is that the formal
+side has been developed for centuries: logic, proof theory, decision procedures,
 specification languages. Logos was and remains the subject of exact research.
 Doxa, by contrast, remained without an instrument: it was described
 philosophically, but could not be addressed by a machine. The large language
@@ -315,10 +315,13 @@ For our model, the JSM method matters for two reasons. First, it shows that
 \emph{generation} and \emph{acceptance} of a hypothesis are different
 operations, and the second does not reduce to the first. Second, a hypothesis
 in the JSM method receives a \emph{degree of plausibility}, not a binary
-status ``true/false,'' which corresponds to the probabilistic nature of doxa
-(Section~\ref{sec:intro}). The JSM method can be regarded as yet another
-formal analogue of an \emph{external} operator: it describes how a hypothesis
-enters the theory with an explicitly stated ground.
+status ``true/false,'' which corresponds to the probabilistic nature of
+doxa (Section~\ref{sec:intro}). Although mathematically distinct—statistical
+frequency in LLMs versus inductive support in JSM—both fulfill the same
+epistemic role: providing a graded, non-binary assessment of a hypothesis
+prior to its strict verification by logos. The JSM method can be regarded
+as yet another formal analogue of an \emph{external} operator: it describes
+how a hypothesis enters the theory with an explicitly stated ground.
 
 \subsection{Limits and complexity}
 \label{sec:limits_theory}
@@ -421,6 +424,11 @@ $o: \Sigma \times X \to \Sigma$, where $X$ is the input (an observation, new
 information, a context, or an empty input). Classification is by what exactly
 the operator changes in $\Sigma$: the theory, the proposal queue, or the
 journal.
+
+We define the \emph{initial state} as $\Sigma_0 = \langle F_0, \emptyset,
+\emptyset \rangle$, where $F_0$ contains only initial background knowledge
+(or is empty), the journal $\mathcal{J}$ is empty, and the proposal queue
+$\Pi$ is empty.
 
 \begin{itemize}
 	\item \textbf{External} (doxastic) operator \emph{produces a proposal}:
@@ -1008,7 +1016,7 @@ both are compatible with the theory.
 In computation theory, the notion of an oracle was introduced by Turing to
 describe a machine that can obtain answers to questions not solvable by its
 own procedure \cite{turing39}. The oracle is not part of the machine, but the
-machine can consult it. Doxa in our model plays a structurally close role.
+machine can consult it. Doxa in our model plays a structurally analogous role.
 
 There is, however, an important difference. The oracle gives \emph{true}
 answers to questions of a certain class. Doxa does not give true answers: it
@@ -1181,7 +1189,7 @@ there is not a defeat of formalization but its extension.
 
 	\bibitem{ankyra} Ankyra: A domain-agnostic neuro-symbolic reasoning engine. GitHub repository. URL: \url{https://github.com/merfill/ankyra}
 
-	\bibitem{ankyra_paper} Lapshin V. Ankyra: Sound Neuro-Symbolic Reasoning with Verifiable Proofs. (companion paper, in preparation).
+	\bibitem{ankyra_paper} Lapshin V. Ankyra: Sound Neuro-Symbolic Reasoning with Verifiable Proofs. Zenodo, 2026. DOI: \url{https://doi.org/10.5281/zenodo.23039403} 
 
 	\bibitem{turing39} Turing A.~M. Systems of Logic Based on Ordinals // Proceedings of the London Mathematical Society. 1939. Ser.~2, Vol.~45. P.~161--228.
 
