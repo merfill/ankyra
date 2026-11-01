@@ -1,0 +1,1333 @@
+% Ankyra — seminar deck (45 min, Russian, Beamer/metropolis)
+% Build: latexmk -xelatex ankyra_seminar.tex
+\documentclass[aspectratio=169,11pt]{beamer}
+
+\usepackage{fontspec}
+\usepackage{polyglossia}
+\setmainlanguage{russian}
+\setotherlanguage{english}
+
+\usetheme{metropolis}
+\metroset{
+  progressbar=frametitle,
+  sectionpage=none,
+  subsectionpage=none,
+  numbering=fraction,
+  block=fill
+}
+
+\setsansfont{PT Sans}
+\setmonofont{DejaVu Sans Mono}
+\setmainfont{PT Serif}
+
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,fit,backgrounds,calc,shapes.geometric}
+
+% ---- semantics colours -------------------------------------------------
+\definecolor{doxacolor}{HTML}{B06A2C}
+\definecolor{logoscolor}{HTML}{1F5C99}
+\definecolor{hypocolor}{HTML}{B8860B}
+\definecolor{rejectcolor}{HTML}{B03A2E}
+\definecolor{provencolor}{HTML}{2E7D4F}
+
+\newcommand{\Doxa}[1]{\textcolor{doxacolor}{#1}}
+\newcommand{\Logos}[1]{\textcolor{logoscolor}{#1}}
+\newcommand{\Hyp}[1]{\textcolor{hypocolor}{#1}}
+\newcommand{\Rej}[1]{\textcolor{rejectcolor}{#1}}
+\newcommand{\Prov}[1]{\textcolor{provencolor}{#1}}
+
+\tikzset{
+  box/.style={draw, rounded corners, align=center, font=\small,
+              inner sep=1.6mm, minimum height=8mm},
+  doxabox/.style={box, draw=doxacolor, fill=doxacolor!8},
+  logosbox/.style={box, draw=logoscolor, fill=logoscolor!8},
+  protobox/.style={box, draw=black!55, fill=black!4},
+  arr/.style={-{Latex[length=2mm]}, thick},
+  arrd/.style={-{Latex[length=2mm]}, thick, dashed},
+  lbl/.style={font=\scriptsize, text=black!65}
+}
+
+\newcommand{\code}[1]{\texttt{\small #1}}
+
+% ---- metadata ----------------------------------------------------------
+\title{Ankyra: нейро-символьные рассуждения\\с механически проверяемым выводом}
+\subtitle{Архитектура, решатели L0--L4, коллекции и сравнительная оценка}
+\author{Владимир Лапшин}
+\date{2026}
+
+\begin{document}
+
+% =======================================================================
+\begin{frame}[plain,shrink=5]
+  \titlepage
+\end{frame}
+
+% =======================================================================
+\begin{frame}[shrink=2]{Где нужна надёжность, правдоподобия недостаточно}
+  \small
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.48\textwidth}
+      \begin{block}{LLM сильна там, где}
+        \begin{itemize}
+          \item нужен правдоподобный текст;
+          \item допустима вероятностная оценка;
+          \item человек проверит результат.
+        \end{itemize}
+      \end{block}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{block}{...но не там, где}
+        \begin{itemize}
+          \item вывод должен быть проверяемым;
+          \item ошибка дорого стоит;
+          \item нужно уметь сказать «не доказано».
+        \end{itemize}
+      \end{block}
+    \end{column}
+  \end{columns}
+
+  \vspace{3mm}
+  \begin{center}
+    \large
+    Вопрос доклада: можно ли соединить нейросетевое предложение
+    с символьной проверкой?
+  \end{center}
+\end{frame}
+
+% =======================================================================
+\begin{frame}{План доклада}
+  \centering
+  \begin{tikzpicture}[node distance=3mm and 4mm]
+    \node[doxabox, font=\scriptsize, text width=0.15\textwidth] (a) {\textbf{1}\\Проблема};
+    \node[logosbox, right=of a, font=\scriptsize, text width=0.15\textwidth] (b) {\textbf{2}\\Протокол};
+    \node[logosbox, right=of b, font=\scriptsize, text width=0.15\textwidth] (c) {\textbf{3}\\L0--L4};
+    \node[protobox, right=of c, font=\scriptsize, text width=0.15\textwidth] (d) {\textbf{4}\\Данные};
+    \node[doxabox, right=of d, font=\scriptsize, text width=0.15\textwidth] (e) {\textbf{5}\\Вывод};
+    \foreach \u/\v in {a/b,b/c,c/d,d/e} \draw[arr] (\u) -- (\v);
+  \end{tikzpicture}
+
+  \vspace{8mm}
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.48\textwidth}
+      \textbf{Тезис}
+      \begin{itemize}
+        \item LLM извлекает структуру и предлагает правила и факты.
+        \item Символьный решатель проверяет их и строит вывод.
+        \item Каждый ответ сопровождается проверяемой трассировкой.
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \textbf{Что будет показано}
+      \begin{itemize}
+        \item Протокол реализуем и наблюдаем.
+        \item Он масштабируется от L0 к L4.
+        \item Узкое место --- перевод, а не решатель.
+      \end{itemize}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% =======================================================================
+\section{Почему нужна проверяемость}
+
+\begin{frame}[shrink=4]{Токены, эмбеддинги и контекст}
+  \small
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.54\textwidth}
+      \begin{enumerate}
+        \item Текст разбивается на \emph{токены} (подслова); каждому —
+              целочисленный id.
+        \item \emph{Embedding-матрица} переводит id в статический вектор
+              \(x_i\in\mathbb{R}^d\).
+        \item \emph{Позиционное кодирование} добавляет порядок.
+        \item Слои внимания делают векторы \emph{контекстными}: одно и то же
+              слово получает разное представление в разном окружении.
+      \end{enumerate}
+      \begin{block}{Суть}
+        Вход — не формула и не дерево разбора, а последовательность точек
+        в \(\mathbb{R}^d\). «Смысл» здесь — положение в пространстве.
+      \end{block}
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \centering
+      \begin{tikzpicture}[
+        node distance=3.5mm,
+        every node/.style={font=\footnotesize}
+      ]
+        \node[protobox, text width=0.38\textwidth] (text) {«Кот сидит на окне»};
+        \node[protobox, below=of text, text width=0.38\textwidth] (tok)
+          {[Кот] [сидит] [на] [окне]};
+        \node[protobox, below=of tok, text width=0.38\textwidth] (ids)
+          {id: 4521, 783, 12, 901};
+        \node[doxabox, below=of ids, text width=0.38\textwidth] (emb)
+          {\(x_1,\dots,x_4\in\mathbb{R}^d\)};
+        \node[logosbox, below=of emb, text width=0.38\textwidth] (ctx)
+          {\(h_1,\dots,h_4\): контекстные векторы};
+        \foreach \u/\v in {text/tok,tok/ids,ids/emb,emb/ctx}
+          \draw[arr] (\u) -- (\v);
+      \end{tikzpicture}
+
+      \smallskip
+      {\scriptsize статический эмбеддинг \(\to\) контекстный}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}[shrink=4]{Как токен выравнивается по контексту}
+  \small
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.45\textwidth}
+      \centering
+      \begin{tikzpicture}[node distance=3mm, every node/.style={font=\scriptsize}]
+        \node[protobox, text width=0.36\textwidth] (emb) {эмбеддинги + позиции};
+        \node[logosbox, below=of emb, text width=0.36\textwidth] (sa)
+          {self-attention\\\(+\) residual, norm};
+        \node[logosbox, below=of sa, text width=0.36\textwidth] (ffn)
+          {FFN\\\(+\) residual, norm};
+        \node[protobox, below=of ffn, text width=0.36\textwidth] (rep)
+          {\(\times N\) слоёв};
+        \node[protobox, below=of rep, text width=0.36\textwidth] (out)
+          {контекстные представления};
+        \foreach \u/\v in {emb/sa,sa/ffn,ffn/rep,rep/out}
+          \draw[arr] (\u) -- (\v);
+      \end{tikzpicture}
+    \end{column}
+    \begin{column}{0.51\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.9]
+        \node[doxabox, font=\footnotesize] (q) at (0,0) {«Кот»};
+        \node[protobox, font=\footnotesize] (k1) at (-2.2,-1.4) {«сидит»};
+        \node[protobox, font=\footnotesize] (k2) at (0,-1.8) {«на»};
+        \node[protobox, font=\footnotesize] (k3) at (2.2,-1.4) {«окне»};
+        \draw[arr, doxacolor] (q) -- node[left,lbl]{0.5} (k1);
+        \draw[arr, doxacolor] (q) -- node[right,lbl]{0.3} (k2);
+        \draw[arr, doxacolor] (q) -- node[right,lbl]{0.2} (k3);
+        \node[logosbox, font=\footnotesize] (h) at (0,1.5)
+          {новый \(h\) для «Кот»};
+        \draw[arr] (k1) -- (h);
+        \draw[arr] (k2) -- (h);
+        \draw[arr] (k3) -- (h);
+      \end{tikzpicture}
+
+      \smallskip
+      {\footnotesize Каждый слой заново смешивает информацию со всех позиций;
+      после \(N\) слоёв представление токена учитывает весь контекст.}
+    \end{column}
+  \end{columns}
+
+  \vspace{1mm}
+  {\footnotesize Веса зависят от содержания, а не от расстояния; порядок задаёт
+  позиционное кодирование. Схема условная: размерность \(d\) велика, а не 2.}
+\end{frame}
+
+\begin{frame}[shrink=2]{Self-attention: выпуклая комбинация значений}
+  \small
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.57\textwidth}
+      \begin{equation*}
+        \operatorname{Attention}(\mathbf q_i,K,V)
+        =\sum_{j=1}^{n}\alpha_{ij}\mathbf v_j,
+        \quad
+        \alpha_{ij}=\operatorname{softmax}\!\left(\tfrac{\mathbf q_i\cdot\mathbf k_j}{\sqrt{d_k}}\right)
+      \end{equation*}
+      \begin{itemize}
+        \item \(\alpha_{ij}\ge 0\), \(\sum_j \alpha_{ij}=1\).
+        \item Выход одного head при фиксированных \(V\) --- \emph{выпуклая
+              комбинация} значений \(v_j\), то есть точка в их выпуклой
+              оболочке.
+        \item Значит, head не создаёт нового направления: он перераспределяет
+              уже имеющиеся значения.
+        \item Замечание: остаточные связи, полносвязные слои (FFN) и
+              нормализация могут вывести представление за оболочку, но не
+              меняют сути: это по-прежнему перевзвешивание значений.
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.40\textwidth}
+      \centering
+      \begin{tikzpicture}[scale=0.85]
+        \coordinate (p1) at (0,0);
+        \coordinate (p2) at (3.2,0.5);
+        \coordinate (p3) at (2.8,2.6);
+        \coordinate (p4) at (0.6,2.2);
+        \coordinate (p5) at (1.5,1.1);
+        \draw[black!25, dashed, thick] (p1) -- (p2) -- (p3) -- (p4) -- cycle;
+        \foreach \p in {p1,p2,p3,p4}
+          \fill[logoscolor] (\p) circle (2.2pt);
+        \fill[doxacolor] (p5) circle (3pt);
+        \node[lbl, below] at (p1) {\(v_1\)};
+        \node[lbl, below] at (p2) {\(v_2\)};
+        \node[lbl, above] at (p3) {\(v_3\)};
+        \node[lbl, above] at (p4) {\(v_4\)};
+        \node[lbl, right] at (p5) {выход};
+        \draw[arr, doxacolor] (p1) -- (p5);
+        \draw[arr, doxacolor] (p2) -- (p5);
+        \draw[arr, doxacolor] (p3) -- (p5);
+        \draw[arr, doxacolor] (p4) -- (p5);
+      \end{tikzpicture}
+
+      \smallskip
+      {\footnotesize Иными словами: это перевзвешивание уже данных значений,\\
+      а не применение правила вывода и не порождение нового.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% =======================================================================
+\begin{frame}[shrink=4]{Природа LLM: докса}
+  \footnotesize
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.47\textwidth}
+      \begin{block}{Запрос}
+        Назовите единую причину: криптобиоз тихоходок,
+        ускорение 1I/`Oumuamua, отсутствие рекурсии в пираха.
+      \end{block}
+      \begin{block}{Ответ}
+        «Единый принцип --- рекурсивная иерархия»:
+        «обратимые вычисления», «фрактальные агрегаты»,
+        «принцип непосредственности опыта».
+      \end{block}
+      {\scriptsize Связи между явлениями нет: это неполнота основания.}
+    \end{column}
+    \begin{column}{0.49\textwidth}
+      \begin{block}{Что это говорит о доксе}
+        \begin{itemize}
+          \item вероятностная и ассоциативная природа;
+          \item нет критерия истины;
+          \item не может сказать «нет», если нет подходящей аналогии;
+          \item аналогий на всё не хватает.
+        \end{itemize}
+      \end{block}
+      \begin{block}{Вывод}
+        Для областей, где важно доверять выводам, нужна внешняя опора.
+      \end{block}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% =======================================================================
+\begin{frame}[shrink=2]{Три неполноты}
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.31\textwidth}
+      \begin{block}{Объяснения}
+        Наблюдение есть, объяснения нет. Нужна абдукция; без аналога ---
+        интерполяция, а не порождение.
+      \end{block}
+    \end{column}
+    \begin{column}{0.31\textwidth}
+      \begin{block}{Средств}
+        Знания достаточно, но нечем проверить. Правильный исход ---
+        корректно остановиться, а не выдвигать необоснованные предположения.
+      \end{block}
+    \end{column}
+    \begin{column}{0.31\textwidth}
+      \begin{block}{Основания}
+        Нужна новая парадигма, которой нет в корпусе. Это предел
+        ассоциативного переноса, а не недостаток данных.
+      \end{block}
+    \end{column}
+  \end{columns}
+
+  \vspace{5mm}
+  \begin{center}
+    \large
+    Смешивать эти виды неполноты недопустимо: они ведут к разным исходам.
+  \end{center}
+\end{frame}
+
+% =======================================================================
+\begin{frame}[shrink=4]{Логос: формальная опора}
+  \small
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Формальная система}
+        Аксиомы, правила вывода, язык. Классифицирует предложения:
+        принимает, отклоняет или требует уточнения.\\
+        Не добавляет новых посылок; выводит следствия.
+      \end{block}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Асимметрия}
+        Докса предлагает; логос решает судьбу предложения;
+        протокол фиксирует акт.
+      \end{block}
+    \end{column}
+  \end{columns}
+
+  \vspace{3mm}
+  \centering
+  \begin{tikzpicture}[node distance=4mm and 6mm]
+    \node[doxabox, font=\footnotesize, text width=0.15\textwidth] (doxa)
+      {\textbf{Докса}\\LLM};
+    \node[protobox, right=of doxa, font=\footnotesize, text width=0.14\textwidth] (pi)
+      {\(\Pi\)\\очередь};
+    \node[logosbox, right=of pi, font=\footnotesize, text width=0.18\textwidth] (logos)
+      {\textbf{Логос}\\решатель};
+    \node[protobox, below=of logos, font=\footnotesize, text width=0.18\textwidth] (journal)
+      {журнал\\запись};
+    \draw[arr, doxacolor] (doxa) -- node[above,lbl]{предложение} (pi);
+    \draw[arr, logoscolor] (pi) -- node[above,lbl]{классификация} (logos);
+    \draw[arr, black!55] (logos) -- (journal);
+  \end{tikzpicture}
+
+  \vspace{2mm}
+  {\footnotesize Докса не устанавливает истинность; логос не добавляет новых
+  посылок --- он выводит следствия.}
+\end{frame}
+
+% =======================================================================
+\section{Протокол Ankyra}
+
+\begin{frame}[shrink=3]{Ankyra: Phase 0 и цикл волн}
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.26\textwidth}
+      \vspace{18mm}
+      \begin{block}{Волна}
+        Одно предложение доксы + детерминированная классификация +
+        проверка.\\
+        Теория только растёт; гипотезы и ревизии — в журнале.
+      \end{block}
+    \end{column}
+    \begin{column}{0.72\textwidth}
+      \centering
+      \begin{tikzpicture}[node distance=3mm and 3.5mm, font=\scriptsize]
+    % Phase 0
+    \node[protobox, text width=0.07\textwidth] (text) {вход};
+    \node[doxabox, right=of text, text width=0.13\textwidth] (phase0)
+      {Phase 0\\\textbf{LLM}: структура};
+    \node[protobox, right=of phase0, text width=0.11\textwidth] (tq)
+      {теория /\\запрос};
+
+    % Cycle
+    \node[logosbox, below=8mm of tq, text width=0.09\textwidth] (verify)
+      {\textbf{verify}};
+    \node[protobox, left=of verify, text width=0.12\textwidth] (explain)
+      {explain\\ответ и трасса};
+    \node[doxabox, right=of verify, text width=0.13\textwidth] (propose)
+      {\textbf{propose}\\LLM: одно действие};
+    \node[logosbox, right=of propose, text width=0.11\textwidth] (classify)
+      {\textbf{classify}\\по правилам};
+    \node[protobox, above=of classify, text width=0.12\textwidth] (ledger)
+      {журнал\\\(H\), ревизии};
+
+    \draw[arr] (text) -- (phase0);
+    \draw[arr] (phase0) -- (tq);
+    \draw[arr] (tq) -- node[right,lbl]{routing} (verify);
+    \draw[arr] (verify) -- node[above,lbl]{решено} (explain);
+    \draw[arr] (verify) -- node[above,lbl]{не решено} (propose);
+    \draw[arr] (propose) -- node[above,lbl]{предложение} (classify);
+    \draw[arr] (classify.south) to[out=-90,in=-90]
+      node[below,lbl]{волна \(k\)} (verify.south);
+    \draw[arr, dashed] (classify.north) -- (ledger.south);
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% =======================================================================
+\begin{frame}[shrink=4]{Зачем нужна классификация предложений}
+  \footnotesize
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.47\textwidth}
+      \begin{block}{Проблема}
+        LLM предлагает факты и правила, но часть из них не из текста,
+        а придумана. Принять всё --- значит остаться доксой:
+        правдоподобно, но не проверяемо.
+      \end{block}
+      \begin{block}{Решение: детерминированный фильтр}
+        \begin{itemize}
+          \item \Logos{cited}: утверждение принимается только с дословной
+                цитатой; проверка --- подстрока текста, а не суждение модели;
+          \item \Hyp{hypothesis}: без цитаты --- не истина, а запись
+                в журнале с тегом \(H\);
+          \item \Prov{derivable}: уже следует --- только пояснение;
+          \item \Rej{rejected}: схема, цитата, безопасность --- отброшено.
+        \end{itemize}
+      \end{block}
+    \end{column}
+    \begin{column}{0.49\textwidth}
+      \begin{block}{Что это даёт алгоритму}
+        \begin{itemize}
+          \item предложение модели не попадает в теорию само по себе;
+          \item в теории --- только цитаты и проверенные следствия;
+          \item гипотезы остаются в журнале, а не в истине;
+          \item решатель либо доказывает, либо отвергает.
+        \end{itemize}
+      \end{block}
+      \begin{block}{Сила ответа}
+        \Prov{\texttt{proven}} --- доказано;\\
+        \Hyp{\texttt{proven\_under(H)}} --- при допущениях \(H\);\\
+        \texttt{not\_proven} --- не доказано.
+      \end{block}
+    \end{column}
+  \end{columns}
+
+  \vspace{1mm}
+  {\footnotesize Без детерминированной классификации мы принимаем текст модели
+  на веру --- это снова докса. Решатель даёт доказуемость или отказ; это и
+  есть достоверное знание при явно указанных допущениях.}
+\end{frame}
+
+% =======================================================================
+\begin{frame}[shrink=4]{Синтетический пример: от предложения к ответу}
+  \footnotesize
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Пример 1: цитата и вывод}
+        Вход: «Идёт дождь. Если идёт дождь, земля мокрая.
+        Мокрая ли земля?»\\[1mm]
+        Предложения:
+        \begin{itemize}
+          \item \texttt{raining} --- \Logos{cited} («Идёт дождь»);
+          \item \texttt{is\_wet(ground) :- raining} --- \Logos{cited};
+          \item \texttt{snowing} --- \Rej{rejected} (нет цитаты);
+          \item \texttt{is\_wet(ground)} --- \Prov{derivable}.
+        \end{itemize}
+        Вывод: \Prov{yes / proven}.
+      \end{block}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Пример 2: гипотеза}
+        Вход: «У машины X есть двигатель и четыре колеса.
+        Что это?»\\[1mm]
+        Предложения:
+        \begin{itemize}
+          \item \texttt{has\_engine(x)}, \texttt{has\_wheels(x,4)}
+                --- \Logos{cited};
+          \item \texttt{is\_a(x,car) :- has\_engine(x),
+                has\_wheels(x,4)} --- \Hyp{hypothesis H1}.
+        \end{itemize}
+        Вывод: \Hyp{binding / proven\_under(H1)}.
+      \end{block}
+    \end{column}
+  \end{columns}
+
+  \vspace{2mm}
+  {\footnotesize Одна и та же схема: предложение → детерминированная
+  классификация → вывод. Разница только в силе ответа.}
+\end{frame}
+
+% =======================================================================
+\begin{frame}[shrink=4]{Пример работы протокола: машина X}
+  \footnotesize
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.50\textwidth}
+      \begin{block}{Phase 0: начальная теория}
+        Вход: «У машины X есть двигатель, четыре колеса,
+        150 л.с. и четыре двери. Что это за транспортное средство?»\\[1mm]
+        Извлечено (\Logos{cited}):
+        \begin{itemize}
+          \item \texttt{has\_engine(x)} — «есть двигатель»;
+          \item \texttt{has\_wheels(x,4)} — «четыре колеса»;
+          \item \texttt{has\_power(x,150)} — «150 л.с.»;
+          \item \texttt{has\_doors(x,4)} — «четыре двери».
+        \end{itemize}
+        Внутри вопрос записан как \texttt{is\_a(x, ?type)}: «\(x\)
+        принадлежит некоторому классу \texttt{?type}».\\[1mm]
+        Первичная проверка: в тексте есть свойства машины, но нет правила,
+        которое по этим свойствам определяет класс. Поэтому вопрос пока не
+        имеет вывода; решатель сообщает об этом и передаёт слово модели.
+      \end{block}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Волна 1: гипотеза и проверка}
+        Предложено (LLM):\\
+        \texttt{is\_a(x,car) :- has\_engine(x),
+        has\_wheels(x,4), has\_doors(x,4)}.\\
+        Цитаты нет.\\[1mm]
+        Классификация: \Hyp{hypothesis H1} (детерминированно).\\
+        Теория: \(+\) правило; журнал: \(H1\).\\[1mm]
+        Проверка: выведено \texttt{is\_a(x,car)};\\
+        ответ: \Hyp{binding / proven\_under(H1)}.\\[1mm]
+        До волны ответа не было; после — ответ есть, но только при
+        допущении \(H1\).
+      \end{block}
+    \end{column}
+  \end{columns}
+
+  \vspace{1mm}
+  {\footnotesize Гипотеза \(H1\) — не истина: это допущение, от которого
+  зависит ответ. Убери \(H1\) — ответ снова не доказан.}
+\end{frame}
+
+% =======================================================================
+\begin{frame}[shrink=3]{Когда цикл останавливается}
+  \footnotesize
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.47\textwidth}
+      \begin{block}{Первичная проверка --- не финал}
+        В начале цель ещё не выведена. Причина проста: в тексте есть
+        свойства машины, но нет правила, которое по этим свойствам
+        определяет класс. Поэтому цикл продолжается и ждёт предложения.
+      \end{block}
+      \begin{block}{Где мы останавливаемся}
+        \begin{itemize}
+          \item \Prov{\texttt{supported}} --- цель выведена;
+          \item \Prov{\texttt{refuted}} --- выведено отрицание цели;
+          \item \Rej{\texttt{contradiction}} --- выведены цель и отрицание;
+          \item \texttt{insufficient} --- цель выведена, но не все условия
+                вопроса использованы.
+        \end{itemize}
+      \end{block}
+    \end{column}
+    \begin{column}{0.49\textwidth}
+      \begin{block}{Остановка по ресурсам или запрету}
+        \begin{itemize}
+          \item \Rej{\texttt{out\_of\_fragment}} --- структура требует
+                фрагмента вне возможностей;
+          \item \texttt{no\_progress} --- две волны без роста теории/запроса;
+          \item \texttt{budget} --- исчерпан лимит волн;
+          \item \texttt{unsupported} --- гипотезы запрещены или конфликт
+                не разрешён; ответ честно не доказан.
+        \end{itemize}
+      \end{block}
+      \begin{block}{Ответ всегда с силой}
+        \Prov{\texttt{proven}} / \Hyp{\texttt{proven\_under(H)}} /
+        \texttt{not\_proven}. Отказ --- тоже результат, а не сбой.
+      \end{block}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% =======================================================================
+\begin{frame}[fragile,shrink=3]{\texttt{out\_of\_fragment}: что это значит}
+  \footnotesize
+  \begin{block}{Вход}
+    «Идёт дождь. Если идёт дождь, земля мокрая.
+    Мокрая ли земля и идёт ли дождь?»
+  \end{block}
+
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Теория}
+\begin{semiverbatim}
+raining.
+is_wet(ground) :- raining.
+\end{semiverbatim}
+      \end{block}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Вопрос}
+        Отдельно решатель умеет отвечать:
+        \begin{itemize}
+          \item «мокрая ли земля?» --- да;
+          \item «идёт ли дождь?» --- да.
+        \end{itemize}
+        Вместе: «мокрая ли земля \emph{и} идёт ли дождь?» ---
+        это два вопроса сразу.
+      \end{block}
+    \end{column}
+  \end{columns}
+
+  \begin{block}{Почему отказ}
+    \begin{itemize}
+      \item Horn-фрагмент отвечает на один вопрос за раз; составной вопрос
+            в него не входит.
+      \item Без L2: \Rej{\texttt{out\_of\_fragment}} (составная цель).
+      \item С L2 (\texttt{ANKYRA\_LOGIC=ground}): вопрос делится на две
+            цели, обе выводятся \(\Rightarrow\) \Prov{\texttt{yes / proven}}.
+      \item Это не «не доказано» (\texttt{not\_proven}), а «вне возможностей
+            текущего фрагмента».
+    \end{itemize}
+  \end{block}
+\end{frame}
+
+% =======================================================================
+\section{Коллекции}
+
+\begin{frame}[shrink=4]{Коллекции: синтетические тексты}
+  \footnotesize
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.32\textwidth}
+      \begin{block}{ProofWriter}
+        \textbf{AI2, синтетический набор.} Короткие тексты с фактами и
+        правилами; по ним нужно вывести следствие. Метки
+        \textit{True / False / Unknown} (истина / ложь / неизвестно).\\
+        \textit{«Анна милая. Все милые люди холодны.
+        Холодна ли Анна?»}\\[1mm]
+        \textbf{L0}: определённые хорновские правила.
+      \end{block}
+    \end{column}
+    \begin{column}{0.32\textwidth}
+      \begin{block}{ProntoQA}
+        \textbf{Синтетический набор с онтологией.} Классы, индивиды; вопрос
+        «является ли индивид элементом класса».\\
+        \textit{«Каждая крапивница — бабочка… Членистоногие не имеют
+        костей. Салли — крапивница. Имеет ли Салли кости?»}\\[1mm]
+        \textbf{L1}: предикат \texttt{is\_a} и отрицание.
+      \end{block}
+    \end{column}
+    \begin{column}{0.32\textwidth}
+      \begin{block}{ProntoQA-OOD}
+        \textbf{Усложнённая версия.} Дизъюнкции, вложенные конъюнкции,
+        отрицания, разбор случаев и доказательство от противного.\\
+        \textit{«Всё, что нумпус или вомпус, — бримпус. Всё, что вумпус
+        или юмпус, — бримпус. Рен — не лемпус. Рен — не бримпус.
+        Докажите: Рен — не юмпус и не вумпус.»}\\[1mm]
+        \textbf{L2}: клаузальный решатель.
+      \end{block}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}[shrink=6]{Коллекции: реальные данные}
+  \footnotesize
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.32\textwidth}
+      \begin{block}{FOLIO}
+        \textbf{Написана экспертами, не синтетический набор.} Логические истории
+        с посылками и выводом; метки \textit{True / False / Unknown}.
+        Шумная и сложная: извлечение — узкое место.\\
+        \textit{«Плунжеры всасывают. Пылесосы всасывают. Космос — вакуум.
+        Всасывает ли космос?»}\\[1mm]
+        \textbf{L2}: дизъюнкции, кванторы, равенство.
+      \end{block}
+    \end{column}
+    \begin{column}{0.32\textwidth}
+      \begin{block}{AR-LSAT}
+        \textbf{LSAT «логические игры».} Рассадить людей, разложить
+        объекты: порядок, соседство, «все разные».\\
+        \textit{«Шесть сотрудников, шесть мест; Янг выше Тоговы; …
+        какой вариант допустим?»}\\[1mm]
+        \textbf{L3}: отдельный решатель задач удовлетворения ограничений
+        (CSP), не дедуктивный.
+      \end{block}
+    \end{column}
+    \begin{column}{0.32\textwidth}
+      \begin{block}{GSM8K}
+        \textbf{Школьные текстовые задачи.} Ответ — число; арифметика
+        и системы линейных уравнений.\\
+        \textit{«Джилл получает \$20/ч за преподавание и \$30/ч за
+        тренерскую работу… какова годовая зарплата?»}\\[1mm]
+        \textbf{L4}: отдельный числовой решатель.
+      \end{block}
+    \end{column}
+  \end{columns}
+
+  \vspace{1mm}
+  \begin{block}{FOLIO: срезы}
+    L2: метод \Prov{44/45}; эталонная формализация \Prov{42/45};
+    извлечение моделью 29--31/45.\quad
+    Срез с отрицанием: эталон \Prov{12/13}; реальный прогон \Prov{11/13}.
+  \end{block}
+\end{frame}
+
+% =======================================================================
+\section{Примеры L0--L4}
+
+\begin{frame}[fragile]{L0: дедукция}
+  \footnotesize
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Вход}
+        Идёт дождь. Если идёт дождь, земля мокрая.\\
+        Мокрая ли земля?
+      \end{block}
+      \begin{block}{Теория и запрос (Prolog)}
+\begin{semiverbatim}
+\scriptsize
+raining.
+is_wet(ground) :- raining.
+?- is_wet(ground).
+\end{semiverbatim}
+      \end{block}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Механическая трассировка вывода}
+\begin{semiverbatim}
+\scriptsize
+0. [axiom] raining. [quote]
+1. [rule] is_wet(ground) <- raining.
+   rule: is_wet(ground) :- raining.
+\end{semiverbatim}
+      \end{block}
+      \begin{block}{Ответ}
+        \Prov{yes / proven}
+      \end{block}
+    \end{column}
+  \end{columns}
+
+  \vspace{1mm}
+  {\scriptsize Контрольный тест: ProofWriter Tier D --- 297/300, Tier A --- 45/45;
+  0 grounded false proofs.}
+\end{frame}
+
+% =======================================================================
+\begin{frame}[fragile,shrink=1]{L1: отрицание и цепочка классов}
+  \footnotesize
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.52\textwidth}
+      \begin{block}{Вход (ProntoQA)}
+        Крапивница \(\to\) бабочка \(\to\) чешуекрылое \(\to\)
+        насекомое \(\to\) членистоногое. Членистоногие не имеют костей.
+        Салли — крапивница.\\[1mm]
+        Имеет ли Салли кости?
+      \end{block}
+      \begin{block}{Prolog (сокращённо)}
+\begin{semiverbatim}
+\scriptsize
+is_a(sally, painted_lady).
+is_a(sally, butterfly) :- ...
+is_a(sally, arthropod).
+not is_a(sally, bony).
+\end{semiverbatim}
+      \end{block}
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \begin{block}{Ответ}
+        \Prov{no / proven}\\[1mm]
+        Цепочка из 10 шагов; затем \(\neg\)bony.
+      \end{block}
+      \begin{block}{Режим}
+        Отрицание как неуспех (NAF) со стратификацией; замкнутость мира
+        (CWA) объявляется для конкретного запроса
+        (\texttt{ANKYRA\_NEGATION\_MODE}).
+      \end{block}
+    \end{column}
+  \end{columns}
+
+  \vspace{1mm}
+  {\scriptsize Контрольный тест: ProntoQA tier a 48/48, tier b 160/160; все \texttt{proven},
+  0 grounded false proofs.}
+\end{frame}
+
+% =======================================================================
+\begin{frame}[shrink=5]{L2: дизъюнкция и разбор случаев}
+  \footnotesize
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.53\textwidth}
+      \begin{block}{Вход (FOLIO, validation-0010)}
+        Шесть видов индеек; Том — не восточная индейка, не Осцеола,
+        не Гулда, не Мерриама, не Рио-Гранде; Том — дикая индейка.\\[1mm]
+        Является ли Том восточной дикой индейкой?
+      \end{block}
+      \begin{block}{Логика}
+        \[
+          \mathit{WildTurkey}(t)\to
+          \bigl(E(t)\lor O(t)\lor G(t)\lor M(t)\lor R(t)\lor C(t)\bigr)
+        \]
+        Пять дизъюнктов исключены; остаётся \(C(t)\),
+        следовательно \(\neg E(t)\).
+      \end{block}
+    \end{column}
+    \begin{column}{0.43\textwidth}
+      \begin{block}{Ответ}
+        \Prov{no / proven}
+      \end{block}
+      \begin{block}{Что добавлено}
+        Дизъюнкция и разбор случаев, конечнодоменные кванторы,
+        конечное равенство.
+      \end{block}
+    \end{column}
+  \end{columns}
+
+  \vspace{1mm}
+  {\scriptsize Контрольные тесты: синтетические задачи 65/65;
+  ProntoQA-OOD 41/42; FOLIO L2 --- метод 44/45 (эталонная формализация
+  42/45), по тексту 29--31/45.}
+\end{frame}
+
+% =======================================================================
+\begin{frame}[shrink=3]{L3: конечная CSP (задача удовлетворения ограничений)}
+  \footnotesize
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.53\textwidth}
+      \begin{block}{Вход (AR-LSAT: парковка)}
+        Шесть сотрудников, шесть мест \#1--\#6, все места различны:
+        \begin{itemize}
+          \item Янг выше Тоговы; Сюй выше Соузы;
+          \item Робертсон выше Янга;
+          \item Робертсон \(\in\{\#1,\#2,\#3,\#4\}\).
+        \end{itemize}
+        CSP: переменные с конечными доменами и ограничения; нужно найти
+        допустимое назначение. Здесь --- домены, \texttt{all\_different},
+        порядковые ограничения.
+      \end{block}
+    \end{column}
+    \begin{column}{0.43\textwidth}
+      \begin{block}{Ответ}
+        \Prov{вариант E / determined}
+      \end{block}
+      \begin{block}{Решатель}
+        Конечнодоменный решатель ограничений (CSP,
+        \texttt{ANKYRA\_CSP}) с ограниченным бюджетом.
+      \end{block}
+    \end{column}
+  \end{columns}
+
+  \vspace{1mm}
+  {\scriptsize Контрольные тесты: синтетические задачи 31/31;
+  эталонная формализация 27/27; реальный прогон 23/30,
+  \textbf{0 grounded\_mismatch}.\\
+  \textbf{0 grounded\_mismatch}: ни один доказанный ответ не противоречит
+  эталону; 7 промахов --- честные отказы, а не ложные доказательства.}
+\end{frame}
+
+% =======================================================================
+\begin{frame}[shrink=5]{L4: точная арифметика}
+  \footnotesize
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.52\textwidth}
+      \begin{block}{Вход (GSM8K)}
+        Джилл получает \$20 в час за преподавание и \$30 в час за
+        тренерскую работу; 35 и 15 часов в неделю, 50 недель в году.
+        Какова её годовая зарплата?
+      \end{block}
+      \begin{block}{Ответ}
+        \Prov{\$57\,500 / determined}
+      \end{block}
+      \begin{block}{Решатель}
+        Числовой решатель (\texttt{ANKYRA\_ARITH}): DAG определённых величин
+        и точные рациональные вычисления.
+      \end{block}
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \centering
+      \begin{tikzpicture}[node distance=3.5mm]
+        \node[doxabox, font=\scriptsize] (t) {\(20\cdot 35=700\)};
+        \node[doxabox, below=of t, font=\scriptsize] (c) {\(30\cdot 15=450\)};
+        \node[logosbox, below=of c, font=\scriptsize] (w) {\(700+450=1150\)};
+        \node[logosbox, below=of w, font=\scriptsize] (y) {\(1150\cdot 50=57\,500\)};
+        \draw[arr] (t) -- (w);
+        \draw[arr] (c) -- (w);
+        \draw[arr] (w) -- (y);
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+
+  \vspace{1mm}
+  {\scriptsize Контрольные тесты: синтетические задачи 37/37;
+  эталонная формализация 8/8; реальный прогон: dev 12/12, eval 38/40;
+  \textbf{0 арифметических ошибок}.}
+\end{frame}
+
+% =======================================================================
+\begin{frame}{Лестница формализмов}
+  \centering
+  \begin{tikzpicture}[node distance=2mm]
+    \node[logosbox, font=\scriptsize, text width=0.82\textwidth, minimum height=6.5mm] (l0)
+      {\textbf{L0} definite Horn \hfill ProofWriter};
+    \node[logosbox, below=of l0, font=\scriptsize, text width=0.82\textwidth, minimum height=6.5mm] (l1)
+      {\textbf{L1} отрицание, NAF, CWA \hfill ProntoQA};
+    \node[logosbox, below=of l1, font=\scriptsize, text width=0.82\textwidth, minimum height=6.5mm] (l2)
+      {\textbf{L2} дизъюнкция, кванторы, равенство \hfill FOLIO / OOD};
+    \node[logosbox, below=of l2, font=\scriptsize, text width=0.82\textwidth, minimum height=6.5mm] (l3)
+      {\textbf{L3} конечная CSP \hfill AR-LSAT};
+    \node[logosbox, below=of l3, font=\scriptsize, text width=0.82\textwidth, minimum height=6.5mm] (l4)
+      {\textbf{L4} точная арифметика \hfill GSM8K};
+    \node[protobox, below=of l4, font=\scriptsize, text width=0.82\textwidth, minimum height=6.5mm] (d)
+      {\textbf{D} defeasible \hfill синтетические задачи};
+  \end{tikzpicture}
+
+  \vspace{2mm}
+  {\footnotesize Каждая ступень --- разрешимый фрагмент и собственный контрольный тест.}\\[1mm]
+  {\scriptsize NAF (negation as failure) --- отрицание как неуспех;
+  CWA (closed-world assumption) --- замкнутость мира.}
+\end{frame}
+
+% =======================================================================
+\section{Измерения и сравнение}
+
+\begin{frame}{Коллекции и контрольные тесты}
+  \centering
+  \scriptsize
+  \begin{tabularx}{\textwidth}{@{}l>{\raggedright\arraybackslash}p{0.29\textwidth}
+                                >{\raggedright\arraybackslash}X@{}}
+    \toprule
+    \textbf{Стадия} & \textbf{Бенчмарк} & \textbf{Результат} \\
+    \midrule
+    L0 & ProofWriter D / A & 297/300 (99\%) / 45/45 \\
+    L1 & ProntoQA a / b & 48/48 / 160/160; все \texttt{proven} \\
+    L1 & синтетические задачи (без LLM) & 40/40 \\
+    L2 & синтетические задачи (без LLM) & 65/65 \\
+    L2 & ProntoQA-OOD a & 41/42 (97.6\%) \\
+    L2 & FOLIO L2 (метод) & 44/45; по тексту 29--31/45 \\
+    L3 & CSP: синтетические задачи / эталон & 31/31 / 27/27 \\
+    L3 & AR-LSAT, реальный прогон & 23/30; 0 \texttt{grounded\_mismatch} \\
+    L4 & синтетические задачи / эталон & 37/37 / 8/8 \\
+    L4 & GSM8K, реальный прогон & dev 12/12; eval 38/40 \\
+    D & defeasible: синтетические задачи & 8/8 \\
+    \bottomrule
+  \end{tabularx}
+
+  \vspace{2mm}
+  {\scriptsize Все результаты реальных прогонов получены на одной модели и
+  одном провайдере; автономные контрольные тесты строят модели решателя
+  напрямую, без извлечения и LLM.}
+\end{frame}
+
+% =======================================================================
+\begin{frame}[shrink=5]{Сравнение: точность}
+  \centering
+  \footnotesize
+  \begin{tabular}{@{}llrrrr@{}}
+    \toprule
+    \textbf{Стадия} & \textbf{Коллекция (\(n\))} & \textbf{Ankyra} &
+    \textbf{Logic-LM} & \textbf{+refine} & \textbf{LINC} \\
+    \midrule
+    L0 & ProofWriter A (45) & \Prov{\textbf{100.0}} & 8.9 & --- & 86.7 \\
+    L0 & ProofWriter D (300) & \Prov{\textbf{99.0}} & 6.7 & --- & 28.3* \\
+    L1 & ProntoQA a (48) & \Prov{\textbf{100.0}} & 41.7 & --- & --- \\
+    L2 & FOLIO L2+neg (58) & 69.0 & 6.9 & 39.7 & \Prov{\textbf{74.1}} \\
+    L3 & AR-LSAT eval (30) & \Prov{\textbf{76.7}} & 53.3 & 63.3 & --- \\
+    \bottomrule
+  \end{tabular}
+
+  \vspace{2mm}
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.55\textwidth}
+      \begin{block}{Как интерпретировать}
+        Одни и те же строки, одна модель и провайдер. Отличаются только
+        способы получения ответа: Ankyra берёт один самый вероятный вариант
+        (жадное декодирование); Logic-LM делает то же и затем сам себя
+        уточняет; LINC получает 8 примеров в подсказке, генерирует 10
+        случайных вариантов (\(T=0.8\)) и выбирает ответ, который встретился
+        чаще.
+      \end{block}
+    \end{column}
+    \begin{column}{0.42\textwidth}
+      \begin{block}{Важное исключение}
+        На FOLIO LINC \emph{превосходит} Ankyra: 74.1\% против 69.0\%.
+        Это существенная часть результата, и её не следует скрывать.
+      \end{block}
+    \end{column}
+  \end{columns}
+
+  \vspace{1mm}
+  {\scriptsize * LINC tier D запускался без сэмплирования (один прогон);
+  его штатный протокол был рассчитан только на tier A и FOLIO.}
+\end{frame}
+
+% =======================================================================
+\begin{frame}{Сравнение: покрытие и «уверенно неверные» ответы}
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.52\textwidth}
+      \centering
+      \scriptsize
+      \setlength{\tabcolsep}{3pt}
+      \begin{tabular}{@{}lrrr@{}}
+        \toprule
+        \textbf{Покрытие, \%} & \textbf{Ankyra} & \textbf{Logic-LM} & \textbf{LINC} \\
+        \midrule
+        ProofWriter A & 100 & 13.3 & 100 \\
+        ProofWriter D & 100 & 7.7 & 32.0* \\
+        ProntoQA a & 100 & 41.7 & --- \\
+        FOLIO & 98.3 & 6.9 & 98.3 \\
+        AR-LSAT & 100 & 60.0 & --- \\
+        \bottomrule
+      \end{tabular}
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \centering
+      \scriptsize
+      \setlength{\tabcolsep}{3pt}
+      \begin{tabular}{@{}lrrr@{}}
+        \toprule
+        \textbf{Уверенно неверные} & \textbf{Ankyra} & \textbf{Logic-LM} & \textbf{LINC} \\
+        \midrule
+        ProofWriter A & 0 & 2 & 6 \\
+        ProofWriter D & 0 & 3 & 11* \\
+        ProntoQA a & 0 & 0 & --- \\
+        FOLIO & 0 & 0 & 14 \\
+        AR-LSAT & 0 & 2 & --- \\
+        \bottomrule
+      \end{tabular}
+    \end{column}
+  \end{columns}
+
+  \vspace{2mm}
+  \begin{block}{Главное}
+    У Ankyra отсутствует категория «уверенно неверного» ответа: если вывод
+    не проходит, система сообщает \texttt{unknown} или \texttt{not\_proven},
+    а не выдаёт правдоподобный ответ за доказанный.
+  \end{block}
+\end{frame}
+
+% =======================================================================
+\begin{frame}{Причина разрыва — интерфейс перевода}
+  \footnotesize
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.31\textwidth}
+      \begin{block}{\Logos{Ankyra}}
+        JSON-схема через вызов функций; детерминированный сборщик.
+        Модель отвечает за \emph{содержание}, а не за синтаксис.
+      \end{block}
+    \end{column}
+    \begin{column}{0.31\textwidth}
+      \begin{block}{Logic-LM}
+        Свободная рукописная грамматика, хрупкий regex-парсер.
+        Массовые сбои: Markdown-списки, \texttt{x} вместо \texttt{\$x}.
+      \end{block}
+    \end{column}
+    \begin{column}{0.31\textwidth}
+      \begin{block}{LINC}
+        Каркас \texttt{TEXT:/FOL:}; из десяти случайных вариантов несколько
+        обычно проходят, поэтому LINC так зависит от повторной генерации.
+      \end{block}
+    \end{column}
+  \end{columns}
+
+  \vspace{2mm}
+  \begin{block}{Ограничение не в решателях}
+    С эталонной формализацией, без модели в цикле, на тех же 58 строках FOLIO:
+    LINC/Prover9 --- \textbf{54/58 (93.1\%)}, Logic-LM/Prover9 ---
+    \textbf{47/58 (81.0\%)}. Ограничение --- перевод, а не вывод.
+  \end{block}
+
+  \vspace{1mm}
+  \begin{center}
+    \small Это и есть граница между доксой и логосом.
+  \end{center}
+\end{frame}
+
+% =======================================================================
+\begin{frame}{Зависимость от модели и угрозы валидности}
+  \footnotesize
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Что контролировалось}
+        \begin{itemize}
+          \item одни и те же строки для всех систем;
+          \item одна модель и провайдер;
+          \item штатные протоколы Logic-LM и LINC;
+          \item диагностика с эталонной формализацией отделяет метод
+                от извлечения.
+        \end{itemize}
+      \end{block}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Чего результаты не показывают}
+        \begin{itemize}
+          \item общего интеллекта;
+          \item полной логики первого порядка (FOL) с функциями;
+          \item рассуждений в открытых доменах;
+          \item устойчивости на произвольном тексте.
+        \end{itemize}
+      \end{block}
+    \end{column}
+  \end{columns}
+
+  \vspace{2mm}
+  \begin{block}{Вклад модели}
+    На собственном наборе LINC (ProofWriter, их код и протокол):
+    GPT-4 --- 100\%, GPT-3.5 --- 96.7\%, DeepSeek V4 Flash --- 85.0\%.
+    Вклад модели --- около 12 пунктов; Ankyra сохраняет результат на более
+    слабой модели благодаря интерфейсу.
+  \end{block}
+\end{frame}
+
+% =======================================================================
+\section{Интерпретация и границы}
+
+\begin{frame}[shrink=5]{Что из этого следует для доксы и логоса}
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Ankyra не совершенствует LLM}
+        \begin{itemize}
+          \item она не улучшает аналогию;
+          \item она не побуждает модель «мыслить»;
+          \item она строит протокол, в котором предложение проверяемо.
+        \end{itemize}
+      \end{block}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Что именно добавляет протокол}
+        \begin{itemize}
+          \item \Hyp{\texttt{hypothesis}} --- предложение в \(\Pi\),
+                а не истинное утверждение;
+          \item \texttt{proven\_under(H)} --- явная зависимость от допущений;
+          \item \texttt{rejected} / \texttt{out\_of\_fragment} ---
+                логос способен сказать «нет».
+        \end{itemize}
+      \end{block}
+    \end{column}
+  \end{columns}
+
+  \vspace{4mm}
+  \begin{center}
+    \large
+    Сила системы не в том, что она лучше угадывает,\\
+    а в том, что она \emph{может отказаться} выдавать предположение
+    за доказательство.
+  \end{center}
+\end{frame}
+
+% =======================================================================
+\begin{frame}{Тот же запрос в Ankyra}
+  \footnotesize
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Что произошло бы}
+        \begin{enumerate}
+          \item Phase 0 извлекает три явления; общей причины в тексте нет.
+          \item Предложение «единой причины» без цитаты
+                \(\Rightarrow\) \Hyp{\texttt{hypothesis}}.
+          \item Если подсвязи противоречат посылкам
+                \(\Rightarrow\) \texttt{contradiction} / \texttt{unsupported}.
+          \item Если фрагмент вне возможностей
+                \(\Rightarrow\) \Rej{\texttt{out\_of\_fragment}}.
+        \end{enumerate}
+      \end{block}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Что было бы исключено}
+        \begin{itemize}
+          \item псевдообъяснение не получило бы статус \texttt{proven};
+          \item ложная связь не была бы скрыта пояснением;
+          \item ответ не был бы дан без пометки о допущении.
+        \end{itemize}
+      \end{block}
+
+      \vspace{2mm}
+      \begin{block}{Замечание}
+        Ankyra не является универсальной абдуктивной системой.
+        Именно поэтому она должна уметь останавливаться.
+      \end{block}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% =======================================================================
+\begin{frame}[shrink=6]{Границы и открытые вопросы}
+  \footnotesize
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Границы}
+        \begin{itemize}
+          \item FOLIO: LINC 74.1\% \(>\) Ankyra 69.0\%;
+          \item остаточное ограничение G2: пропущенные посылки;
+          \item конечные домены, а не полная логика первого порядка;
+          \item отложены функциональные термы, \(\leftrightarrow/\oplus\),
+                квантификация с несколькими переменными.
+        \end{itemize}
+      \end{block}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Открытые вопросы}
+        \begin{itemize}
+          \item повысить потолок извлечения, не подгоняя под набор данных;
+          \item расширять фрагменты без потери корректности;
+          \item отделять метод от извлечения в каждой коллекции;
+          \item проверять тезис статьи на новых доменах.
+        \end{itemize}
+      \end{block}
+    \end{column}
+  \end{columns}
+
+  \vspace{2mm}
+  \begin{block}{Что могло бы опровергнуть предложенную рамку}
+    Система на основе только LLM, которая на тех же контрольных тестах даёт
+    корректные, проверяемые и подтверждённые цитатами следы без формального
+    решателя.
+  \end{block}
+\end{frame}
+
+% =======================================================================
+\begin{frame}[shrink=2]{Вывод: зачем это нужно}
+  \small
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Что сделано}
+        \begin{itemize}
+          \item LLM извлекает структуру и предлагает правила и факты;
+          \item формальный решатель проверяет и выводит;
+          \item каждый ответ имеет силу: \Prov{\texttt{proven}} /
+                \Hyp{\texttt{proven\_under(H)}} / \texttt{not\_proven};
+          \item при нехватке оснований --- отказ, а не догадка.
+        \end{itemize}
+      \end{block}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Зачем это нужно}
+        \begin{itemize}
+          \item там, где цена ошибки высока: юриспруденция, медицина,
+                инженерия, финансы;
+          \item нужна не правдоподобность, а проверяемость и аудируемость;
+          \item лучше честное «не доказано», чем уверенно неверный ответ.
+        \end{itemize}
+      \end{block}
+    \end{column}
+  \end{columns}
+
+  \vspace{4mm}
+  \begin{center}
+    \large\itshape
+    Строгость верификации в рассуждениях модели --- не роскошь,\\
+    а условие применимости там, где ошибка дорого стоит.
+  \end{center}
+
+  \vspace{3mm}
+  \begin{center}
+    Вопросы?
+  \end{center}
+\end{frame}
+
+% =======================================================================
+\appendix
+
+\begin{frame}[shrink=5]{Приложение: полная таблица контрольных тестов}
+  \centering
+  \tiny
+  \begin{tabularx}{\textwidth}{@{}l>{\raggedright\arraybackslash}p{0.25\textwidth}
+                                >{\raggedright\arraybackslash}X@{}}
+    \toprule
+    \textbf{Стадия} & \textbf{Бенчмарк} & \textbf{Результат} \\
+    \midrule
+    L0 & ProofWriter Tier D & 297/300 (99\%), 0 grounded false proofs \\
+    L0 & ProofWriter Tier A & 45/45 \\
+    L1 & ProntoQA a / b & 48/48 / 160/160; все \texttt{proven} \\
+    L1 & синтетич. задачи (без LLM) & 40/40 \\
+    L1 & defeasible: синтетич. задачи & 8/8 \\
+    L2 & синтетич. задачи (без LLM) & 65/65 \\
+    L2 & ProntoQA-OOD a & 41/42 (97.6\%) \\
+    L2 & FOLIO L2, метод & 44/45; эталон 42/45; текст 29--31/45 \\
+    L3 & CSP, синтетич. задачи & 31/31 \\
+    L3 & AR-LSAT, эталон & 27/27 \\
+    L3 & AR-LSAT, реальный прогон & 23/30, 0 \texttt{grounded\_mismatch} \\
+    L4 & синтетич. задачи & 37/37 \\
+    L4 & GSM8K, эталон & 8/8 \\
+    L4 & GSM8K, реальный прогон & dev 12/12, eval 38/40, 0 ошибок \\
+    D & defeasible & 8/8 \\
+    \bottomrule
+  \end{tabularx}
+\end{frame}
+
+\begin{frame}{Приложение: определения}
+  \begin{description}
+    \item[\texttt{grounded\_mismatch}] исполненный вывод, который
+      противоречит эталону; для Ankyra таких нет.
+    \item[\texttt{proven\_under(H)}] ответ доказан при допущениях,
+      перечисленных в журнале; без них не доказан.
+    \item[история вывода (provenance)] транзитивная зависимость: какие
+      аксиомы, правила и гипотезы использованы.
+    \item[Revision] запись о смене ответа между волнами; теория при этом
+      только растёт.
+    \item[\texttt{out\_of\_fragment}] правомерный отказ: структура требует
+      фрагмента вне возможностей запуска.
+  \end{description}
+\end{frame}
+
+\begin{frame}[fragile]{Приложение: запуск и воспроизведение}
+  \footnotesize
+\begin{semiverbatim}
+\scriptsize
+uv sync
+uv run pytest                       # без LLM (автономно)
+ANKYRA_LIVE=1 uv run pytest -m live # с реальной LLM
+
+# problem.txt:
+# All dogs are mammals. Rex is a dog. Is Rex a mammal?
+uv run python -m ankyra.cli.solve --lang ru --file problem.txt
+
+uv run python -m evals.run --ids rain,vehicle
+uv run python -m evals.l1_synthetic
+uv run python -m evals.l2_synthetic
+uv run python -m evals.l3_synthetic
+uv run python -m evals.l4_synthetic
+\end{semiverbatim}
+\end{frame}
+
+\end{document}
