@@ -7,6 +7,12 @@ from itertools import product
 from ankyra.build.normalize import is_var
 from ankyra.config.settings import get_setting
 from ankyra.core.models import Fact, FactKey, Morphism, Query, Theory, Verdict
+from ankyra.engine.backends import (
+    refute,
+    refute_conjunction,
+    refute_support,
+    select_backend,
+)
 from ankyra.engine.clause import (
     canonicalize_morphism,
     canonicalize_query,
@@ -27,14 +33,7 @@ from ankyra.engine.horn import (
     unify_pattern,
 )
 from ankyra.engine.inference import analyze_routing, select_inference
-from ankyra.engine.resolution import (
-    DEFAULT_BUDGET,
-    MergedProof,
-    ProverResult,
-    refute,
-    refute_conjunction,
-    refute_support,
-)
+from ankyra.engine.resolution import DEFAULT_BUDGET, MergedProof, ProverResult
 
 
 def _ground(target: Morphism) -> bool:
@@ -596,6 +595,19 @@ _CONTRADICTION_BUDGET = 2000
 
 def _verify_l2(theory: Theory, query: Query, ctx) -> Verdict:
     bindings = dict(ctx.bindings)
+    # Every L2 call below goes through the ``ankyra.engine.backends`` selector, which
+    # reports an unknown ``L2_BACKEND`` value or a selected ``smt`` backend without
+    # Z3 as a refusal instead of raising. The refusal is a routing outcome, so it is
+    # reported exactly like ``analyze_routing``'s refusals in ``verify``: a verdict,
+    # never a traceback and never a silent downgrade to ``resolution``.
+    backend = select_backend()
+    if backend.refusal is not None:
+        return Verdict(
+            status="out_of_fragment",
+            bindings=bindings,
+            gaps=[backend.refusal],
+            shelf="refused",
+        )
     clausification, outcomes = l2_outcomes(theory, query)
     if clausification.unsupported:
         return Verdict(

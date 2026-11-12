@@ -178,6 +178,20 @@ pools and query bindings. `unify_pattern` matches a pattern against a ground fac
     step budget (`ANKYRA_LOGIC_BUDGET`) and a recorded proof DAG. Statuses:
     `entailed` / `not_entailed` / `budget` / `unsupported`; only a derived empty
     clause is a proof.
+  - `smt/prove.py` — the second L2 backend: the same clauses decided by the
+    optional **Z3/SMT** engine (`uv sync --extra smt`), with the same
+    `refute`/`refute_support`/`refute_conjunction` contract and the same statuses.
+    It records no resolution DAG, so `ProverResult.proof` is always `None`: the
+    verdict is the same, but `explain` and the unused-premise accounting
+    (`_unused_l2` in `verify.py`, which returns early when `proof is None`) stay
+    with `resolution`.
+  - `backends.py` — the L2 backend selector: reads `ANKYRA_L2_BACKEND` through
+    `get_setting("L2_BACKEND", "resolution")`, so `setting_overrides` isolates the
+    choice per eval run. Accepted values are `resolution` (default) and `smt`
+    (`L2_BACKENDS`); `resolution` is imported statically, `smt` lazily, so a base
+    install never imports `z3`. An unknown value is an explicit refusal
+    (`out_of_fragment:l2_backend_unknown`), never a silent fallback; a selected
+    `smt` without Z3 is `out_of_fragment:l2_backend_unavailable`.
   - `inference.py` — the pluggable semantics seam (`docs/logic_layer.md` §10): the
     `Inference` protocol with `HornInference` and `ClausalInference`. It also holds
     the declared-fragment contract (`docs/fragment_routing.md`): `analyze_routing`
@@ -279,9 +293,15 @@ the end-to-end entry point; `engine/cycle.run_cycle` is the reasoning-only API.
 Dynaconf, env prefix `ANKYRA`, from `.env`. Provider: `API_URL`, `API_KEY`, `MODEL`,
 `TEMPERATURE`, `MAX_TOKENS`, `MAX_TOKENS_EXTRACT`, `EXTRA_BODY`,
 `REASONING_EFFORT`. Engine: `MAX_WAVES`, `ALLOW_HYPOTHESES`, `BUILTINS`,
-`DEFEASIBLE`, `NEGATION_MODE`, `LOGIC`, `LOGIC_BUDGET`, `CSP`, `CSP_BUDGET`,
-`CSP_REPAIRS`, `LANG`, `DEONTIC_PREFIXES`, `EXTRACT_SAMPLES`, `EXTRACT_PARALLEL`,
-`EXTRACT_REPAIRS`, `LANGUAGE_SPEC`. Tests: `LIVE`.
+`DEFEASIBLE`, `NEGATION_MODE`, `LOGIC`, `LOGIC_BUDGET`, `L2_BACKEND`, `CSP`,
+`CSP_BUDGET`, `CSP_REPAIRS`, `LANG`, `DEONTIC_PREFIXES`, `EXTRACT_SAMPLES`,
+`EXTRACT_PARALLEL`, `EXTRACT_REPAIRS`, `LANGUAGE_SPEC`. Tests: `LIVE`.
+
+`L2_BACKEND` (default `resolution`) selects the L2 clause-decision backend:
+`resolution` (in-repo, records the proof DAG) or `smt` (optional Z3 backend from
+the `smt` extra). Both give the same verdict, but `smt` leaves
+`ProverResult.proof` as `None`, so `explain` and unused-premise accounting work
+only under `resolution`; the default does not change.
 
 ## 9. LLM layer (`llm/`)
 

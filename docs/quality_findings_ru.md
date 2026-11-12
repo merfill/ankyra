@@ -447,6 +447,75 @@ undecided 15, wrong-determinate 4 (из них 2 — артефакты скор
 извлечения (`0107` инвертировал `¬∃`; `0045` универсал свёрнут в ground-атом). 14/15
 `Uncertain` — корректный `unknown`.
 
+## H. Второй L2-бэкенд (resolution vs smt) — смоук-проверка
+
+Дата: 2026-11-11. Область: пункт 7 плана второго бэкенда — прогнать селектор
+`ANKYRA_L2_BACKEND` на реальных командах проекта. Правок кода не потребовалось:
+оба пути установки зелёные, и оба бэкенда совпадают на всей синтетической
+коллекции.
+
+Прогоны (воспроизводить по порядку):
+
+| # | установка | команда | результат |
+|---|---|---|---|
+| 1 | `uv sync` (без z3) | `uv run pytest` | **671 passed, 37 skipped, 0 failed** |
+| 2 | `uv sync --extra smt` (z3-solver 5.4.0.0) | `uv run pytest` | **681 passed, 27 skipped, 0 failed** |
+| 3 | любой | `uv run python -m evals.l2_synthetic` | **65/65 matched**, exit 0 |
+| 3 | любой | `ANKYRA_L2_BACKEND=smt uv run python -m evals.l2_synthetic` | **65/65 matched**, exit 0 |
+| 4 | ключ есть | `ANKYRA_LIVE=1 uv run pytest -m live` | 23 passed, 3 failed |
+
+37 пропусков в прогоне 1 — это 26 live-тестов (`ANKYRA_LIVE` не задан) плюс 11
+тестов `pytest.importorskip("z3")` в `tests/test_engine_smt.py`; прогон 2 выполняет
+эти 11 (файл — 14/14) и добавляет один пропуск,
+`tests/test_engine_backends.py::test_a_missing_solver_is_refused_not_raised`
+(`skipif(_HAS_Z3)` — путь недоступного солвера не сымитировать при установленном
+солвере), поэтому 37 − 11 + 1 = 27.
+
+### Расхождения (`resolution` → `smt`)
+
+Нет. Два вывода `evals.l2_synthetic` идентичны: тот же гейт 65/65 и то же
+распределение статусов (`supported` 24, `insufficient` 14, `out_of_fragment` 11,
+`unsupported` 9, `refuted` 7).
+
+| кейс | resolution | smt | почему |
+|---|---|---|---|
+| — (в выборке нет) | — | — | ни в одном кейсе нет неиспользованной посылки запроса: все `insufficient` — это `logic_budget:exhausted`, и ни в одном вердикте нет gap `unused_premise:` |
+
+Документированное расхождение `smt` реально, но синтетическая выборка его не
+задевает. На сконструированном пробе (теория `is_a(rex,a)`, правило
+`is_a(rex,a) ⇒ is_a(rex,b)`, цель `is_a(rex,b)`, условие запроса `is_a(rex,c)`)
+вердикты расходятся ровно так, как предсказано дизайном:
+
+| кейс | resolution | smt | почему |
+|---|---|---|---|
+| проб `unused_premise` | `insufficient` (`unused_premise:is_a`, `unused_premises=[0]`) | `supported` (`gaps=[]`) | `smt` не строит DAG доказательства, поэтому `ProverResult.proof is None` и `_unused_l2` выходит рано; учёт неиспользованных посылок есть только под `resolution` |
+
+Это намеренное следствие контракта `proof is None`, а не дефект: по выводимости
+`smt` вердикт-эквивалентен, но ни `explain`/наррация, ни учёт неиспользованных
+посылок без вывода не работают.
+
+### Переключение бэкенда
+
+`ANKYRA_L2_BACKEND` переключает процедуру, а не только настройку:
+
+- по умолчанию: `select_backend()` — `resolution`, и инструментированный
+  `evals.l2_synthetic` делает 347 вызовов `resolution` и 0 вызовов `smt`;
+- `ANKYRA_L2_BACKEND=smt`: `select_backend()` — `smt`, 345 вызовов `smt` и 0
+  вызовов `resolution`;
+- `ANKYRA_L2_BACKEND=bogus`: `Verdict(status="out_of_fragment", shelf="refused",
+  gaps=["out_of_fragment:l2_backend_unknown"])`, без тихого отката.
+
+### Live-шаг (LLM)
+
+`ANKYRA_API_KEY` присутствует, поэтому live-шаг выполнен с `ANKYRA_L2_BACKEND=smt`:
+`evals.run --ids rain,vehicle` не падает (`rain` — supported/proven, `vehicle` —
+`no_progress` с обычным промахом ожиданий извлечения), а `evals.narrate --lang ru`
+строит нарратив для `rain` по его истории вывода и сообщает «nothing to narrate —
+no proof» для `vehicle`. Ни то, ни другое не падает на `proof is None`. 3 падения
+live-pytest — это `threshold` (builtin-путь, 2 теста) и `named_conditional` (ждали
+`unsupported`, получили `no_progress`): live-промахи извлечения в
+`tests/test_evals_live.py`, который работа второго бэкенда не затрагивает.
+
 ## Приоритет
 
 1. **Обобщение извлечения**, видимое на ProofWriter (generic-существительные,

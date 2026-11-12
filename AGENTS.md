@@ -32,6 +32,12 @@ field coercion are acceptable; a cue-phrase detector would not be.
 
 - Package manager — **uv**, not `pip`. Requires Python ≥ 3.11.
 - Sync dependencies: `uv sync`.
+- Optional Z3 backend: `uv sync --extra smt` — ставит опциональный Z3-бэкенд;
+  базовой установке и офлайн-тестам он не нужен. The extra is needed **only** for
+  the SMT L2 backend, selected with `ANKYRA_L2_BACKEND=smt` (default
+  `resolution`, which needs no extra). Both give the same verdict, but `smt`
+  builds no proof DAG (`ProverResult.proof is None`), so `explain` and the
+  unused-premise accounting work only under `resolution`.
 - Tests (offline; live ones are skipped): `uv run pytest`.
 - Live tests (real LLM calls): `ANKYRA_LIVE=1 uv run pytest -m live`.
 - Eval harness: `uv run python -m evals.run [--ids rain,vehicle]`, then read the

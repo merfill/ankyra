@@ -604,6 +604,25 @@ breaks explainability.
 
 **Recommendation / decision.** (a).
 
+**Update — option (c) landed as a second backend (done).** The rejected option (c)
+was implemented, but as an *alternative*, not as a replacement. `resolution` stays
+the primary L2 procedure: it builds the proof DAG that carries the history of the
+derivation (`provenance`) into `explain`, the narration, and the unused-premise
+accounting (`_unused_l2` in `engine/verify.py`). The Z3/SMT prover
+(`engine/smt/prove.py`, dependency `z3-solver` from the optional `smt` extra) is
+selected per run by `ANKYRA_L2_BACKEND` (`engine/backends.py`); the default stays
+`resolution`. On the propositional encoding (one `z3.Bool` per ground atom, one
+disjunction per clause) `smt` is verdict-equivalent: `unsat` → `entailed`, `sat` →
+`not_entailed`, `unknown` → `budget`. It builds no proof DAG, so
+`ProverResult.proof` is always `None`, and neither `explain`/narration nor the
+unused-premise accounting works under it. Both backends share the contract
+`refute` / `refute_support` / `refute_conjunction` / `prove` and
+`ProverResult(status, proof, steps, budget)`. Refusals are explicit and never a
+silent fallback to `resolution`: a selected `smt` without z3 →
+`out_of_fragment:l2_backend_unavailable`, an unknown flag value →
+`out_of_fragment:l2_backend_unknown`; both surface as
+`Verdict(status="out_of_fragment", shelf="refused")`, without raising.
+
 ### D-L2-2 — Extract the `Inference` protocol now or after L2
 
 **Status: DECIDED — option (b), extended.** Land a **working L2** first, behind an

@@ -120,3 +120,24 @@ no fact closure and proposals are unsupported (D-L2-6).
 
 Selecting *which* procedure runs from the built structure is specified as the
 declared-fragment contract in `docs/fragment_routing.md`.
+
+### 10.1 L2 has two interchangeable backends
+
+The L2 member of the seam is the first one with more than one implementation behind
+it: `resolution` (`engine/resolution.py`, the default) and `smt`
+(`engine/smt/prove.py`, optional Z3 backend) share the same contract — `refute`,
+`refute_support`, `refute_conjunction`, `prove` — and return the same
+`ProverResult(status, proof, steps, budget)`. `engine/backends.py` selects one from
+the `ANKYRA_L2_BACKEND` setting (`resolution` | `smt`, default `resolution`), so the
+`Inference` protocol is unchanged by the choice: `ClausalInference` still decides,
+and only the procedure underneath varies. `smt` is verdict-equivalent on the
+propositional encoding (`unsat` → `entailed`, `sat` → `not_entailed`, `unknown` →
+`budget`), but builds no proof DAG: `ProverResult.proof` is `None`, so the
+proof-shaped justification (`build_explanation`) and the unused-premise accounting
+(`_unused_l2`) remain `resolution`-only. That is the single place where the two
+backends are not interchangeable, and it is why `resolution` stays the default.
+
+Refusals are verdicts, not exceptions and not a silent downgrade to `resolution`:
+an unknown flag value yields `out_of_fragment:l2_backend_unknown`, a selected `smt`
+without Z3 yields `out_of_fragment:l2_backend_unavailable`, both reported as
+`Verdict(status="out_of_fragment", shelf="refused")`.

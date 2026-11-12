@@ -121,3 +121,25 @@ L2-ветвью — и станут релевантны, только когд�
 
 Выбор того, *какая* процедура запускается по построенной структуре, задан как
 контракт объявленного фрагмента в `docs/fragment_routing_ru.md`.
+
+### 10.1 У L2 два взаимозаменяемых бэкенда
+
+Член шва, отвечающий за L2, — первый, у которого больше одной реализации:
+`resolution` (`engine/resolution.py`, по умолчанию) и `smt` (`engine/smt/prove.py`,
+опциональный бэкенд Z3) делят один контракт — `refute`, `refute_support`,
+`refute_conjunction`, `prove` — и возвращают один и тот же
+`ProverResult(status, proof, steps, budget)`. `engine/backends.py` выбирает один из
+них по настройке `ANKYRA_L2_BACKEND` (`resolution` | `smt`, по умолчанию
+`resolution`), поэтому выбор не меняет протокол `Inference`: решение по-прежнему
+принимает `ClausalInference`, варьируется только процедура под ним. На
+пропозициональной кодировке `smt` эквивалентен по вердиктам (`unsat` → `entailed`,
+`sat` → `not_entailed`, `unknown` → `budget`), но не строит DAG доказательства:
+`ProverResult.proof` равен `None`, поэтому обоснование в форме дерева
+доказательства (`build_explanation`) и учёт неиспользованных посылок (`_unused_l2`)
+остаются только за `resolution`. Это единственное место, где бэкенды не
+взаимозаменяемы, и поэтому `resolution` остаётся по умолчанию.
+
+Отказы — это вердикты, а не исключения и не тихий откат на `resolution`:
+неизвестное значение флага даёт `out_of_fragment:l2_backend_unknown`, выбранный
+`smt` без Z3 — `out_of_fragment:l2_backend_unavailable`; оба сообщаются как
+`Verdict(status="out_of_fragment", shelf="refused")`.

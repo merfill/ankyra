@@ -450,6 +450,75 @@ declines 15 (`unknown`/`out_of_fragment`), and is wrong on 2 — both from extra
 (`0107` an inverted `¬∃`; `0045` a universal collapsed to a ground atom). 14/15
 `Uncertain` are the correct `unknown`.
 
+## H. Second L2 backend (resolution vs smt) — smoke verification
+
+Date: 2026-11-11. Scope: item 7 of the second-backend plan — exercise the
+`ANKYRA_L2_BACKEND` selector on the project's real commands. No code change was
+needed: both install paths are green, and the two backends agree on the whole
+synthetic collection.
+
+Runs (reproduce in order):
+
+| # | install | command | result |
+|---|---|---|---|
+| 1 | `uv sync` (no z3) | `uv run pytest` | **671 passed, 37 skipped, 0 failed** |
+| 2 | `uv sync --extra smt` (z3-solver 5.4.0.0) | `uv run pytest` | **681 passed, 27 skipped, 0 failed** |
+| 3 | either | `uv run python -m evals.l2_synthetic` | **65/65 matched**, exit 0 |
+| 3 | either | `ANKYRA_L2_BACKEND=smt uv run python -m evals.l2_synthetic` | **65/65 matched**, exit 0 |
+| 4 | key present | `ANKYRA_LIVE=1 uv run pytest -m live` | 23 passed, 3 failed |
+
+Run 1's 37 skips are the 26 live tests (`ANKYRA_LIVE` unset) plus the 11
+`pytest.importorskip("z3")` tests of `tests/test_engine_smt.py`; run 2 executes
+those 11 (the file is 14/14) and adds one skip,
+`tests/test_engine_backends.py::test_a_missing_solver_is_refused_not_raised`
+(`skipif(_HAS_Z3)` — the unavailable path cannot be simulated with the solver
+installed), so 37 − 11 + 1 = 27.
+
+### Discrepancies (`resolution` → `smt`)
+
+None. The two `evals.l2_synthetic` outputs are identical: the same 65/65 gate and
+the same status distribution (`supported` 24, `insufficient` 14, `out_of_fragment`
+11, `unsupported` 9, `refuted` 7).
+
+| case | resolution | smt | why |
+|---|---|---|---|
+| — (none in the sample) | — | — | no case carries an unused query premise: every `insufficient` is `logic_budget:exhausted`, and no verdict has an `unused_premise:` gap |
+
+The documented `smt` divergence is real, but the synthetic sample does not exercise
+it. On a constructed probe (theory `is_a(rex,a)`, rule `is_a(rex,a) ⇒ is_a(rex,b)`,
+target `is_a(rex,b)`, query condition `is_a(rex,c)`) the verdicts differ exactly as
+the design predicts:
+
+| case | resolution | smt | why |
+|---|---|---|---|
+| probe `unused_premise` | `insufficient` (`unused_premise:is_a`, `unused_premises=[0]`) | `supported` (`gaps=[]`) | `smt` records no proof DAG, so `ProverResult.proof is None` and `_unused_l2` returns early; the unused-premise accounting exists only under `resolution` |
+
+This is the intended consequence of the `proof is None` contract, not a defect: the
+`smt` backend is verdict-equivalent on entailment, but neither `explain`/narration
+nor the unused-premise accounting works without a derivation.
+
+### Backend switch
+
+`ANKYRA_L2_BACKEND` switches the procedure, not just the setting:
+
+- default: `select_backend()` is `resolution`, and an instrumented
+  `evals.l2_synthetic` makes 347 `resolution` calls and 0 `smt` calls;
+- `ANKYRA_L2_BACKEND=smt`: `select_backend()` is `smt`, 345 `smt` calls and 0
+  `resolution` calls;
+- `ANKYRA_L2_BACKEND=bogus`: `Verdict(status="out_of_fragment", shelf="refused",
+  gaps=["out_of_fragment:l2_backend_unknown"])`, no silent fallback.
+
+### Live step (LLM)
+
+`ANKYRA_API_KEY` is present, so the live step ran under `ANKYRA_L2_BACKEND=smt`:
+`evals.run --ids rain,vehicle` does not raise (`rain` supported/proven, `vehicle`
+`no_progress` with its usual extraction expectation miss), and `evals.narrate
+--lang ru` renders `rain` from its proof and reports "nothing to narrate — no
+proof" for `vehicle`. Neither crashes on `proof is None`. The 3 live pytest
+failures are `threshold` (builtin path, 2 tests) and `named_conditional` (wanted
+`unsupported`, got `no_progress`) — live extraction misses in `tests/test_evals_live.py`,
+which the second-backend work does not touch.
+
 ## Priority
 
 1. **Extraction generalization** seen on ProofWriter (generic nouns, modifier

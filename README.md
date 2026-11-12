@@ -44,8 +44,16 @@ Requires Python ≥ 3.11 and [uv](https://docs.astral.sh/uv/).
 
 ```bash
 uv sync
+uv sync --extra smt    # ставит опциональный Z3-бэкенд; базовой установке и офлайн-тестам он не нужен
 cp .env.example .env   # then set ANKYRA_API_KEY (and URL/model if different)
 ```
+
+The `smt` extra (Z3) is needed **only** when the L2 clause prover is switched to
+the SMT backend with `ANKYRA_L2_BACKEND=smt`. The default `ANKYRA_L2_BACKEND=resolution`
+works on a plain `uv sync`, without the extra. Both backends return the same
+verdict, but `smt` builds no proof DAG (`ProverResult.proof is None`), so the
+`explain` trace and the unused-premise accounting remain with `resolution`; the
+default does not change.
 
 Configuration uses Dynaconf with the `ANKYRA_` prefix (see `.env.example`).
 
