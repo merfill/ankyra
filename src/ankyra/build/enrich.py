@@ -1,0 +1,295 @@
+"""Deterministic enrichment after structural unroll (no LLM)."""
+
+from __future__ import annotations
+
+from ankyra.build.normalize import is_var, predicate_polarity
+from ankyra.core.models import Constraint, Morphism, Object, Rule, Theory
+
+
+def _key(morphism: Morphism) -> tuple:
+    return (morphism.predicate, morphism.subject, morphism.object, morphism.negated, morphism.modality)
+
+
+def _negation_key(morphism: Morphism) -> tuple:
+    return (morphism.predicate, morphism.subject, morphism.object, not morphism.negated, morphism.modality)
+
+
+def _rewrite_morphism(morphism: Morphism) -> Morphism:
+    predicate, negated = predicate_polarity(morphism.predicate, morphism.negated)
+    if predicate == morphism.predicate and negated == morphism.negated:
+        return morphism
+    return morphism.model_copy(update={"predicate": predicate, "negated": negated})
+
+
+def _valid_morphism(morphism: Morphism) -> bool:
+    """An atom without a predicate is malformed (bad extraction) and is dropped."""
+    return bool((morphism.predicate or "").strip())
+
+
+def _valid_rule(rule: Rule) -> bool:
+    """A rule is dropped when any of its atoms is malformed."""
+    if not (rule.consequence.predicate or "").strip():
+        return False
+    if any(not (alt.predicate or "").strip() for alt in rule.alternatives):
+        return False
+    return all((condition.predicate or "").strip() for condition in rule.conditions)
+
+
+def _dedupe_morphisms(morphisms: list[Morphism]) -> list[Morphism]:
+    seen: dict[tuple, int] = {}
+    out: list[Morphism] = []
+    for morphism in morphisms:
+        key = _key(morphism)
+        if key in seen:
+            index = seen[key]
+            if not (out[index].quote or "").strip() and (morphism.quote or "").strip():
+                out[index] = morphism
+            continue
+        seen[key] = len(out)
+        out.append(morphism)
+    return out
+
+
+def _rewrite_rule(rule: Rule) -> Rule:
+    return rule.model_copy(
+        update={
+            "conditions": _dedupe_morphisms([_rewrite_morphism(c) for c in rule.conditions]),
+            "consequence": _rewrite_morphism(rule.consequence),
+            "alternatives": [_rewrite_morphism(alt) for alt in rule.alternatives],
+        }
+    )
+
+
+def _dedupe_rules(rules: list[Rule]) -> list[Rule]:
+    seen: set[str] = set()
+    out: list[Rule] = []
+    for rule in rules:
+        signature = repr(rule.model_dump())
+        if signature in seen:
+            continue
+        seen.add(signature)
+        out.append(rule)
+    return out
+
+
+def _rewrite_existential(existential):
+    return existential.model_copy(
+        update={"atoms": [_rewrite_morphism(atom) for atom in existential.atoms]}
+    )
+
+
+def _valid_existential(existential) -> bool:
+    return bool(existential.atoms) and all(
+        (atom.predicate or "").strip() for atom in existential.atoms
+    )
+
+
+def _iter_rule_morphisms(rules: list[Rule]) -> list[Morphism]:
+    out: list[Morphism] = []
+    for rule in rules:
+        out.extend(rule.conditions)
+        out.extend(rule.head)
+    return out
+
+
+def heal_structural(rules: list[Rule]) -> list[Rule]:
+    """Drop a rule premise that negates its own consequence; keep the rest.
+
+    A conflict with an axiom is NOT healed here: it is a real contradiction and
+    must reach the engine, where it is reported instead of silently dropped.
+    """
+    out: list[Rule] = []
+    for rule in rules:
+        consequence = rule.consequence
+        kept = [cond for cond in rule.conditions if _key(cond) != _negation_key(consequence)]
+        if rule.conditions and not kept:
+            continue
+        if len(kept) != len(rule.conditions):
+            rule = rule.model_copy(update={"conditions": kept})
+        out.append(rule)
+    return out
+
+
+def _is_domain_membership(morphism: Morphism, domain: set[str]) -> bool:
+    return (
+        morphism.predicate == "is_a"
+        and not morphism.negated
+        and morphism.modality == "neutral"
+        and bool(morphism.object)
+        and morphism.object.casefold() in domain
+    )
+
+
+def _morphism_vars(morphism: Morphism) -> set[str]:
+    return {term for term in (morphism.subject, morphism.object) if is_var(term)}
+
+
+def over_declared_domains(theory: Theory) -> set[str]:
+    """Declared universe sorts that a named individual's class contradicts.
+
+    A ``domain`` claim is "every named individual belongs to this sort". When a
+    named individual carries a positive ``is_a(x, C)`` with ``C`` outside the
+    declared domain, the claim is over-declared: a domain premise in a rule may be
+    a real restriction, not the quantifier's domain. Such sorts are returned
+    casefolded so the builder never drops a real restriction (which would make a
+    valid quoted rule fire for non-domain individuals).
+    """
+    names = {d.casefold() for d in theory.domain if d}
+    if not names:
+        return set()
+    for morphism in theory.morphisms:
+        if (
+            morphism.predicate == "is_a"
+            and not morphism.negated
+            and morphism.modality == "neutral"
+            and morphism.subject
+            and not is_var(morphism.subject)
+            and morphism.object
+            and not is_var(morphism.object)
+            and morphism.object.casefold() not in names
+        ):
+            return set(names)
+    return set()
+
+
+def _domain_premise_to_strip(condition: Morphism, names: set[str], bound: set[str]) -> bool:
+    """True when a domain premise is vacuous and safely droppable.
+
+    It must be a universe-sort membership, the variable must be bound by another
+    condition (else it is the only binder), and the sort must not be over-declared.
+    """
+    return _is_domain_membership(condition, names) and bool(_morphism_vars(condition) & bound)
+
+
+def strip_domain_conditions(
+    rules: list[Rule], domain: list[str], *, over_declared: set[str] | None = None
+) -> list[Rule]:
+    """Drop a rule premise that restricts the variable to a universe sort.
+
+    A condition ``is_a(?x, D)`` with ``D`` a declared domain sort is the quantifier's
+    domain, not a premise, so it carries no knowledge and must not block the rule.
+    It is dropped only when another condition already binds the variable; a lone
+    ``is_a(?x, D)`` is the only binder and is kept (dropping it would make the rule
+    conditionless, which never fires). This mirrors ``unroll._normalize_domain``.
+
+    ``over_declared`` names domain sorts contradicted by a named individual's class
+    (``over_declared_domains``); their premises are kept, because dropping them
+    would remove a real restriction.
+    """
+    names = {d.casefold() for d in domain if d}
+    if not names:
+        return rules
+    protected = {s.casefold() for s in (over_declared or set())}
+    out: list[Rule] = []
+    for rule in rules:
+        bound: set[str] = set()
+        for cond in rule.conditions:
+            if not _is_domain_membership(cond, names):
+                bound |= _morphism_vars(cond)
+        kept = [
+            cond
+            for cond in rule.conditions
+            if not (
+                _domain_premise_to_strip(cond, names, bound)
+                and (cond.object or "").casefold() not in protected
+            )
+        ]
+        if len(kept) != len(rule.conditions):
+            rule = rule.model_copy(update={"conditions": kept})
+        out.append(rule)
+    return out
+
+
+def over_declared_domain_gaps(theory: Theory) -> list[str]:
+    """Audit gaps for domain premises kept because their universe is over-declared."""
+    protected = over_declared_domains(theory)
+    if not protected:
+        return []
+    names = {d.casefold() for d in theory.domain if d}
+    gaps: list[str] = []
+    for rule in theory.rules:
+        bound: set[str] = set()
+        for cond in rule.conditions:
+            if not _is_domain_membership(cond, names):
+                bound |= _morphism_vars(cond)
+        for cond in rule.conditions:
+            if (
+                _domain_premise_to_strip(cond, names, bound)
+                and (cond.object or "").casefold() in protected
+            ):
+                gap = f"over_declared_domain:{cond.object}"
+                if gap not in gaps:
+                    gaps.append(gap)
+    return gaps
+
+
+def _rewrite_constraint(constraint: Constraint) -> Constraint:
+    return constraint.model_copy(
+        update={
+            "left": predicate_polarity(constraint.left, False)[0],
+            "right": predicate_polarity(constraint.right, False)[0],
+        }
+    )
+
+
+def _valid_constraint(constraint: Constraint) -> bool:
+    return bool(constraint.left.strip()) and bool(constraint.right.strip())
+
+
+def _dedupe_constraints(constraints: list[Constraint]) -> list[Constraint]:
+    seen: set[frozenset] = set()
+    out: list[Constraint] = []
+    for constraint in constraints:
+        signature = frozenset({constraint.left, constraint.right})
+        if len(signature) < 2 or signature in seen:
+            continue
+        seen.add(signature)
+        out.append(constraint)
+    return out
+
+
+def enrich_theory(theory: Theory) -> Theory:
+    """Normalize polarity, dedupe, and hygienically clean rules — no LLM.
+
+    Rule consequences are not materialized into axioms (that would hide the rule
+    from the explanation), and contradictory axioms are not collapsed (that would
+    hide a contradiction from the engine).
+    """
+    ids = sorted(obj.id for obj in theory.objects if obj.id.strip())
+    rewritten_morphisms = [_rewrite_morphism(m) for m in theory.morphisms]
+    morphisms = _dedupe_morphisms([m for m in rewritten_morphisms if _valid_morphism(m)])
+    rewritten_rules = [_rewrite_rule(r) for r in theory.rules]
+    rules = _dedupe_rules([r for r in rewritten_rules if _valid_rule(r)])
+    rules = heal_structural(rules)
+    over_declared = over_declared_domains(theory.model_copy(update={"morphisms": morphisms}))
+    rules = strip_domain_conditions(rules, theory.domain, over_declared=over_declared)
+    constraints = _dedupe_constraints(
+        [_rewrite_constraint(c) for c in theory.constraints if _valid_constraint(c)]
+    )
+    existentials = [
+        _rewrite_existential(e) for e in theory.existentials if _valid_existential(e)
+    ]
+
+    for morphism in [
+        *morphisms,
+        *_iter_rule_morphisms(rules),
+        *(atom for existential in existentials for atom in existential.atoms),
+    ]:
+        if morphism.subject and morphism.subject not in ids:
+            ids.append(morphism.subject)
+        if morphism.object and morphism.object not in ids:
+            ids.append(morphism.object)
+    for constraint in constraints:
+        for class_id in (constraint.left, constraint.right):
+            if class_id and class_id not in ids:
+                ids.append(class_id)
+
+    return theory.model_copy(
+        update={
+            "objects": [Object(id=oid) for oid in ids],
+            "morphisms": morphisms,
+            "rules": rules,
+            "constraints": constraints,
+            "existentials": existentials,
+        }
+    )
